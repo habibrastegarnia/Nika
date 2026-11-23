@@ -30,12 +30,13 @@
 <label class="nika-label" for="fpNew2">تکرار رمز جدید</label><input class="nika-input" id="fpNew2" type="password" autocomplete="new-password" dir="ltr">
 <div class="nika-footnote">رمز نباید فقط عدد باشد و نباید شامل شماره موبایل شما باشد.</div><p class="nika-error" id="forceError" role="alert"></p>
 <div class="nika-actions"><button class="nika-primary" type="submit">ذخیره و ادامه</button><button class="nika-secondary" type="button" id="forceLogout">انصراف و خروج</button></div></form></div></div></section>
-<section id="nikaAdmin" class="nika-hide"><div class="nika-admin-shell"><header class="nika-admin-head"><div><h1>مدیریت ساختمان · نیکا</h1><p id="adminWho" style="font-size:11px;color:#aab8d0;margin-top:5px"></p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="nika-secondary sm" id="adminBack">بازگشت به برنامه</button><button class="nika-secondary sm" id="adminExit">خروج</button></div></header>
+<section id="nikaAdmin" class="nika-hide"><div class="nika-admin-shell"><header class="nika-admin-head"><div><h1>مدیریت ساختمان · نیکا</h1><p id="adminWho" style="font-size:11px;color:#aab8d0;margin-top:5px"></p></div><div class="nika-admin-actions"><img class="nika-admin-avatar nika-hide" id="adminAvatar" src="assets/avatar.jpg" alt="تصویر نمایه"><button class="nika-secondary sm" id="adminBack">بازگشت به برنامه</button><button class="nika-secondary sm" id="adminExit">خروج</button></div></header>
 <nav class="nika-adminnav" id="adminNav" aria-label="بخش‌های مدیریت"></nav><div id="nikaAdminContent"></div></div></section>
 <main class="phone">
  <header class="header">
   <img class="avatar" id="hdrAvatar" src="assets/avatar.jpg" alt="آواتار کاربر">
   <div class="header-copy"><h1 id="hdrName"></h1><p id="hdrSub"></p></div>
+  <button class="header-action workspace-toggle nika-hide" id="workspaceToggle" aria-label="ورود به فضای مدیریت" title="ورود به فضای مدیریت"><svg viewBox="0 0 24 24"><path d="M8 7h12l-3-3M16 17H4l3 3"/><path d="M20 7l-4 4M4 17l4-4"/></svg></button>
   <button class="header-action header-logout" id="headerLogout" aria-label="خروج از حساب" title="خروج از حساب"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg><span>خروج</span></button>
  </header>
 
