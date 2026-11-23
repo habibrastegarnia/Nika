@@ -87,7 +87,7 @@ export function jdate(v, sep) {
 }
 
 export function passwordProblem(pw, phone) {
-  if (typeof pw !== 'string' || pw.length < 10) return 'رمز عبور حداقل ۱۰ کاراکتر باشد';
+  if (typeof pw !== 'string' || pw.length < 4) return 'رمز عبور حداقل ۴ کاراکتر باشد';
   if (pw.length > 128) return 'رمز عبور بیش از حد طولانی است';
   if (/^\d+$/.test(normDigits(pw))) return 'رمز عبور نباید فقط عدد باشد';
   if (phone && normDigits(pw).includes(phone)) return 'رمز عبور نباید شامل شماره موبایل باشد';
