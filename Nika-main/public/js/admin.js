@@ -21,7 +21,7 @@ const TABS = () => [
 ].filter(t => t[2]);
 
 export function adminAvailable() { return TABS().length > 0; }
-export function canSwitchWorkspace() { return !!S.user && ['owner', 'resident', 'both'].includes(S.user.account_type) && adminAvailable(); }
+export function canSwitchWorkspace() { return !!S.user && (['owner', 'resident', 'both'].includes(S.user.account_type) || (Array.isArray(S.user.roles) && S.user.roles.some(r => ['owner', 'resident'].includes(r)))) && adminAvailable(); }
 export function showAdmin(want) {
   const tabs = TABS(); if (!tabs.length) return;
   tab = tabs.some(t => t[0] === want) ? want : tabs[0][0];
