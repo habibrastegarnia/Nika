@@ -74,14 +74,17 @@ async function usersTab() {
 }
 const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.email ? ' · ' + u.email : ''}</small><div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div><div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button><button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button></div></div>`;
 function editUser(u, opts) {
+  const baseOptions = [['owner', 'مالک'], ['resident', 'ساکن']].filter(([r]) => !u.roles.includes(r));
   const m = openModal('ویرایش حساب', html`<form class="nika-form" novalidate>${fields([
     { name: 'name', label: 'نام', value: u.name, required: true }, { name: 'phone', label: 'موبایل', value: u.phone, dir: 'ltr' }, { name: 'email', label: 'ایمیل', value: u.email || '', dir: 'ltr' },
-    ...(opts.length ? [{ name: 'roles', label: 'نقش‌های اضافه', type: 'checks', options: opts, value: u.roles }] : []),
+    ...(baseOptions.length ? [{ name: 'addBaseRoles', label: 'افزودن نقش پایه به همین حساب', type: 'checks', options: baseOptions, value: [] }] : []),
+    ...(opts.length ? [{ name: 'roles', label: 'نقش‌های مدیریتی', type: 'checks', options: opts, value: u.roles }] : []),
     { name: 'active', label: 'حساب فعال باشد', type: 'checkbox', value: u.active }], 'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ذخیره</button></div></form>`);
   onSubmit($('form', m), async d => {
     const body = { name: d.name, phone: d.phone, email: d.email };
+    if (baseOptions.length && d.addBaseRoles?.length) body.addBaseRoles = d.addBaseRoles;
     if (opts.length) body.roles = d.roles; if (d.active !== u.active) body.active = d.active;
-    await api(`/admin/users/${u.id}`, { method: 'PATCH', body }); closeModal(); toast('ذخیره شد'); reload();
+    await api(`/admin/users/${u.id}`, { method: 'PATCH', body }); closeModal(); toast('ذخیره شد؛ نقش جدید به همین حساب افزوده شد.'); reload();
   });
 }
 
