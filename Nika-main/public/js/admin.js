@@ -42,17 +42,18 @@ const act = (box, sel, fn) => $$(sel, box).forEach(b => b.onclick = () => fn(b).
 
 // ====================== کاربران ======================
 const EXTRA_OPTS = ['executive', 'finance', 'board', 'building_admin', 'chair'].map(r => [r, ROLE_FA[r]]);
+const UNIT_OPTIONS = Array.from({ length: 8 }, (_, floor) => Array.from({ length: 4 }, (_, n) => { const unit = `${floor + 1}0${n + 1}`; return [unit, unit]; })).flat();
 async function usersTab() {
   const { users, assignable } = await api('/admin/users'), opts = EXTRA_OPTS.filter(([r]) => assignable.includes(r));
   return {
     html: html`<div class="nika-admin-grid">${card('حساب جدید', html`<form id="uNew" novalidate>${fields([
       { name: 'accountType', label: 'نوع حساب', type: 'select', value: 'resident', options: [...Object.entries(ACCOUNT_FA).filter(([k]) => !['owner', 'resident', 'both'].includes(k)), ['both', 'مالک و ساکن (یک حساب واحد)'], ...Object.entries(ACCOUNT_FA).filter(([k]) => k === 'owner' || k === 'resident')] },
       { name: 'name', label: 'نام و نام خانوادگی', required: true },
-      { name: 'unit', label: 'شماره واحد (برای مالک/ساکن)', inputmode: 'numeric' },
+      { name: 'unit', label: 'شماره واحد (برای مالک/ساکن)', type: 'select', value: '101', options: UNIT_OPTIONS },
       { name: 'phone', label: 'شماره موبایل', required: true, inputmode: 'tel', dir: 'ltr' },
       { name: 'email', label: 'ایمیل (اختیاری)', dir: 'ltr' },
       ...(opts.length ? [{ name: 'roles', label: 'نقش‌های اضافه' + (opts.length ? '' : ''), type: 'checks', options: opts, value: [] }] : [])], 'nika')}
-      <div class="nika-footnote">نام کاربری مالک و ساکن شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است؛ در اولین ورود باید رمز تغییر کند. اگر یک نفر مالک و ساکن هر دو باشد، گزینه «مالک و ساکن (یک حساب واحد)» را انتخاب کنید؛ در غیر این صورت برای هر شخص یک حساب جداگانه بسازید و شماره موبایل‌هایشان متفاوت باشد. حساب مدیر/کارکنان همچنان با موبایل و رمز موقت وارد می‌شود.</div>
+      <div class="nika-footnote">نام کاربری مالک و ساکن شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است؛ در اولین ورود باید رمز تغییر کند. اگر یک نفر مالک و ساکن هر دو باشد، گزینه «مالک و ساکن (یک حساب واحد)» را انتخاب کنید؛ در غیر این صورت برای هر شخص یک حساب جداگانه بسازید و شماره موبایل‌هایشان متفاوت باشد. برای اینکه یک شخص هم مالک/ساکن باشد و هم مدیر، حساب او را ابتدا از نوع مالک یا ساکن بسازید و سپس نقش مدیریتی را به همان حساب اضافه کنید. حساب مستقل مدیر/کارکنان واحد ندارد و نقش مالک/ساکن به آن افزوده نمی‌شود.</div>
       <div class="nika-actions"><button class="nika-primary" type="submit">ساخت حساب</button></div></form>`)}
     ${card(`حساب‌ها (${fa(users.length)})`, html`<input class="nika-input" id="uSearch" placeholder="جستجوی نام، موبایل یا واحد" style="margin-bottom:10px"><div class="nika-users" id="uList">${users.map(u => userCard(u))}</div>`)}</div>`,
     bind(box) {
@@ -74,7 +75,7 @@ async function usersTab() {
 }
 const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.email ? ' · ' + u.email : ''}</small><div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div><div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button><button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button></div></div>`;
 function editUser(u, opts) {
-  const baseOptions = [['owner', 'مالک'], ['resident', 'ساکن']].filter(([r]) => !u.roles.includes(r));
+  const baseOptions = u.account_type === 'staff' ? [] : [['owner', 'مالک'], ['resident', 'ساکن']].filter(([r]) => !u.roles.includes(r));
   const m = openModal('ویرایش حساب', html`<form class="nika-form" novalidate>${fields([
     { name: 'name', label: 'نام', value: u.name, required: true }, { name: 'phone', label: 'موبایل', value: u.phone, dir: 'ltr' }, { name: 'email', label: 'ایمیل', value: u.email || '', dir: 'ltr' },
     ...(baseOptions.length ? [{ name: 'addBaseRoles', label: 'افزودن نقش پایه به همین حساب', type: 'checks', options: baseOptions, value: [] }] : []),
