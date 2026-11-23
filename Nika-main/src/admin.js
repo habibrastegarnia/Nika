@@ -107,6 +107,10 @@ R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async
   if (t.id === c.user.id) throw err(400, 'SELF_CHANGE', 'رمز خودتان را از بخش تنظیمات تغییر دهید');
   const row = await c.db.prepare('SELECT phone,account_type FROM users WHERE id=?').bind(t.id).first();
   const initialPassword = row.account_type === 'staff' ? tempPassword() : row.phone;
+  if (t.account_type !== 'staff') {
+    const other = await c.db.prepare("SELECT password_hash,password_salt FROM users WHERE unit_id=(SELECT unit_id FROM users WHERE id=?) AND account_type IN ('owner','resident') AND id!=? AND active=1 LIMIT 1").bind(t.id, t.id).first();
+    if (other && (await hashPassword(initialPassword, other.password_salt)) === other.password_hash) throw err(409, 'SHARED_UNIT_PASSWORD', 'رمز فعلی مالک یا ساکن دیگر با این شماره موبایل یکسان است؛ ابتدا رمز آن حساب را تغییر دهید');
+  }
   const salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
     c.db.prepare('UPDATE users SET password_hash=?,password_salt=?,must_change_password=1,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(ph, salt, t.id),
