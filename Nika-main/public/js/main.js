@@ -81,7 +81,13 @@ function initCarousel() {
 }
 
 // ---------- شروع ----------
+function applySavedTheme() {
+  let theme = 'dark';
+  try { if (localStorage.getItem('nika-theme') === 'light') theme = 'light'; } catch {}
+  document.documentElement.setAttribute('data-theme', theme);
+}
 async function boot() {
+  applySavedTheme();
   initModal(); initRouter(); initGate(); initNav(); initCarousel();
   setHooks({
     authLost: () => { if (S.user) { S.user = null; resetRouter(); show('#nikaGate'); $('#loginError').textContent = 'نشست شما پایان یافت؛ دوباره وارد شوید.'; } },
