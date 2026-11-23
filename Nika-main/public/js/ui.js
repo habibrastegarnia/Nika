@@ -77,6 +77,16 @@ export const resetRouter = () => { hist = []; };
 
 // ---------- فرم‌ها ----------
 // field: {name,label,type,value,required,placeholder,options:[[v,l]],rows,dir,hint}
+function formatMoneyInput(input) {
+  const before = input.value.slice(0, input.selectionStart ?? input.value.length);
+  const digitsBefore = normDigits(before).replace(/\\D/g, '').length;
+  const digits = normDigits(input.value).replace(/\\D/g, '');
+  const formatted = digits.replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+  input.value = formatted;
+  let pos = 0, seen = 0;
+  while (pos < formatted.length && seen < digitsBefore) { if (/\\d/.test(formatted[pos])) seen++; pos++; }
+  try { input.setSelectionRange(pos, pos); } catch {}
+}
 export function fields(list, cls = 'page') {
   const n = cls === 'nika';
   const lab = n ? 'nika-label' : '', inp = n ? 'nika-input' : 'page-input', sel = n ? 'nika-input' : 'page-select', ta = n ? 'nika-input' : 'page-textarea';
@@ -104,6 +114,7 @@ export function readForm(form) {
 }
 // ثبت فرم با نمایش خطا زیر فرم و جلوگیری از ارسال دوباره
 export function onSubmit(form, fn) {
+  $('input[name="amount"]', form).forEach(input => { formatMoneyInput(input); input.addEventListener('input', () => formatMoneyInput(input)); });
   form.addEventListener('submit', async e => {
     e.preventDefault();
     let box = form.querySelector('.form-error');
