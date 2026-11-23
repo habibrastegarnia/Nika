@@ -1,0 +1,253 @@
+// صفحه‌های کاربری: خانه، مقررات، مصوبات، تقویم، تابلو، درخواست‌ها، مالی، پیام‌ها، پروفایل، تنظیمات
+import { api } from './api.js';
+import { S, can, readableFunds, dashFunds, isManager } from './state.js';
+import { html, raw, join, $, $$, fa, toman, fdate, fdt, isRecent, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
+  FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
+import { toast, openModal, closeModal, ask, route, open, fields, onSubmit } from './ui.js';
+
+// ====================== خانه ======================
+const COLORS = ['#7886d8', '#58c9a5', '#e8a65d', '#d77d9b', '#78baff', '#b79cf0', '#9ac96b'];
+const CIRC = 2 * Math.PI * 56;
+export const canDash = () => dashFunds().length > 0;
+
+export function fillHeader() {
+  const u = S.user;
+  $('#hdrName').textContent = u.name;
+  $('#hdrSub').textContent = u.unit_number ? `واحد ${u.unit_number} · ${u.account_type === 'owner' ? 'مالک' : 'ساکن'}` : u.roles.map(r => ROLE_FA[r]).join('، ');
+  $('#hdrAvatar').src = u.has_avatar ? `/api/avatar?v=${encodeURIComponent(u.avatar_v || '')}` : 'assets/avatar.jpg';
+}
+
+function renderExpenses(d) {
+  $('#expenseTotal').textContent = toman(d.expenseTotal);
+  $('#expTitle').textContent = 'توزیع هزینه‌ها' + (dashFunds().length > 1 ? ` · ${d.fund === 'owner' ? 'مالکانه' : 'شارژ'}` : '');
+  const g = $('#expenseDonut'), lg = $('#expenseLegend'); g.innerHTML = ''; lg.innerHTML = '';
+  if (!d.expenses.length) { lg.innerHTML = '<div class="legend-row"><span class="legend-name">هزینه‌ی تأییدشده‌ای ثبت نشده است</span></div>'; return; }
+  let off = 0;
+  d.expenses.forEach((e, i) => {
+    const len = CIRC * e.total / d.expenseTotal, col = COLORS[i % COLORS.length];
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    for (const [k, v] of Object.entries({ cx: 80, cy: 80, r: 56, fill: 'none', stroke: col, 'stroke-width': 24, 'stroke-dasharray': `${Math.max(len - 1.5, 0.5)} ${CIRC}`, 'stroke-dashoffset': -off })) c.setAttribute(k, v);
+    g.appendChild(c); off += len;
+  });
+  lg.innerHTML = join(d.expenses.map((e, i) => html`<div class="legend-row"><span class="legend-dot" style="background:${COLORS[i % COLORS.length]}"></span><span class="legend-name">${e.category}</span><span class="legend-value">${fa(e.total)} تومان</span></div>`));
+}
+function renderCharges(d) {
+  const c = d.charges, pct = c.total ? Math.min(100, Math.round(c.paid / c.total * 100)) : 0;
+  $('#chargeTotal').textContent = toman(c.total);
+  $('#finTitle').textContent = 'وضعیت مالی' + (dashFunds().length > 1 ? ` · ${d.fund === 'owner' ? 'مالکانه' : 'شارژ'}` : '');
+  $('#paidArc').setAttribute('stroke-dasharray', `${CIRC * pct / 100} ${CIRC}`);
+  $('#paidPct').textContent = `${fa(pct)}٪`; $('#unpaidPct').textContent = c.total ? `${fa(100 - pct)}٪` : '—';
+  $('#paidDetail').textContent = `${fa(c.paidUnits)} واحد · ${fa(c.paid)} تومان`;
+  $('#unpaidDetail').textContent = `${fa(c.unpaidUnits)} واحد · ${fa(c.unpaid)} تومان`;
+  $('#unitCount').textContent = `${fa(c.units)} واحد`;
+}
+function fillMonths(d) {
+  const list = d.periods.length ? d.periods : [d.period || curPeriod()];
+  for (const id of ['#expMonth', '#finMonth']) {
+    const s = $(id); s.innerHTML = join(list.map(p => html`<option value="${p}">${periodLabel(p)}</option>`)); s.value = d.period || list[0];
+  }
+}
+export async function loadDashboard(which, period) {
+  if (!canDash()) {
+    $('#expenseLegend').innerHTML = '<div class="legend-row"><span class="legend-name">اطلاعات مالی برای نقش شما نمایش داده نمی‌شود</span></div>';
+    $('#paidDetail').textContent = 'بدون دسترسی'; $('#expMonth').innerHTML = $('#finMonth').innerHTML = ''; return;
+  }
+  const funds = dashFunds(); if (!funds.includes(S.fund)) S.fund = funds[0];
+  const d = await api(`/dashboard?fund=${S.fund}${period ? '&period=' + period : ''}`);
+  if (!which) { fillMonths(d); renderExpenses(d); renderCharges(d); }
+  else if (which === 'exp') { renderExpenses(d); $('#expMonth').value = d.period; }
+  else { renderCharges(d); $('#finMonth').value = d.period; }
+}
+export async function loadLatestNotice() {
+  const { notices } = await api('/notices?limit=3'), n = notices[0];
+  $('#boardDate').textContent = n ? fdt(n.created_at) : '';
+  $('#boardTitle').textContent = n ? n.title : 'اطلاعیه‌ای ثبت نشده است';
+  $('#boardText').textContent = n ? n.body.slice(0, 140) : '';
+  $('#ntDate').textContent = n ? fdt(n.created_at) : '';
+  $('#ntTitle').textContent = n ? n.title : 'اطلاعیه‌ای ثبت نشده است';
+  $('#ntText').textContent = n ? n.body.slice(0, 160) : 'هر زمان مدیریت اطلاعیه‌ای منتشر کند اینجا نمایش داده می‌شود.';
+  $('#ntNew').style.display = n && isRecent(n.created_at) ? '' : 'none';
+}
+export async function loadHome() {
+  fillHeader();
+  await Promise.allSettled([loadDashboard(), loadLatestNotice()]);
+}
+
+// ====================== مقررات و مصوبات ======================
+const ICONS = ['⌂', '◷', '♻', '▣', '☂', '✦'];
+export async function rulesPage() {
+  const { items } = await api('/rules');
+  route('خانه', 'مقررات ساختمان', 'قوانین و ضوابط مصوب برای همه‌ی ساکنان', html`<div class="page-list">${items.length ? items.map((r, i) => html`<div class="page-card"><div class="page-row" style="background:none;border:0;padding:0"><div class="page-row-icon">${ICONS[i % ICONS.length]}</div><div class="page-row-main"><strong>${r.title}</strong><p>${r.body}</p></div></div></div>`) : html`<div class="page-card"><div class="page-empty">هنوز مقرراتی ثبت نشده است.</div></div>`}</div>`);
+}
+export async function resolutionsPage() {
+  const { items } = await api('/resolutions');
+  route('خانه', 'مصوبات', 'تصمیم‌های ثبت‌شده‌ی هیأت‌مدیره و مجمع', html`<div class="page-list">${items.length ? items.map(r => html`<div class="page-card"><h3>${r.title}</h3><p>${r.body}</p><div class="page-kicker">تاریخ مصوبه: ${r.decided_on.replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d])}</div></div>`) : html`<div class="page-card"><div class="page-empty">هنوز مصوبه‌ای ثبت نشده است.</div></div>`}</div>`);
+}
+
+// ====================== تقویم ======================
+export async function calendarPage(y, m) {
+  const t = jToday(); y ??= t.y; m ??= t.m;
+  const mm = String(m).padStart(2, '0'), { items } = await api(`/events?month=${y}-${mm}`);
+  const byDay = {}; items.forEach(e => (byDay[+e.event_date.slice(8, 10)] ||= []).push(e));
+  const start = monthStart(y, m), len = Math.round(((m === 12 ? monthStart(y + 1, 1) : monthStart(y, m + 1)) - start) / 864e5), lead = (start.getUTCDay() + 1) % 7;
+  const cells = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map(d => html`<span class="dow">${d}</span>`);
+  for (let i = 0; i < lead; i++) cells.push(html`<span class="blank"></span>`);
+  for (let d = 1; d <= len; d++) cells.push(html`<span class="${byDay[d] ? 'event' : ''} ${y === t.y && m === t.m && d === t.d ? 'today' : ''}" ${byDay[d] ? raw(`data-day="${d}"`) : ''}>${faN(d)}</span>`);
+  const prev = m === 1 ? [y - 1, 12] : [y, m - 1], next = m === 12 ? [y + 1, 1] : [y, m + 1];
+  const v = route('خانه', 'تقویم ساختمان', 'جلسات، سرویس‌ها و رویدادهای پیش‌رو', html`<div class="page-card"><div class="cal-nav"><button class="page-btn sm secondary" id="calPrev">‹ ماه قبل</button><strong>${JM[m - 1]} ${faN(y)}</strong><button class="page-btn sm secondary" id="calNext">ماه بعد ›</button></div><div class="page-calendar">${cells}</div></div>
+    <div class="page-card"><h3>رویدادهای ${JM[m - 1]}</h3>${items.length ? html`<div class="page-timeline">${items.map(e => html`<div class="page-event"><strong>${e.title}</strong><small>${faN(+e.event_date.slice(8, 10))} ${JM[m - 1]}${e.event_time ? ' · ' + normFa(e.event_time) : ''}</small>${e.body ? html`<p>${e.body}</p>` : ''}</div>`)}</div>` : html`<div class="page-empty">رویدادی برای این ماه ثبت نشده است.</div>`}</div>`);
+  $('#calPrev', v).onclick = () => open(() => calendarPage(...prev), { replace: true });
+  $('#calNext', v).onclick = () => open(() => calendarPage(...next), { replace: true });
+}
+const normFa = s => String(s).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+// ====================== تابلو و اسناد ======================
+export async function boardPage() {
+  const { notices } = await api('/notices');
+  route('خانه', 'تابلوی ساختمان', 'اطلاعیه‌های مدیریت و مطالب تأییدشده', html`<div class="page-list">${notices.length ? notices.map(n => html`<div class="page-card"><div class="notice-meta"><span>${fdt(n.created_at)}</span><span class="page-chip ${n.kind === 'فوری' ? 'red' : 'blue'}">${n.kind}</span></div><h3 class="notice-title">${n.title}</h3><p>${n.body}</p></div>`) : html`<div class="page-card"><div class="page-empty">اطلاعیه‌ای ثبت نشده است.</div></div>`}</div>`);
+}
+export async function documentsPage() {
+  const { items } = await api('/documents');
+  route('حساب من', 'اسناد و فرم‌ها', 'پیوند اسناد منتشرشده توسط مدیریت', html`<div class="page-list">${items.length ? items.map(d => html`<div class="page-row"><div class="page-row-icon">▤</div><div class="page-row-main"><strong>${d.title}</strong>${d.description ? html`<small>${d.description}</small>` : ''}</div><a class="page-row-tail" href="${d.url}" target="_blank" rel="noopener noreferrer">باز کردن ←</a></div>`) : html`<div class="page-card"><div class="page-empty">سندی ثبت نشده است.</div></div>`}</div>`);
+}
+export function facilitiesPage() {
+  const items = [['آسانسور', 'تأسیسات و تعمیرات'], ['پارکینگ', 'عمومی'], ['روشنایی مشاعات', 'تأسیسات و تعمیرات'], ['نظافت و پسماند', 'نظافت'], ['امنیت و دوربین‌ها', 'امنیت']];
+  const v = route('حساب من', 'امکانات و تأسیسات', 'برای هر مورد می‌توانید خرابی یا مشکل را گزارش دهید', html`<div class="page-list">${items.map(([n, c], i) => html`<div class="page-row clickable" data-i="${i}"><div class="page-row-icon">${ICONS[i]}</div><div class="page-row-main"><strong>${n}</strong><small>گزارش مشکل یا درخواست رسیدگی</small></div><span class="page-row-tail">گزارش ←</span></div>`)}</div>`);
+  $$('[data-i]', v).forEach(r => r.onclick = () => open(() => composePage('issue', items[r.dataset.i][1], items[r.dataset.i][0])));
+}
+
+// ====================== درخواست‌ها ======================
+export async function requestsPage() {
+  const { requests } = await api('/requests');
+  const openCount = requests.filter(r => ['new', 'in_progress'].includes(r.status)).length;
+  const v = route('خانه', 'درخواست و پیشنهاد', 'ثبت و پیگیری درخواست‌ها', html`<div class="page-stat-grid"><div class="page-stat"><small>کل موارد</small><strong>${fa(requests.length)}</strong></div><div class="page-stat"><small>در جریان</small><strong class="blue">${fa(openCount)}</strong></div></div>
+    <div class="quick-grid" style="margin-bottom:12px"><button class="page-btn" id="rqNew">+ ثبت درخواست</button><button class="page-btn secondary" id="rqIdea">+ ثبت پیشنهاد</button></div>
+    <div class="page-list">${requests.length ? requests.map(r => html`<div class="page-card"><div class="page-row" style="background:none;border:0;padding:0"><div class="page-row-main"><strong>${r.title}</strong><small>${REQ_KIND[r.kind]} · ${r.category || 'عمومی'} · ${fdate(r.created_at)}</small></div>${chip(REQ_STATUS[r.status] || [r.status, ''])}</div><p>${r.body}</p>${r.response ? html`<div class="page-divider"></div><div class="page-kicker">پاسخ مدیریت</div><p>${r.response}</p>` : ''}${r.board_requested === 1 ? html`<span class="page-chip">در انتظار انتشار در تابلو</span>` : r.board_requested === 2 ? html`<span class="page-chip green">منتشرشده در تابلو</span>` : ''}</div>`) : html`<div class="page-card"><div class="page-empty">هنوز موردی ثبت نکرده‌اید.</div></div>`}</div>`);
+  $('#rqNew', v).onclick = () => open(() => composePage('request'));
+  $('#rqIdea', v).onclick = () => open(() => composePage('idea'));
+}
+export function composePage(kind = 'request', category = 'عمومی', subject = '') {
+  const v = route('خانه', kind === 'idea' ? 'ثبت پیشنهاد' : kind === 'issue' ? 'گزارش مشکل' : 'ثبت درخواست', 'پیام شما برای مدیریت ساختمان ارسال می‌شود', html`<form class="page-card page-form" novalidate>${fields([
+    { name: 'kind', label: 'نوع', type: 'select', value: kind, options: Object.entries(REQ_KIND) },
+    { name: 'category', label: 'دسته‌بندی', type: 'select', value: category, options: REQ_CATEGORIES.map(c => [c, c]) },
+    { name: 'title', label: 'موضوع', value: subject ? `مشکل ${subject}` : '', required: true, placeholder: 'عنوان کوتاه' },
+    { name: 'body', label: 'شرح', type: 'textarea', required: true, placeholder: 'توضیح کامل را بنویسید' },
+    { name: 'boardRequested', label: 'نمایش در تابلوی ساختمان (پس از تأیید مدیریت)', type: 'checkbox' }])}<button class="page-btn full" type="submit">ارسال</button></form>`);
+  onSubmit($('form', v), async d => {
+    await api('/requests', { method: 'POST', body: d });
+    toast('ثبت شد'); open(requestsPage, { replace: true }); refreshSummary();
+  });
+}
+
+// ====================== مالی ======================
+const txRow = (t, mine) => html`<div class="page-row"><div class="page-row-icon">${t.kind === 'payment' ? '↗' : t.kind === 'expense' ? '↘' : '◈'}</div><div class="page-row-main"><strong>${t.title}</strong><small>${KIND_FA[t.kind]}${t.period ? ' · ' + periodLabel(t.period) : ''} · ${fdate(t.created_at)}${t.reference ? ' · پیگیری ' + t.reference : ''}${t.unit_number && !mine ? ' · واحد ' + t.unit_number : ''}</small>${t.status === 'rejected' && t.note ? html`<small style="color:#ee9bae">دلیل رد: ${t.note}</small>` : ''}</div><div style="text-align:left"><div class="page-row-tail" style="color:#e6edf9">${toman(t.amount)}</div>${chip(TX_STATUS[t.status] || [t.status, ''])}${mine && t.status === 'pending' && t.created_by === S.user.id ? html`<div><button class="page-btn sm secondary" data-cancel="${t.id}" style="margin-top:5px">لغو</button></div>` : ''}</div></div>`;
+
+export async function financePage(fund) {
+  const funds = readableFunds();
+  if (!funds.length) return route('مالی', 'امور مالی', '', html`<div class="page-card"><div class="page-empty">برای حساب شما صندوق مالی تعریف نشده است.${can('expenses.create') || isManager() ? html`<br>مدیریت مالی از «مدیریت» در منوی پایین در دسترس است.` : ''}</div></div>`);
+  fund = funds.includes(fund) ? fund : funds.includes(S.fund) ? S.fund : funds[0]; S.fund = fund;
+  const [my, tx, dash] = await Promise.all([api(`/finance/my?fund=${fund}`), api(`/transactions?fund=${fund}&limit=60`), dashFunds().includes(fund) ? api(`/dashboard?fund=${fund}`) : null]);
+  const pct = dash && dash.charges.total ? Math.min(100, Math.round(dash.charges.paid / dash.charges.total * 100)) : null;
+  const v = route('مالی', 'امور مالی', FUND_FA[fund], html`${funds.length > 1 ? html`<div class="seg">${funds.map(f => html`<button class="${f === fund ? 'on' : ''}" data-fund="${f}">${FUND_FA[f]}</button>`)}</div>` : ''}
+    <div class="page-stat-grid"><div class="page-stat"><small>مانده بدهی واحد</small><strong class="${my.balance > 0 ? '' : 'green'}">${toman(Math.max(my.balance, 0))}</strong></div><div class="page-stat"><small>${my.balance < 0 ? 'اعتبار واحد' : 'در انتظار تأیید'}</small><strong class="blue">${toman(my.balance < 0 ? -my.balance : my.pending)}</strong></div><div class="page-stat"><small>کل شارژ</small><strong>${toman(my.charged)}</strong></div><div class="page-stat"><small>آخرین پرداخت</small><strong style="font-size:13px">${my.lastPaymentAt ? fdate(my.lastPaymentAt) : '—'}</strong></div></div>
+    ${can(`finance.${fund}.pay`) && S.user.unit_id ? html`<button class="page-btn full" id="payBtn" style="margin:0 0 12px">ثبت پرداخت و ارسال رسید</button>` : ''}
+    ${pct != null ? html`<div class="page-card"><h3>وصول شارژ ساختمان · ${periodLabel(dash.period || curPeriod())}</h3><div class="bar"><div style="width:${pct}%"></div></div><p>${fa(pct)}٪ وصول‌شده · ${fa(dash.charges.paidUnits)} از ${fa(dash.charges.units)} واحد تسویه‌اند</p></div>` : ''}
+    <div class="page-card"><h3>تراکنش‌های واحد شما</h3><div class="page-list">${tx.transactions.length ? tx.transactions.map(t => txRow(t, true)) : html`<div class="page-empty">تراکنشی ثبت نشده است.</div>`}</div></div>
+    ${can('finance.approve') || can('expenses.approve') ? html`<button class="page-btn secondary full" id="goApprove">رفتن به تأیید پرداخت‌ها در بخش مدیریت</button>` : ''}`);
+  $$('[data-fund]', v).forEach(b => b.onclick = () => open(() => financePage(b.dataset.fund), { replace: true }));
+  const pb = $('#payBtn', v); if (pb) pb.onclick = () => open(() => payPage(fund, my.balance));
+  $$('[data-cancel]', v).forEach(b => b.onclick = async () => { if (await ask('لغو پرداخت', 'این پرداخت در انتظار تأیید لغو شود؟', 'لغو پرداخت', true)) { await api(`/transactions/${b.dataset.cancel}`, { method: 'DELETE' }); toast('لغو شد'); open(() => financePage(fund), { replace: true }); } });
+  const ga = $('#goApprove', v); if (ga) ga.onclick = () => document.dispatchEvent(new CustomEvent('nika:admin', { detail: 'finance' }));
+}
+function payPage(fund, balance) {
+  const v = route('مالی', 'ثبت پرداخت', FUND_FA[fund], html`<form class="page-card page-form" novalidate><p>پس از پرداخت (کارت‌به‌کارت یا واریز)، مبلغ و شماره پیگیری را ثبت کنید. پرداخت پس از بررسی مدیر مالی در حساب شما اعمال می‌شود.</p>${fields([
+    { name: 'amount', label: 'مبلغ (تومان)', inputmode: 'numeric', required: true, value: balance > 0 ? fa(balance).replace(/٬/g, '') : '', dir: 'ltr' },
+    { name: 'reference', label: 'شماره پیگیری / ۴ رقم آخر کارت', required: true, dir: 'ltr' },
+    { name: 'period', label: 'بابت دوره (اختیاری)', value: curPeriod(), dir: 'ltr', hint: 'مثلاً ۱۴۰۵-۰۹' },
+    { name: 'note', label: 'توضیحات (اختیاری)', type: 'textarea', rows: 3 }])}<button class="page-btn full" type="submit">ثبت پرداخت</button></form>`);
+  onSubmit($('form', v), async d => {
+    const amount = parseAmount(d.amount); if (!amount) throw new Error('مبلغ را به‌صورت عدد وارد کنید');
+    await api('/transactions', { method: 'POST', body: { kind: 'payment', fund, amount, reference: d.reference, period: d.period || undefined, note: d.note || undefined } });
+    toast('پرداخت ثبت شد و در انتظار تأیید است'); open(() => financePage(fund), { replace: true }); refreshSummary();
+  });
+}
+
+// ====================== پیام‌ها ======================
+export async function messagesPage(box = 'inbox') {
+  const { messages } = await api(`/messages?box=${box}`);
+  const mgr = can('messages.manage');
+  const v = route('پیام‌ها', 'پیام‌ها', mgr ? 'پیام‌های مدیریت و گفتگو با ساکنان' : 'گفتگو با مدیریت ساختمان', html`<div class="seg"><button class="${box === 'inbox' ? 'on' : ''}" data-box="inbox">دریافتی</button><button class="${box === 'sent' ? 'on' : ''}" data-box="sent">ارسالی</button></div>
+    <button class="page-btn full" id="msgNew" style="margin:0 0 12px">+ پیام جدید به مدیریت</button>
+    <div class="page-list">${messages.length ? messages.map((m, i) => html`<div class="page-row clickable ${box === 'inbox' && !m.read_at ? 'unread' : ''}" data-i="${i}"><div class="page-row-icon">✉</div><div class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? 'به: ' + (m.recipient_name || 'مدیریت') : 'از: ' + m.sender_name + (m.sender_unit ? ' (واحد ' + m.sender_unit + ')' : '')} · ${fdt(m.created_at)}</small></div></div>`) : html`<div class="page-card"><div class="page-empty">پیامی وجود ندارد.</div></div>`}</div>`);
+  $$('[data-box]', v).forEach(b => b.onclick = () => open(() => messagesPage(b.dataset.box), { replace: true }));
+  $('#msgNew', v).onclick = () => open(() => messageComposePage());
+  $$('[data-i]', v).forEach(r => r.onclick = async () => {
+    const m = messages[r.dataset.i];
+    const el = openModal(m.title, html`<p class="page-kicker">${box === 'sent' ? 'به: ' + (m.recipient_name || 'مدیریت') : 'از: ' + m.sender_name} · ${fdt(m.created_at)}</p><p style="white-space:pre-wrap">${m.body}</p>${box === 'inbox' && m.sender_id !== S.user.id && !can('messages.manage') ? html`<div class="row-actions"><button class="page-btn sm" data-reply>پاسخ</button></div>` : ''}`);
+    const rp = $('[data-reply]', el); if (rp) rp.onclick = () => { closeModal(); open(() => messageComposePage('Re: ' + m.title)); };
+    if (box === 'inbox' && !m.read_at) { api(`/messages/${m.id}/read`, { method: 'POST' }).then(refreshSummary).catch(() => {}); r.classList.remove('unread'); m.read_at = 1; }
+  });
+}
+export function messageComposePage(title = '') {
+  const v = route('پیام‌ها', 'پیام جدید', 'ارسال به مدیریت ساختمان', html`<form class="page-card page-form" novalidate>${fields([{ name: 'title', label: 'عنوان', value: title, required: true }, { name: 'body', label: 'متن پیام', type: 'textarea', required: true }])}<button class="page-btn full" type="submit">ارسال</button></form>`);
+  onSubmit($('form', v), async d => { await api('/messages', { method: 'POST', body: d }); toast('پیام ارسال شد'); open(() => messagesPage('sent'), { replace: true }); });
+}
+
+// ====================== حساب من ======================
+export async function refreshSummary() {
+  try {
+    S.summary = await api('/summary');
+    const b = $('#msgBadge'); b.textContent = fa(S.summary.unreadMessages); b.style.display = S.summary.unreadMessages ? '' : 'none';
+    const a = $('#admBadge'); if (a) { const n = S.summary.pendingApprovals + S.summary.newRequests; a.textContent = fa(n); a.style.display = n ? '' : 'none'; }
+  } catch {}
+}
+export function profilePage() {
+  const u = S.user, unit = u.unit;
+  const rows = [['شماره موبایل', normFa(u.phone)], ['ایمیل', u.email || '—'], ['نوع حساب', u.account_type === 'staff' ? 'مدیر / کارکنان' : u.account_type === 'owner' ? 'مالک' : 'ساکن'],
+    ...(unit ? [['واحد', unit.number], ['بلوک', unit.block || '—'], ['طبقه', unit.floor || '—'], ['پارکینگ', unit.parking || '—']] : [])];
+  const v = route('حساب من', 'حساب من', 'اطلاعات کاربری و تنظیمات', html`<div class="profile-cover"><img src="${u.has_avatar ? `/api/avatar?v=${encodeURIComponent(u.avatar_v || '')}` : 'assets/avatar.jpg'}" alt="تصویر پروفایل"><div><strong>${u.name}</strong><small>${u.roles.map(r => ROLE_FA[r]).join(' · ')}</small></div></div>
+    <div class="page-card"><div class="page-list">${rows.map(([k, val]) => html`<div class="page-row"><div class="page-row-main"><small>${k}</small><strong>${val}</strong></div></div>`)}</div></div>
+    <div class="page-list"><div class="page-row clickable" data-go="edit"><div class="page-row-icon">✎</div><div class="page-row-main"><strong>ویرایش پروفایل</strong><small>نام، ایمیل، شماره موبایل و تصویر</small></div></div>
+    <div class="page-row clickable" data-go="docs"><div class="page-row-icon">▤</div><div class="page-row-main"><strong>اسناد و فرم‌ها</strong></div></div>
+    <div class="page-row clickable" data-go="fac"><div class="page-row-icon">☂</div><div class="page-row-main"><strong>امکانات و گزارش خرابی</strong></div></div>
+    <div class="page-row clickable" data-go="set"><div class="page-row-icon">⚙</div><div class="page-row-main"><strong>تنظیمات و امنیت</strong><small>تغییر رمز عبور و خروج</small></div></div></div>`);
+  const map = { edit: editProfilePage, docs: documentsPage, fac: facilitiesPage, set: settingsPage };
+  $$('[data-go]', v).forEach(r => r.onclick = () => open(map[r.dataset.go]));
+}
+// کوچک‌کردن تصویر در مرورگر (حداکثر ۲۵۶ پیکسل) پیش از ارسال
+async function toAvatar(file) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود');
+  const bmp = await createImageBitmap(file), s = Math.min(bmp.width, bmp.height), c = document.createElement('canvas'); c.width = c.height = 256;
+  c.getContext('2d').drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, 256, 256);
+  return c.toDataURL('image/jpeg', 0.82);
+}
+export function editProfilePage() {
+  const u = S.user;
+  const v = route('حساب من', 'ویرایش پروفایل', '', html`<form class="page-card page-form" novalidate>${fields([
+    { name: 'name', label: 'نام و نام خانوادگی', value: u.name, required: true },
+    { name: 'email', label: 'ایمیل (اختیاری)', type: 'email', value: u.email || '', dir: 'ltr' },
+    { name: 'phone', label: 'شماره موبایل (نام کاربری ورود)', value: u.phone, inputmode: 'tel', dir: 'ltr' },
+    { name: 'currentPassword', label: 'رمز فعلی (فقط هنگام تغییر شماره موبایل)', type: 'password', dir: 'ltr', autocomplete: 'current-password' }])}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>
+    <div class="page-card"><h3>تصویر پروفایل</h3><input type="file" id="avFile" accept="image/jpeg,image/png,image/webp" class="page-input"><div class="row-actions">${u.has_avatar ? html`<button class="page-btn sm danger" id="avDel">حذف تصویر</button>` : ''}</div><p class="form-error" id="avErr"></p></div>`);
+  onSubmit($('form', v), async d => {
+    const body = { name: d.name, email: d.email }; if (d.phone && d.phone !== u.phone) { body.phone = d.phone; body.currentPassword = d.currentPassword; }
+    const r = await api('/profile', { method: 'PATCH', body }); S.user = r.user; fillHeader(); toast('ذخیره شد'); open(profilePage, { replace: true });
+  });
+  $('#avFile', v).onchange = async e => {
+    try { const f = e.target.files[0]; if (!f) return; const r = await api('/avatar', { method: 'PUT', body: { avatarData: await toAvatar(f) } }); S.user = r.user; fillHeader(); toast('تصویر ذخیره شد'); open(profilePage, { replace: true }); }
+    catch (err) { $('#avErr').textContent = err.message; }
+  };
+  const del = $('#avDel', v); if (del) del.onclick = async () => { S.user = (await api('/avatar', { method: 'DELETE' })).user; fillHeader(); toast('حذف شد'); open(profilePage, { replace: true }); };
+}
+export function settingsPage() {
+  const v = route('حساب من', 'تنظیمات و امنیت', '', html`<form class="page-card page-form" novalidate><h3>تغییر رمز عبور</h3>${fields([
+    { name: 'currentPassword', label: 'رمز فعلی', type: 'password', required: true, dir: 'ltr', autocomplete: 'current-password' },
+    { name: 'newPassword', label: 'رمز جدید (حداقل ۱۰ کاراکتر، نه فقط عدد)', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' },
+    { name: 'again', label: 'تکرار رمز جدید', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' }])}<button class="page-btn full" type="submit">تغییر رمز</button><p class="nika-footnote">پس از تغییر رمز، نشست سایر دستگاه‌ها بسته می‌شود.</p></form>
+    <div class="page-card"><h3>خروج</h3><button class="page-btn danger full" id="logoutBtn">خروج از حساب</button></div>`);
+  onSubmit($('form', v), async (d, f) => {
+    if (d.newPassword !== d.again) throw new Error('تکرار رمز با رمز جدید یکسان نیست');
+    await api('/password', { method: 'POST', body: { currentPassword: d.currentPassword, newPassword: d.newPassword } }); f.reset(); toast('رمز عبور تغییر کرد');
+  });
+  $('#logoutBtn', v).onclick = () => document.dispatchEvent(new CustomEvent('nika:logout'));
+}
