@@ -21,10 +21,19 @@ const TABS = () => [
 ].filter(t => t[2]);
 
 export function adminAvailable() { return TABS().length > 0; }
+export function canSwitchWorkspace() { return !!S.user && ['owner', 'resident', 'both'].includes(S.user.account_type) && adminAvailable(); }
 export function showAdmin(want) {
   const tabs = TABS(); if (!tabs.length) return;
   tab = tabs.some(t => t[0] === want) ? want : tabs[0][0];
   $('#adminWho').textContent = `${S.user.name} · ${S.user.roles.map(r => ROLE_FA[r]).join('، ')}`;
+  const personal = canSwitchWorkspace(), back = $('#adminBack');
+  $('#adminAvatar').classList.toggle('nika-hide', !personal);
+  $('#adminAvatar').src = S.user.has_avatar ? `/api/avatar?v=${encodeURIComponent(S.user.avatar_v || '')}` : 'assets/avatar.jpg';
+  if (personal) {
+    back.className = 'header-action workspace-toggle';
+    back.title = 'بازگشت به فضای شخصی'; back.setAttribute('aria-label', 'بازگشت به فضای شخصی');
+    back.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 7h12l-3-3M16 17H4l3 3"/><path d="M20 7l-4 4M4 17l4-4"/></svg>';
+  } else { back.className = 'nika-secondary sm'; back.textContent = 'بازگشت به برنامه'; }
   $('#nikaAdmin').classList.remove('nika-hide'); $('.phone').classList.add('nika-hide'); renderNav(); loadTab();
 }
 export function hideAdmin() { $('#nikaAdmin').classList.add('nika-hide'); $('.phone').classList.remove('nika-hide'); refreshSummary(); loadLatestNotice().catch(() => {}); }
