@@ -31,6 +31,7 @@ button:disabled{opacity:.6}
  var form=document.getElementById('setup');
  var button=document.getElementById('submit');
  var out=document.getElementById('result');
+ out.textContent='آزمایش: کد صفحه اجرا شده است.';
  form.addEventListener('submit',function(e){
   e.preventDefault();
   var name=form.elements.name.value.trim();
