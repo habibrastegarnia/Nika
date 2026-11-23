@@ -43,15 +43,14 @@ async function logout() {
 // ---------- ناوبری ----------
 function setupNav() {
   const nav = $('.bottom-nav');
-  const dualWorkspace = canSwitchWorkspace();
-  $('#workspaceToggle').classList.toggle('nika-hide', !dualWorkspace);
-  $('#workspaceToggle').onclick = () => showAdmin();
+  const hasAdminWorkspace = isManager() && adminAvailable();
+  const workspaceToggle = $('#workspaceToggle');
+  workspaceToggle.classList.toggle('nika-hide', !hasAdminWorkspace);
+  workspaceToggle.onclick = () => showAdmin();
+  // فضای مدیریت همیشه از همان کلید بالای داشبورد باز می‌شود؛
+  // منوی پایین صفحه فقط برای ناوبری اصلی باقی می‌ماند.
   $('#admNavBtn')?.remove();
-  if (isManager() && adminAvailable() && !dualWorkspace) {
-    nav.insertAdjacentHTML('beforeend', '<button class="nav-item" id="admNavBtn" data-nav="مدیریت"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span>مدیریت</span><i class="nav-badge" id="admBadge" style="display:none"></i></button>');
-    nav.style.gridTemplateColumns = 'repeat(5,1fr)';
-    $('#admNavBtn').onclick = () => showAdmin();
-  } else nav.style.gridTemplateColumns = '';
+  nav.style.gridTemplateColumns = '';
 }
 function initNav() {
   $$('.nav-item').forEach(b => { if (b.id === 'admNavBtn') return; b.onclick = () => {
