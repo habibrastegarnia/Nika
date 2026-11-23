@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>راه‌اندازی مدیر اصلی نیکا</title>
+<title>فعال‌سازی اولیه نیکا</title>
 <style>
 body{font-family:Tahoma,Arial,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#202833}
 main{max-width:460px;margin:30px auto;background:white;padding:24px;border-radius:14px;box-shadow:0 4px 24px #0001}
@@ -16,14 +16,11 @@ button:disabled{opacity:.6}
 </style>
 </head>
 <body><main>
-<h2>ایجاد حساب رئیس هیئت‌مدیره</h2>
-<p>این فرم فقط برای راه‌اندازی اولیه است. کلید راه‌اندازی و رمز عبور را در اختیار هیچ‌کس قرار ندهید. اطلاعات مستقیماً به سرور همین سامانه ارسال می‌شود.</p>
+<h2>فعال‌سازی اولیه سامانه نیکا</h2>
+<p>این مرحله فقط یک‌بار و فقط پیش از ایجاد اولین کاربر انجام می‌شود. پس از فعال‌سازی، با نام کاربری Admin و رمز موقت admin وارد شوید و رمز را تغییر دهید.</p>
 <form id="setup" novalidate>
-<label>نام و نام خانوادگی</label><input name="name" maxlength="100" autocomplete="name">
-<label>شماره موبایل</label><input name="phone" inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx">
-<label>رمز عبور مدیر اصلی</label><input name="password" type="password" minlength="10" autocomplete="new-password">
-<label>کلید راه‌اندازی (BOOTSTRAP_KEY)</label><input name="key" type="password" autocomplete="off">
-<button id="submit" type="submit">ایجاد حساب مدیر اصلی</button>
-</form><div id="result" role="status">فرم آماده است. اطلاعات را وارد کنید.</div>
+<label for="key">کلید فعال‌سازی امن (BOOTSTRAP_KEY)</label><input id="key" name="key" type="password" autocomplete="off" required>
+<button id="submit" type="submit">فعال‌سازی و ایجاد مدیر اصلی</button>
+</form><div id="result" role="status">برای ایجاد حساب مدیر اصلی، کلید فعال‌سازی را وارد کنید.</div>
 </main>
 <script src="/js/setup.js" defer></script></body></html>
