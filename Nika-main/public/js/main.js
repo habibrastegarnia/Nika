@@ -10,18 +10,11 @@ const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList
 
 // ---------- ورود ----------
 function initGate() {
-  const type = $('#nikaAccountType');
-  const syncLoginFields = () => {
-    $('#unitField').classList.toggle('nika-hide', type.value === 'staff');
-    $('#loginIdentifierField').classList.toggle('nika-hide', type.value !== 'staff');
-    $('#nikaPasswordLabel').textContent = type.value === 'staff' ? 'رمز عبور' : 'رمز عبور (در اولین ورود: شماره موبایل ثبت‌شده)';
-  };
-  type.onchange = syncLoginFields; syncLoginFields();
   $('#loginForm').onsubmit = async e => {
     e.preventDefault();
     const err = $('#loginError'), btn = $('#nikaLogin'); err.textContent = ''; btn.disabled = true;
     try {
-      const r = await api('/login', { method: 'POST', body: { accountType: type.value, unit: normDigits($('#nikaUnit').value).trim(), phone: type.value === 'staff' ? $('#nikaPhone').value : '', password: $('#nikaPassword').value } });
+      const r = await api('/login', { method: 'POST', body: { identifier: $('#nikaIdentifier').value.trim(), password: $('#nikaPassword').value } });
       $('#nikaPassword').value = ''; await enter(r.user);
     } catch (e2) { err.textContent = e2.message; } finally { btn.disabled = false; }
   };
