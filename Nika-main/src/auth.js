@@ -85,18 +85,19 @@ R('POST', '/api/login', { public: true }, async c => {
   if (!['owner', 'resident', 'staff'].includes(type)) throw err(400, 'INVALID_INPUT', 'نوع حساب نامعتبر است');
   const identifier = typeof x.phone === 'string' ? x.phone.trim() : '';
   const isRootAdmin = type === 'staff' && identifier.toLowerCase() === 'admin';
-  const phone = isRootAdmin ? null : normPhone(identifier), password = typeof x.password === 'string' ? x.password : '';
+  const phone = type === 'staff' && !isRootAdmin ? normPhone(identifier) : null;
+  const password = typeof x.password === 'string' ? x.password : '';
   const unit = type === 'staff' ? null : unitOrNull(x.unit);
-  if ((!isRootAdmin && !phone) || !password || password.length > 128 || (type !== 'staff' && !unit)) throw err(400, 'INVALID_INPUT', 'اطلاعات ورود را کامل و صحیح وارد کنید');
+  if ((type === 'staff' && !isRootAdmin && !phone) || !password || password.length > 128 || (type !== 'staff' && !unit)) throw err(400, 'INVALID_INPUT', 'اطلاعات ورود را کامل و صحیح وارد کنید');
   const ip = c.request.headers.get('CF-Connecting-IP') || 'unknown';
-  const loginId = isRootAdmin ? 'Admin' : phone;
+  const loginId = type === 'staff' ? (isRootAdmin ? 'Admin' : phone) : unit;
   const idKey = `id:${type}:${unit || '-'}:${loginId}`, ipKey = `ip:${ip}`;
   await assertNotLocked(c.db, [idKey, ipKey], c.now);
-  const u = isRootAdmin
-    ? await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND email='admin' AND active=1").first()
-    : type === 'staff'
-      ? await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=? AND active=1").bind(phone).first()
-      : await c.db.prepare('SELECT u.* FROM users u JOIN units n ON n.id=u.unit_id WHERE n.unit_number=? AND u.phone=? AND u.account_type=? AND u.active=1').bind(unit, phone, type).first();
+  const u = type === 'staff'
+    ? (isRootAdmin
+      ? await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND email='admin' AND active=1").first()
+      : await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=? AND active=1").bind(phone).first())
+    : await c.db.prepare('SELECT u.* FROM users u JOIN units n ON n.id=u.unit_id WHERE n.unit_number=? AND u.account_type=? AND u.active=1').bind(unit, type).first();
   const h = await hashPassword(password, u ? u.password_salt : DUMMY_SALT);
   if (!u || !safeEqual(h, u.password_hash)) {
     await registerFailure(c.db, idKey, MAX_ID_FAILS, c.now);
@@ -107,7 +108,6 @@ R('POST', '/api/login', { public: true }, async c => {
   await audit(c.db, u.id, 'login', 'user', u.id);
   return issueSession(c, u);
 });
-
 R('POST', '/api/logout', { public: true }, async c => {
   const u = await authenticate(c);
   if (u) await c.db.prepare('DELETE FROM sessions WHERE id=?').bind(u.sid).run();
@@ -132,7 +132,7 @@ async function updateProfile(c) {
       const ok = typeof x.currentPassword === 'string' && safeEqual(await hashPassword(x.currentPassword, row.password_salt), row.password_hash);
       if (!ok) throw err(403, 'PASSWORD_REQUIRED', 'برای تغییر شماره موبایل رمز عبور فعلی را درست وارد کنید');
       const dup = c.user.unit_id
-        ? await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=? AND phone=? AND id!=?').bind(c.user.unit_id, c.user.account_type, phone, c.user.id).first()
+        ? await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND phone=? AND id!=?").bind(c.user.unit_id, phone, c.user.id).first()
         : await c.db.prepare("SELECT id FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=? AND id!=?").bind(phone, c.user.id).first();
       if (dup) throw err(409, 'PHONE_EXISTS', 'این شماره قبلاً برای حساب دیگری ثبت شده است');
       sets.push('phone=?'); vals.push(phone);
