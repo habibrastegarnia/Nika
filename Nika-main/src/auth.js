@@ -92,7 +92,7 @@ R('POST', '/api/login', { public: true }, async c => {
   await assertNotLocked(c.db, [idKey, ipKey], c.now);
   let candidates = [];
   if (isRootAdmin) {
-    const root = await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND email='admin' AND active=1").first();
+    const root = await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND lower(email) IN ('admin','admin@nika.com') AND active=1").first();
     if (root) candidates.push(root);
   } else {
     if (unit) {
