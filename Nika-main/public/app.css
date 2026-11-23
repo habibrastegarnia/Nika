@@ -35,9 +35,9 @@ button,select{font:inherit}.phone{width:min(100vw,430px);min-height:100svh;posit
 @media(max-width:480px){
  .header{gap:8px;padding-inline:12px}
  .header-copy{flex:1 1 auto;min-width:0}
- .header .workspace-toggle:not(.nika-hide){display:flex!important;flex:0 0 64px;width:64px;height:36px}
- .header .workspace-toggle .workspace-thumb{width:26px;height:26px;top:4px;left:4px}
- .header .workspace-toggle.is-admin .workspace-thumb{transform:translateX(28px)}
+ .header .workspace-toggle:not(.nika-hide){display:flex!important;flex:0 0 136px;width:136px;height:36px;min-width:136px;flex-shrink:0}
+ .header .workspace-toggle .workspace-thumb{width:64px;height:28px;top:3px;left:3px}
+ .header .workspace-toggle.is-admin .workspace-thumb{transform:translateX(64px)}
  .header .header-logout{flex:0 0 44px;width:44px;height:44px;min-height:44px}
 }
 @media(max-width:480px){
@@ -276,19 +276,22 @@ html[data-theme="light"] .theme-switch[aria-checked="true"]{background:linear-gr
 
 
 
-/* Workspace switch uses the same pill-and-thumb control as the day/night selector */
-.workspace-toggle{position:relative;direction:ltr;width:72px;height:38px;flex:0 0 72px;padding:0;border:1px solid #53617b;border-radius:30px;background:linear-gradient(110deg,#26334d,#526b9c);box-shadow:inset 0 2px 5px #101827aa,0 3px 9px #0003;color:#dce7ff;display:flex;align-items:center;justify-content:space-around;cursor:pointer;transition:background .3s,border-color .3s,box-shadow .3s}
-.workspace-arrow{position:absolute;top:7px;width:22px;height:22px;display:grid;place-items:center;font-size:17px;line-height:1;font-weight:700;z-index:1}
-.workspace-arrow-left{left:8px;color:#dce7ff}
-.workspace-arrow-right{right:8px;color:#f7c96b}
-.workspace-thumb{position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;background:linear-gradient(145deg,#fff,#dce5f4);box-shadow:0 2px 7px #0005,inset 0 1px 1px #fff;transition:transform .32s cubic-bezier(.2,.8,.2,1),background .3s}
-.workspace-toggle.is-admin .workspace-thumb{transform:translateX(34px)}
+/* Fixed-width labeled workspace toggle: only the inner thumb moves */
+.workspace-toggle{position:relative;direction:ltr;width:136px;height:36px;min-width:136px;flex:0 0 136px;flex-shrink:0;padding:0;border:1px solid #53617b;border-radius:30px;background:linear-gradient(110deg,#26334d,#526b9c);box-shadow:inset 0 2px 5px #101827aa,0 3px 9px #0003;color:#dce7ff;display:flex;align-items:center;justify-content:space-around;cursor:pointer;transition:background .3s,border-color .3s,box-shadow .3s}
+.workspace-label{position:absolute;top:0;height:100%;width:64px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;white-space:nowrap;z-index:2;pointer-events:none;transition:color .25s}
+.workspace-label-left{left:3px;color:#dce7ff}
+.workspace-label-right{right:3px;color:#f7c96b}
+.workspace-thumb{position:absolute;top:3px;left:3px;width:64px;height:28px;border-radius:24px;background:linear-gradient(145deg,#fff,#dce5f4);box-shadow:0 2px 7px #0005,inset 0 1px 1px #fff;transition:transform .32s cubic-bezier(.2,.8,.2,1),background .3s}
+.workspace-toggle.is-admin .workspace-thumb{transform:translateX(64px)}
+.workspace-toggle.is-admin .workspace-label-right{color:#34496f}
+.workspace-toggle:not(.is-admin) .workspace-label-left{color:#34496f}
 .workspace-toggle:hover,.workspace-toggle:focus-visible{box-shadow:inset 0 2px 5px #101827aa,0 4px 12px #0004;outline:none}
 .workspace-toggle:active{transform:scale(.97)}
 html[data-theme="light"] .workspace-toggle{background:linear-gradient(110deg,#dce8ff,#f7df9c);border-color:#cbd9f2;box-shadow:inset 0 2px 5px #7385a233,0 3px 9px #26324720;color:#4269d5}
-html[data-theme="light"] .workspace-arrow-left{color:#4269d5}
-html[data-theme="light"] .workspace-arrow-right{color:#d58a28}
-@media(max-width:360px){.workspace-toggle{width:66px;flex-basis:66px}.workspace-toggle .workspace-thumb{width:28px;height:28px}}
+html[data-theme="light"] .workspace-label-left{color:#4269d5}
+html[data-theme="light"] .workspace-label-right{color:#d58a28}
+html[data-theme="light"] .workspace-toggle.is-admin .workspace-label-right,html[data-theme="light"] .workspace-toggle:not(.is-admin) .workspace-label-left{color:#34496f}
+@media(max-width:360px){.workspace-toggle{width:126px;min-width:126px;flex-basis:126px}.workspace-toggle .workspace-label{width:59px;font-size:8px}.workspace-toggle .workspace-thumb{width:59px}.workspace-toggle.is-admin .workspace-thumb{transform:translateX(59px)}}
 .nika-admin-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .nika-admin-avatar{width:42px;height:42px;border-radius:14px;object-fit:cover;border:1px solid #ffffff25;box-shadow:0 4px 12px #0003}
 html[data-theme="light"] .workspace-toggle{background:linear-gradient(145deg,#fff,#edf2fb);border-color:#fff;color:#4269d5;box-shadow:0 4px 12px rgba(38,57,95,.13),inset 0 1px 2px #fff}
