@@ -68,35 +68,35 @@ async function issueSession(c, userRow) {
 
 R('POST', '/api/setup', { public: true }, async c => {
   const key = c.request.headers.get('X-Setup-Key') || '';
-  if (!c.env.BOOTSTRAP_KEY || !safeEqual(key, c.env.BOOTSTRAP_KEY)) throw err(403, 'FORBIDDEN', 'کلید راه‌اندازی نادرست است');
-  const n = await c.db.prepare('SELECT COUNT(*) n FROM users').first();
-  if (n.n > 0) throw err(409, 'ALREADY_INITIALIZED', 'سامانه قبلاً راه‌اندازی شده است');
-  const x = await readJson(c.request);
-  const name = str(x.name, { max: 100, field: 'نام' }), phone = phoneOrFail(x.phone);
-  const prob = passwordProblem(x.password, phone);
-  if (prob) throw err(400, 'WEAK_PASSWORD', prob);
-  const uid = crypto.randomUUID(), salt = newSalt(), ph = await hashPassword(x.password, salt);
-  await c.db.batch([
-    c.db.prepare("INSERT INTO users(id,unit_id,account_type,name,phone,password_hash,password_salt,must_change_password) VALUES(?,NULL,'staff',?,?,?,?,0)").bind(uid, name, phone, ph, salt),
-    c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, 'chair')
-  ]);
-  await audit(c.db, uid, 'bootstrap', 'user', uid);
-  return reply({ ok: true, message: 'مدیر اصلی ساخته شد؛ اکنون وارد شوید.' }, 201);
+  if (!c.env.BOOTSTRAP_KEY || !safeEqual(key, c.env.BOOTSTRAP_KEY)) throw err(403, 'FORBIDDEN', 'کلید فعال‌سازی نادرست است');
+  const uid = crypto.randomUUID(), salt = newSalt(), ph = await hashPassword('admin', salt);
+  const created = await c.db.prepare(
+    "INSERT INTO users(id,unit_id,account_type,name,phone,email,password_hash,password_salt,must_change_password) SELECT ?,NULL,'staff','مدیر اصلی','00000000000','admin',?,?,1 WHERE NOT EXISTS (SELECT 1 FROM users)"
+  ).bind(uid, ph, salt).run();
+  if (!created.meta.changes) throw err(409, 'ALREADY_INITIALIZED', 'سامانه قبلاً راه‌اندازی شده است');
+  await c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, 'chair').run();
+  await audit(c.db, uid, 'bootstrap', 'user', uid, { username: 'Admin', forcedPasswordChange: true });
+  return reply({ ok: true, username: 'Admin', message: 'حساب مدیر اصلی ساخته شد. با نام کاربری Admin و رمز موقت admin وارد شوید و فوراً رمز را تغییر دهید.' }, 201);
 });
 
 R('POST', '/api/login', { public: true }, async c => {
   const x = await readJson(c.request);
   const type = x.accountType;
   if (!['owner', 'resident', 'staff'].includes(type)) throw err(400, 'INVALID_INPUT', 'نوع حساب نامعتبر است');
-  const phone = normPhone(x.phone), password = typeof x.password === 'string' ? x.password : '';
+  const identifier = typeof x.phone === 'string' ? x.phone.trim() : '';
+  const isRootAdmin = type === 'staff' && identifier.toLowerCase() === 'admin';
+  const phone = isRootAdmin ? null : normPhone(identifier), password = typeof x.password === 'string' ? x.password : '';
   const unit = type === 'staff' ? null : unitOrNull(x.unit);
-  if (!phone || !password || password.length > 128 || (type !== 'staff' && !unit)) throw err(400, 'INVALID_INPUT', 'اطلاعات ورود را کامل و صحیح وارد کنید');
+  if ((!isRootAdmin && !phone) || !password || password.length > 128 || (type !== 'staff' && !unit)) throw err(400, 'INVALID_INPUT', 'اطلاعات ورود را کامل و صحیح وارد کنید');
   const ip = c.request.headers.get('CF-Connecting-IP') || 'unknown';
-  const idKey = `id:${type}:${unit || '-'}:${phone}`, ipKey = `ip:${ip}`;
+  const loginId = isRootAdmin ? 'Admin' : phone;
+  const idKey = `id:${type}:${unit || '-'}:${loginId}`, ipKey = `ip:${ip}`;
   await assertNotLocked(c.db, [idKey, ipKey], c.now);
-  const u = type === 'staff'
-    ? await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=? AND active=1").bind(phone).first()
-    : await c.db.prepare('SELECT u.* FROM users u JOIN units n ON n.id=u.unit_id WHERE n.unit_number=? AND u.phone=? AND u.account_type=? AND u.active=1').bind(unit, phone, type).first();
+  const u = isRootAdmin
+    ? await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND email='admin' AND active=1").first()
+    : type === 'staff'
+      ? await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=? AND active=1").bind(phone).first()
+      : await c.db.prepare('SELECT u.* FROM users u JOIN units n ON n.id=u.unit_id WHERE n.unit_number=? AND u.phone=? AND u.account_type=? AND u.active=1').bind(unit, phone, type).first();
   const h = await hashPassword(password, u ? u.password_salt : DUMMY_SALT);
   if (!u || !safeEqual(h, u.password_hash)) {
     await registerFailure(c.db, idKey, MAX_ID_FAILS, c.now);
