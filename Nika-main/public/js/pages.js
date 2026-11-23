@@ -245,7 +245,7 @@ export function editProfilePage() {
 }
 export function settingsPage() {
   const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-  const v = route('حساب من', 'تنظیمات و امنیت', '', html`<section class="page-card"><h3>نمایش برنامه</h3><p>حالت فعلی: <strong id="themeCurrent">${currentTheme === 'light' ? 'روشن' : 'تیره'}</strong></p><button class="page-btn secondary full" type="button" id="themeToggle">${currentTheme === 'light' ? 'فعال‌کردن حالت تیره' : 'فعال‌کردن حالت روشن'}</button></section>
+  const v = route('حساب من', 'تنظیمات و امنیت', '', html`<section class="page-card theme-setting"><div class="theme-setting-copy"><h3>حالت نمایش</h3><p>انتخاب بین نمای شب و روز</p></div><div class="theme-switch-wrap"><span class="theme-current" id="themeCurrent">${currentTheme === 'light' ? 'روز' : 'شب'}</span><button class="theme-switch" type="button" id="themeToggle" role="switch" aria-checked="${currentTheme === 'light'}" aria-label="تغییر بین حالت شب و روز"><span class="theme-switch-sun">☀</span><span class="theme-switch-moon">☾</span><span class="theme-switch-thumb"></span></button></div></section>
   <form class="page-card page-form" novalidate><h3>تغییر رمز عبور</h3>${fields([
     { name: 'currentPassword', label: 'رمز فعلی', type: 'password', required: true, dir: 'ltr', autocomplete: 'current-password' },
     { name: 'newPassword', label: 'رمز جدید (حداقل ۱۰ کاراکتر، نه فقط عدد)', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' },
@@ -256,8 +256,8 @@ export function settingsPage() {
     const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', next);
     try { localStorage.setItem('nika-theme', next); } catch {}
-    $('#themeCurrent', v).textContent = next === 'light' ? 'روشن' : 'تیره';
-    themeToggle.textContent = next === 'light' ? 'فعال‌کردن حالت تیره' : 'فعال‌کردن حالت روشن';
+    $('#themeCurrent', v).textContent = next === 'light' ? 'روز' : 'شب';
+    themeToggle.setAttribute('aria-checked', String(next === 'light'));
   };
   onSubmit($('form', v), async (d, f) => {
     if (d.newPassword !== d.again) throw new Error('تکرار رمز با رمز جدید یکسان نیست');
