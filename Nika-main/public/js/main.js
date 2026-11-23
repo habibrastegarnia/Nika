@@ -58,7 +58,7 @@ function initNav() {
     else if (n === 'مالی') open(() => P.financePage(), { root: true });
     else if (n === 'پیام‌ها') open(() => P.messagesPage(), { root: true });
   }; });
-  $('#profileShortcut').onclick = () => open(P.profilePage, { root: true });
+  $('#profileShortcut').onclick = logout;
   $$('.category').forEach(b => b.onclick = () => {
     const m = b.dataset.menu;
     open({ rules: P.rulesPage, requests: P.requestsPage, calendar: () => P.calendarPage(), resolutions: P.resolutionsPage }[m], { root: true });
