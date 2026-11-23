@@ -18,24 +18,49 @@ button:disabled{opacity:.6}
 <body><main>
 <h2>ایجاد حساب رئیس هیئت‌مدیره</h2>
 <p>این فرم فقط برای راه‌اندازی اولیه است. کلید راه‌اندازی و رمز عبور را در اختیار هیچ‌کس قرار ندهید. اطلاعات مستقیماً به سرور همین سامانه ارسال می‌شود.</p>
-<form id="setup">
-<label>نام و نام خانوادگی</label><input name="name" required maxlength="100" autocomplete="name">
-<label>شماره موبایل</label><input name="phone" required inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx">
-<label>رمز عبور مدیر اصلی</label><input name="password" required type="password" minlength="10" autocomplete="new-password">
-<label>کلید راه‌اندازی (BOOTSTRAP_KEY)</label><input name="key" required type="password" autocomplete="off">
+<form id="setup" novalidate>
+<label>نام و نام خانوادگی</label><input name="name" maxlength="100" autocomplete="name">
+<label>شماره موبایل</label><input name="phone" inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx">
+<label>رمز عبور مدیر اصلی</label><input name="password" type="password" minlength="10" autocomplete="new-password">
+<label>کلید راه‌اندازی (BOOTSTRAP_KEY)</label><input name="key" type="password" autocomplete="off">
 <button id="submit" type="submit">ایجاد حساب مدیر اصلی</button>
-</form><div id="result" role="status"></div>
+</form><div id="result" role="status">فرم آماده است. اطلاعات را وارد کنید.</div>
 </main>
 <script>
-document.getElementById('setup').addEventListener('submit',async function(e){
- e.preventDefault();
- const f=new FormData(this), b=document.getElementById('submit'), out=document.getElementById('result');
- b.disabled=true;out.textContent='در حال ارسال...';
- try{
-  const r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json','X-Setup-Key':String(f.get('key'))},body:JSON.stringify({name:f.get('name').trim(),phone:f.get('phone').trim(),password:f.get('password')})});
-  const j=await r.json();out.textContent=(r.ok?'موفقیت: ':'پاسخ سرور: ')+(j.message||j.error||'')+(j.error?' ('+j.error+')':'');
-  if(r.ok)this.reset();
- }catch(err){out.textContent='ارتباط با سرور برقرار نشد. صفحه را تازه‌سازی و دوباره بررسی کنید.';}
- finally{b.disabled=false;}
-});
+(function(){
+ var form=document.getElementById('setup');
+ var button=document.getElementById('submit');
+ var out=document.getElementById('result');
+ form.addEventListener('submit',function(e){
+  e.preventDefault();
+  var name=form.elements.name.value.trim();
+  var phone=form.elements.phone.value.trim();
+  var password=form.elements.password.value;
+  var key=form.elements.key.value;
+  if(!name||!phone||!password||!key){out.textContent='لطفاً هر چهار قسمت را کامل کنید.';return;}
+  if(password.length<10){out.textContent='رمز عبور باید حداقل ۱۰ کاراکتر باشد.';return;}
+  button.disabled=true;
+  out.textContent='در حال ارسال درخواست به سرور...';
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','/api/setup',true);
+  xhr.setRequestHeader('Content-Type','application/json');
+  xhr.setRequestHeader('X-Setup-Key',key);
+  xhr.timeout=20000;
+  xhr.onload=function(){
+   var message=xhr.responseText||'پاسخ خالی از سرور';
+   try{
+    var data=JSON.parse(xhr.responseText);
+    message=data.message||data.error||message;
+    if(data.error)message+=' ('+data.error+')';
+   }catch(ignore){}
+   out.textContent=(xhr.status>=200&&xhr.status<300?'موفقیت: ':'خطای سرور ('+xhr.status+'): ')+message;
+   if(xhr.status>=200&&xhr.status<300)form.reset();
+   button.disabled=false;
+  };
+  xhr.onerror=function(){out.textContent='خطای ارتباط با سرور؛ درخواست ارسال نشد یا پاسخ دریافت نشد.';button.disabled=false;};
+  xhr.ontimeout=function(){out.textContent='پاسخ سرور بیش از ۲۰ ثانیه طول کشید. وضعیت را بررسی می‌کنیم؛ فعلاً دوباره ارسال نکنید.';button.disabled=false;};
+  try{xhr.send(JSON.stringify({name:name,phone:phone,password:password}));}
+  catch(err){out.textContent='خطا هنگام ارسال: '+err.message;button.disabled=false;}
+ });
+})();
 </script></body></html>
