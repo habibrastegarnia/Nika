@@ -13,9 +13,9 @@
   "theme_color": "#111a2b",
   "icons": [
     {
-      "src": "/assets/nika-logo.jpg?v=1",
-      "sizes": "128x128",
-      "type": "image/jpeg",
+      "src": "/assets/nika-logo-transparent-640.png?v=2",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
