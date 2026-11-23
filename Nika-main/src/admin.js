@@ -103,7 +103,7 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
     const extras = validateExtras(c.user, x.roles);
     if (t.account_type === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'حساب مدیر/کارکنان باید حداقل یک نقش داشته باشد');
     if (t.roles.includes('chair') && !extras.includes('chair') && !await otherActiveChairs(c.db, t.id)) throw err(400, 'LAST_CHAIR', 'حداقل یک رئیس فعال باید باقی بماند');
-    const base = t.roles.filter(r => !EXTRA_ROLES.includes(r));
+    const base = [...new Set([...t.roles.filter(r => !EXTRA_ROLES.includes(r)), ...(Array.isArray(x.addBaseRoles) ? x.addBaseRoles.filter(r => ['owner', 'resident'].includes(r)) : [])])];
     stmts.push(c.db.prepare('DELETE FROM user_roles WHERE user_id=?').bind(t.id), ...[...base, ...extras].map(r => c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(t.id, r)));
   }
   if (sets.length) stmts.unshift(c.db.prepare(`UPDATE users SET ${sets.join(',')},updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(...vals, t.id));
