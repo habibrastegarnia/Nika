@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="92" fill="#fff"/>
+<g stroke-linejoin="round">
+<path d="M91 421 151 145l91-55 211 65v264H91Z" fill="#f4d6b0"/>
+<path d="M151 145 242 90l211 65v266H151Z" fill="#f5d9b6"/>
+<path d="M151 145 242 90v331H91l60-276Z" fill="#c84f1d"/>
+<path d="M242 90 453 155v266H242V90Z" fill="#f2d2a8"/>
+<path d="M242 90 453 155v42L242 132Z" fill="#b94718"/>
+<path d="M91 421h362" fill="none" stroke="#b94718" stroke-width="12" stroke-linecap="round"/>
+<path d="M151 145 242 90l211 65" fill="none" stroke="#a83c14" stroke-width="10"/>
+<g fill="#30485a" stroke="#f8e5ca" stroke-width="7">
+<rect x="174" y="176" width="38" height="49" rx="2"/><rect x="174" y="258" width="38" height="49" rx="2"/><rect x="174" y="340" width="38" height="49" rx="2"/>
+<rect x="267" y="157" width="54" height="45" rx="2"/><rect x="267" y="237" width="54" height="45" rx="2"/><rect x="267" y="317" width="54" height="45" rx="2"/>
+<rect x="350" y="183" width="64" height="42" rx="2"/><rect x="350" y="260" width="64" height="42" rx="2"/><rect x="350" y="337" width="64" height="42" rx="2"/>
+</g>
+<g fill="none" stroke="#263b4c" stroke-width="6">
+<path d="M267 202v-45m0 125v-45m0 125v-45M350 225v-42m0 119v-42m0 119v-42"/>
+<path d="M267 191h54m-54 80h54m-54 80h54M350 215h64m-64 77h64m-64 77h64"/>
+</g>
+<path d="M91 421V266l60-121v276Z" fill="none" stroke="#a83c14" stroke-width="8"/>
+</g></svg>
