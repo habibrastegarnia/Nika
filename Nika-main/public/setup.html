@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>راه‌اندازی مدیر اصلی نیکا</title>
+<style>
+body{font-family:Tahoma,Arial,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#202833}
+main{max-width:460px;margin:30px auto;background:white;padding:24px;border-radius:14px;box-shadow:0 4px 24px #0001}
+h2{font-size:20px;margin-top:0}p{line-height:1.9;color:#596575;font-size:14px}
+label{display:block;margin:16px 0 7px;font-size:14px}
+input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #ccd3dc;border-radius:8px;font:inherit}
+button{width:100%;margin-top:22px;padding:13px;border:0;border-radius:8px;background:#16794b;color:white;font:inherit;cursor:pointer}
+button:disabled{opacity:.6}
+#result{white-space:pre-wrap;line-height:1.9;margin-top:16px;font-size:14px}
+</style>
+</head>
+<body><main>
+<h2>ایجاد حساب رئیس هیئت‌مدیره</h2>
+<p>این فرم فقط برای راه‌اندازی اولیه است. کلید راه‌اندازی و رمز عبور را در اختیار هیچ‌کس قرار ندهید. اطلاعات مستقیماً به سرور همین سامانه ارسال می‌شود.</p>
+<form id="setup">
+<label>نام و نام خانوادگی</label><input name="name" required maxlength="100" autocomplete="name">
+<label>شماره موبایل</label><input name="phone" required inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx">
+<label>رمز عبور مدیر اصلی</label><input name="password" required type="password" minlength="10" autocomplete="new-password">
+<label>کلید راه‌اندازی (BOOTSTRAP_KEY)</label><input name="key" required type="password" autocomplete="off">
+<button id="submit" type="submit">ایجاد حساب مدیر اصلی</button>
+</form><div id="result" role="status"></div>
+</main>
+<script>
+document.getElementById('setup').addEventListener('submit',async function(e){
+ e.preventDefault();
+ const f=new FormData(this), b=document.getElementById('submit'), out=document.getElementById('result');
+ b.disabled=true;out.textContent='در حال ارسال...';
+ try{
+  const r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json','X-Setup-Key':String(f.get('key'))},body:JSON.stringify({name:f.get('name').trim(),phone:f.get('phone').trim(),password:f.get('password')})});
+  const j=await r.json();out.textContent=(r.ok?'موفقیت: ':'پاسخ سرور: ')+(j.message||j.error||'')+(j.error?' ('+j.error+')':'');
+  if(r.ok)this.reset();
+ }catch(err){out.textContent='ارتباط با سرور برقرار نشد. صفحه را تازه‌سازی و دوباره بررسی کنید.';}
+ finally{b.disabled=false;}
+});
+</script></body></html>
