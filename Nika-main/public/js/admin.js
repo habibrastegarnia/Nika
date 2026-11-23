@@ -46,13 +46,13 @@ async function usersTab() {
   const { users, assignable } = await api('/admin/users'), opts = EXTRA_OPTS.filter(([r]) => assignable.includes(r));
   return {
     html: html`<div class="nika-admin-grid">${card('حساب جدید', html`<form id="uNew" novalidate>${fields([
-      { name: 'accountType', label: 'نوع حساب', type: 'select', value: 'resident', options: Object.entries(ACCOUNT_FA) },
+      { name: 'accountType', label: 'نوع حساب', type: 'select', value: 'resident', options: [...Object.entries(ACCOUNT_FA).filter(([k]) => k !== 'owner' && k !== 'resident'), ['both', 'مالک و ساکن (یک حساب واحد)'], ...Object.entries(ACCOUNT_FA).filter(([k]) => k === 'owner' || k === 'resident')] },
       { name: 'name', label: 'نام و نام خانوادگی', required: true },
       { name: 'unit', label: 'شماره واحد (برای مالک/ساکن)', inputmode: 'numeric' },
       { name: 'phone', label: 'شماره موبایل', required: true, inputmode: 'tel', dir: 'ltr' },
       { name: 'email', label: 'ایمیل (اختیاری)', dir: 'ltr' },
       ...(opts.length ? [{ name: 'roles', label: 'نقش‌های اضافه' + (opts.length ? '' : ''), type: 'checks', options: opts, value: [] }] : [])], 'nika')}
-      <div class="nika-footnote">نام کاربری مالک و ساکن شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است؛ در اولین ورود باید رمز تغییر کند. شماره موبایل مالک و ساکن یک واحد باید متفاوت باشد. حساب مدیر/کارکنان همچنان با موبایل و رمز موقت وارد می‌شود.</div>
+      <div class="nika-footnote">نام کاربری مالک و ساکن شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است؛ در اولین ورود باید رمز تغییر کند. اگر یک نفر مالک و ساکن هر دو باشد، گزینه «مالک و ساکن (یک حساب واحد)» را انتخاب کنید؛ در غیر این صورت برای هر شخص یک حساب جداگانه بسازید و شماره موبایل‌هایشان متفاوت باشد. حساب مدیر/کارکنان همچنان با موبایل و رمز موقت وارد می‌شود.</div>
       <div class="nika-actions"><button class="nika-primary" type="submit">ساخت حساب</button></div></form>`)}
     ${card(`حساب‌ها (${fa(users.length)})`, html`<input class="nika-input" id="uSearch" placeholder="جستجوی نام، موبایل یا واحد" style="margin-bottom:10px"><div class="nika-users" id="uList">${users.map(u => userCard(u))}</div>`)}</div>`,
     bind(box) {
