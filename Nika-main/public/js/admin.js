@@ -46,7 +46,7 @@ async function usersTab() {
   const { users, assignable } = await api('/admin/users'), opts = EXTRA_OPTS.filter(([r]) => assignable.includes(r));
   return {
     html: html`<div class="nika-admin-grid">${card('حساب جدید', html`<form id="uNew" novalidate>${fields([
-      { name: 'accountType', label: 'نوع حساب', type: 'select', value: 'resident', options: [...Object.entries(ACCOUNT_FA).filter(([k]) => k !== 'owner' && k !== 'resident'), ['both', 'مالک و ساکن (یک حساب واحد)'], ...Object.entries(ACCOUNT_FA).filter(([k]) => k === 'owner' || k === 'resident')] },
+      { name: 'accountType', label: 'نوع حساب', type: 'select', value: 'resident', options: [...Object.entries(ACCOUNT_FA).filter(([k]) => !['owner', 'resident', 'both'].includes(k)), ['both', 'مالک و ساکن (یک حساب واحد)'], ...Object.entries(ACCOUNT_FA).filter(([k]) => k === 'owner' || k === 'resident')] },
       { name: 'name', label: 'نام و نام خانوادگی', required: true },
       { name: 'unit', label: 'شماره واحد (برای مالک/ساکن)', inputmode: 'numeric' },
       { name: 'phone', label: 'شماره موبایل', required: true, inputmode: 'tel', dir: 'ltr' },
