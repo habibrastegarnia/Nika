@@ -30,6 +30,16 @@ button,select{font:inherit}.phone{width:min(100vw,430px);min-height:100svh;posit
 
 
 /* Mobile-first layout refinement: secondary pages, forms, cards and admin screens */
+
+/* Keep the workspace switch visible and reachable in the mobile dashboard header */
+@media(max-width:480px){
+ .header{gap:8px;padding-inline:12px}
+ .header-copy{flex:1 1 auto;min-width:0}
+ .header .workspace-toggle:not(.nika-hide){display:flex!important;flex:0 0 64px;width:64px;height:36px}
+ .header .workspace-toggle .workspace-thumb{width:26px;height:26px;top:4px;left:4px}
+ .header .workspace-toggle.is-admin .workspace-thumb{transform:translateX(28px)}
+ .header .header-logout{flex:0 0 44px;width:44px;height:44px;min-height:44px}
+}
 @media(max-width:480px){
  html,body{width:100%;overflow-x:hidden}body{display:block}
  .phone{width:100%;max-width:430px;min-height:100svh;margin:0;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:calc(98px + env(safe-area-inset-bottom));box-shadow:none;border-radius:0;overflow-x:hidden}
