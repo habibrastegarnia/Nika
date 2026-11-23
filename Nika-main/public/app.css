@@ -125,3 +125,21 @@ button,select{font:inherit}.phone{width:min(100vw,430px);min-height:100svh;posit
 @media(min-width:760px){.nika-admin-grid{grid-template-columns:1fr 1fr!important}.nika-adminnav{display:flex!important;position:static!important}}
 
 .modal-backdrop{z-index:200!important}.toast{z-index:210!important}
+
+
+/* Compact account profile */
+.profile-panel{background:linear-gradient(135deg,#303f5a,#253248);border:1px solid #ffffff12;border-radius:19px;padding:14px;margin-bottom:12px}
+.profile-panel .profile-cover{margin:0 0 13px;padding:2px 2px 12px;background:none;border-radius:0;border-bottom:1px solid #ffffff16}
+.profile-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.profile-detail{min-width:0;background:#1e2a3e80;border:1px solid #ffffff0c;border-radius:12px;padding:10px}
+.profile-detail small{display:block;color:#9eafca;font-size:9px;margin-bottom:5px}
+.profile-detail strong{display:block;color:#f0f4fc;font-size:11px;overflow-wrap:anywhere}
+.profile-actions{display:grid;gap:8px}
+.profile-actions .page-row{width:100%;text-align:right;border:1px solid #ffffff10;border-radius:14px;background:#253148;color:#eef3fc;font:inherit;align-items:center;padding:12px}
+.profile-action-icon{width:36px;height:36px;flex:0 0 36px;border-radius:11px;background:#3a4967;display:grid;place-items:center;color:#c7d6f3;font-size:17px}
+.profile-actions .page-row-main{flex:1}
+.profile-actions .page-row-tail{color:#a9bad8;font-size:15px}
+.profile-actions .profile-logout{background:#3a2935;border-color:#a65b7138}
+.profile-logout .profile-action-icon{background:#593344;color:#f2aabd}
+.profile-logout .page-row-main strong,.profile-logout .page-row-tail{color:#f1a9ba}
+@media(max-width:360px){.profile-details{gap:7px}.profile-detail{padding:9px}.profile-detail strong{font-size:10px}}
