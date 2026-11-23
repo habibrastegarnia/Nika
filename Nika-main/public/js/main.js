@@ -4,7 +4,7 @@ import { S, can, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
 import * as P from './pages.js?v=2';
-import { showAdmin, hideAdmin, adminAvailable } from './admin.js';
+import { showAdmin, hideAdmin, adminAvailable, canSwitchWorkspace } from './admin.js';
 
 const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList.toggle('nika-hide', s !== id); $('.phone').classList.toggle('nika-hide', id !== '#app'); $('#nikaAdmin').classList.add('nika-hide'); };
 
@@ -43,8 +43,11 @@ async function logout() {
 // ---------- ناوبری ----------
 function setupNav() {
   const nav = $('.bottom-nav');
+  const dualWorkspace = canSwitchWorkspace();
+  $('#workspaceToggle').classList.toggle('nika-hide', !dualWorkspace);
+  $('#workspaceToggle').onclick = () => showAdmin();
   $('#admNavBtn')?.remove();
-  if (isManager() && adminAvailable()) {
+  if (isManager() && adminAvailable() && !dualWorkspace) {
     nav.insertAdjacentHTML('beforeend', '<button class="nav-item" id="admNavBtn" data-nav="مدیریت"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span>مدیریت</span><i class="nav-badge" id="admBadge" style="display:none"></i></button>');
     nav.style.gridTemplateColumns = 'repeat(5,1fr)';
     $('#admNavBtn').onclick = () => showAdmin();
