@@ -10,13 +10,13 @@
 <meta name="referrer" content="no-referrer">
 <title>نیکا | مدیریت مجتمع مسکونی</title>
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="/assets/nika-icon.svg">
-<link rel="apple-touch-icon" href="/assets/nika-icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/nika-icon-192.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="/assets/nika-icon-192.png?v=2">
 <link rel="stylesheet" href="/app.css">
 <script type="module" src="/js/main.js"></script>
 </head>
 <body>
-<section id="nikaGate"><div class="nika-shell"><div class="nika-brand"><div class="nika-logo">N</div><div><h1>نیکا</h1><p>سامانه مدیریت مجتمع مسکونی</p></div></div>
+<section id="nikaGate"><div class="nika-shell"><div class="nika-brand"><img class="nika-logo" src="/assets/nika-icon-192.png?v=2" alt="نیکا"><div><h1>نیکا</h1><p>سامانه مدیریت مجتمع مسکونی</p></div></div>
 <div class="nika-authcard"><h2>ورود به حساب کاربری</h2><p class="sub">مالک و ساکن با شماره واحد و رمز خود؛ مدیران و کارکنان با شناسه‌ای که مدیریت برایشان تعریف کرده وارد می‌شوند.</p>
 <form id="loginForm" autocomplete="on" novalidate>
 <label class="nika-label" for="nikaIdentifier">شماره واحد یا نام کاربری</label><input class="nika-input" id="nikaIdentifier" inputmode="text" autocomplete="username" dir="auto" placeholder="شماره واحد یا شناسه کاربری">
@@ -25,7 +25,7 @@
 <div class="nika-actions"><button class="nika-primary" id="nikaLogin" type="submit">ورود به نیکا</button></div></form>
 <div class="nika-footnote">مالک و ساکن هر واحد می‌توانند حساب جداگانه داشته باشند؛ اگر یک نفر هر دو نقش را دارد، فقط یک حساب برای او ساخته می‌شود. مدیران و کارکنان با شناسه اختصاصی خود وارد می‌شوند. در اولین ورود، رمز اولیه باید تغییر کند. برای بازنشانی رمز، با مدیریت ساختمان تماس بگیرید.</div></div>
 <div class="nika-footnote" style="text-align:center">ورود امن · اطلاعات حساب توسط مدیریت ساختمان تعریف می‌شود</div></div></section>
-<section id="nikaForce" class="nika-hide"><div class="nika-shell"><div class="nika-brand"><div class="nika-logo">N</div><div><h1>تعیین رمز جدید</h1><p>برای ادامه، رمز موقت را با رمز دلخواه خود عوض کنید</p></div></div>
+<section id="nikaForce" class="nika-hide"><div class="nika-shell"><div class="nika-brand"><img class="nika-logo" src="/assets/nika-icon-192.png?v=2" alt="نیکا"><div><h1>تعیین رمز جدید</h1><p>برای ادامه، رمز موقت را با رمز دلخواه خود عوض کنید</p></div></div>
 <div class="nika-authcard"><form id="forceForm" novalidate><label class="nika-label" for="fpNew">رمز جدید (حداقل ۱۰ کاراکتر)</label><input class="nika-input" id="fpNew" type="password" autocomplete="new-password" dir="ltr">
 <label class="nika-label" for="fpNew2">تکرار رمز جدید</label><input class="nika-input" id="fpNew2" type="password" autocomplete="new-password" dir="ltr">
 <div class="nika-footnote">رمز نباید فقط عدد باشد و نباید شامل شماره موبایل شما باشد.</div><p class="nika-error" id="forceError" role="alert"></p>
