@@ -126,7 +126,7 @@ export async function requestsPage() {
   $('#rqNew', v).onclick = () => open(() => composePage('request'));
 }
 export function composePage(kind = 'request', category = 'عمومی', subject = '') {
-  const v = route('خانه', kind === 'idea' ? 'ثبت پیشنهاد' : kind === 'issue' ? 'گزارش مشکل' : 'ثبت درخواست', 'پیام شما برای مدیریت ساختمان ارسال می‌شود', html`<form class="page-card page-form" novalidate>${fields([
+  const v = route('خانه', kind === 'issue' ? 'گزارش مشکل' : 'ثبت درخواست', 'پیام شما برای مدیریت ساختمان ارسال می‌شود', html`<form class="page-card page-form" novalidate>${fields([
     { name: 'category', label: 'دسته‌بندی', type: 'select', value: category, options: REQ_CATEGORIES.map(c => [c, c]) },
     { name: 'title', label: 'موضوع', value: subject ? `مشکل ${subject}` : '', required: true, placeholder: 'عنوان کوتاه' },
     { name: 'body', label: 'شرح', type: 'textarea', required: true, placeholder: 'توضیح کامل را بنویسید' },
