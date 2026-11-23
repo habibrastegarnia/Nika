@@ -32,12 +32,14 @@ R('GET', '/api/admin/users', { perm: 'users.manage' }, async c => {
 R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   const x = await readJson(c.request);
   const accountType = x.accountType;
-  if (!['owner', 'resident', 'staff'].includes(accountType)) throw err(400, 'INVALID_INPUT', 'نوع حساب نامعتبر است');
+  if (!['owner', 'resident', 'both', 'staff'].includes(accountType)) throw err(400, 'INVALID_INPUT', 'نوع حساب نامعتبر است');
   const name = str(x.name, { max: 100, field: 'نام' }), phone = phoneOrFail(x.phone);
   const email = optStr(x.email, { max: 120, field: 'ایمیل' });
   const extras = validateExtras(c.user, x.roles ?? []);
   if (accountType === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'برای حساب مدیر/کارکنان حداقل یک نقش انتخاب کنید');
-  const roles = [...(accountType === 'staff' ? [] : [accountType]), ...extras];
+  const storedType = accountType === 'both' ? 'owner' : accountType;
+  const baseRoles = accountType === 'both' ? ['owner', 'resident'] : (accountType === 'staff' ? [] : [accountType]);
+  const roles = [...baseRoles, ...extras];
   let unitId = null;
   if (accountType === 'staff') {
     if (await c.db.prepare("SELECT id FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=?").bind(phone).first()) throw err(409, 'USER_EXISTS', 'این شماره قبلاً ثبت شده است');
@@ -46,12 +48,14 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
     let unit = await c.db.prepare('SELECT id FROM units WHERE unit_number=?').bind(unitNumber).first();
     if (!unit) { const q = await c.db.prepare('INSERT INTO units(unit_number) VALUES(?)').bind(unitNumber).run(); unit = { id: q.meta.last_row_id }; }
     unitId = unit.id;
-    if (await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=?').bind(unitId, accountType).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد، حسابی با همین نوع (مالک یا ساکن) از قبل ثبت شده است');
+    if (accountType === 'both') {
+      if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident')").bind(unitId).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد قبلاً حساب مالک یا ساکن ساخته شده است؛ برای یک شخص مشترک، نقش دوم را به همان حساب اضافه کنید');
+    } else if (await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=?').bind(unitId, accountType).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد، حسابی با همین نوع (مالک یا ساکن) از قبل ثبت شده است');
     if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND phone=?").bind(unitId, phone).first()) throw err(409, 'SHARED_INITIAL_PASSWORD', 'شماره موبایل مالک و ساکن یک واحد باید متفاوت باشد');
   }
   const uid = crypto.randomUUID(), initialPassword = accountType === 'staff' ? tempPassword() : phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
-    c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,email,password_hash,password_salt,must_change_password) VALUES(?,?,?,?,?,?,?,?,1)').bind(uid, unitId, accountType, name, phone, email, ph, salt),
+    c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,email,password_hash,password_salt,must_change_password) VALUES(?,?,?,?,?,?,?,?,1)').bind(uid, unitId, storedType, name, phone, email, ph, salt),
     ...roles.map(r => c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, r))
   ]);
   await audit(c.db, c.user.id, 'user.create', 'user', uid, { accountType, unit: x.unit || null, roles });
