@@ -266,11 +266,18 @@ html[data-theme="light"] .theme-switch[aria-checked="true"]{background:linear-gr
 
 
 
-/* Workspace switch: shown only for users who have both a personal and a management role */
-.workspace-toggle{width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:linear-gradient(145deg,#ffffff24,#ffffff0b);border:1px solid #ffffff35;color:#a9c1f4;box-shadow:0 4px 12px #0003,inset 0 1px 2px #ffffff30;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);display:grid;place-items:center;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
-.workspace-toggle svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.workspace-toggle:hover,.workspace-toggle:focus-visible{box-shadow:0 5px 15px #0004,inset 0 1px 2px #ffffff45;outline:none}
-.workspace-toggle:active{transform:scale(.94)}
+/* Workspace switch uses the same pill-and-thumb control as the day/night selector */
+.workspace-toggle{position:relative;direction:ltr;width:72px;height:38px;flex:0 0 72px;padding:0;border:1px solid #53617b;border-radius:30px;background:linear-gradient(110deg,#26334d,#526b9c);box-shadow:inset 0 2px 5px #101827aa,0 3px 9px #0003;color:#dce7ff;display:flex;align-items:center;justify-content:space-around;cursor:pointer;transition:background .3s,border-color .3s,box-shadow .3s}
+.workspace-arrow{position:absolute;top:7px;width:22px;height:22px;display:grid;place-items:center;font-size:17px;line-height:1;font-weight:700;z-index:1}
+.workspace-arrow-left{left:8px;color:#dce7ff}
+.workspace-arrow-right{right:8px;color:#f7c96b}
+.workspace-thumb{position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;background:linear-gradient(145deg,#fff,#dce5f4);box-shadow:0 2px 7px #0005,inset 0 1px 1px #fff;transition:transform .32s cubic-bezier(.2,.8,.2,1),background .3s}
+.workspace-toggle:hover,.workspace-toggle:focus-visible{box-shadow:inset 0 2px 5px #101827aa,0 4px 12px #0004;outline:none}
+.workspace-toggle:active{transform:scale(.97)}
+html[data-theme="light"] .workspace-toggle{background:linear-gradient(110deg,#dce8ff,#f7df9c);border-color:#cbd9f2;box-shadow:inset 0 2px 5px #7385a233,0 3px 9px #26324720;color:#4269d5}
+html[data-theme="light"] .workspace-arrow-left{color:#4269d5}
+html[data-theme="light"] .workspace-arrow-right{color:#d58a28}
+@media(max-width:360px){.workspace-toggle{width:66px;flex-basis:66px}.workspace-toggle .workspace-thumb{width:28px;height:28px}}
 .nika-admin-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .nika-admin-avatar{width:42px;height:42px;border-radius:14px;object-fit:cover;border:1px solid #ffffff25;box-shadow:0 4px 12px #0003}
 html[data-theme="light"] .workspace-toggle{background:linear-gradient(145deg,#fff,#edf2fb);border-color:#fff;color:#4269d5;box-shadow:0 4px 12px rgba(38,57,95,.13),inset 0 1px 2px #fff}
