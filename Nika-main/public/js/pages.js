@@ -2,7 +2,7 @@
 import { api } from './api.js';
 import { S, can, readableFunds, dashFunds, isManager } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, isRecent, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
-  FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
+  JM, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, route, open, fields, onSubmit } from './ui.js';
 
 // ====================== خانه ======================
@@ -163,7 +163,7 @@ function payPage(fund, balance) {
   const v = route('مالی', 'ثبت پرداخت', FUND_FA[fund], html`<form class="page-card page-form" novalidate><p>پس از پرداخت (کارت‌به‌کارت یا واریز)، مبلغ و شماره پیگیری را ثبت کنید. پرداخت پس از بررسی مدیر مالی در حساب شما اعمال می‌شود.</p>${fields([
     { name: 'amount', label: 'مبلغ (تومان)', inputmode: 'numeric', required: true, value: balance > 0 ? fa(balance).replace(/٬/g, '') : '', dir: 'ltr' },
     { name: 'reference', label: 'شماره پیگیری / ۴ رقم آخر کارت', required: true, dir: 'ltr' },
-    { name: 'period', label: 'بابت دوره (اختیاری)', value: curPeriod(), dir: 'ltr', hint: 'مثلاً ۱۴۰۵-۰۹' },
+    { name: 'period', label: 'بابت دوره', type: 'select', value: curPeriod(), options: JM.map((month, i) => [`${curPeriod().slice(0, 4)}-${String(i + 1).padStart(2, '0')}`, `${month} ${curPeriod().slice(0, 4)}`]) },
     { name: 'note', label: 'توضیحات (اختیاری)', type: 'textarea', rows: 3 }])}<button class="page-btn full" type="submit">ثبت پرداخت</button></form>`);
   onSubmit($('form', v), async d => {
     const amount = parseAmount(d.amount); if (!amount) throw new Error('مبلغ را به‌صورت عدد وارد کنید');
