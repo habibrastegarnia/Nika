@@ -93,6 +93,12 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
     sets.push('active=?'); vals.push(x.active ? 1 : 0);
     if (!x.active) stmts.push(c.db.prepare('DELETE FROM sessions WHERE user_id=?').bind(t.id));
   }
+  if ('addBaseRoles' in x) {
+    if (!Array.isArray(x.addBaseRoles) || x.addBaseRoles.some(r => !['owner', 'resident'].includes(r))) throw err(400, 'INVALID_ROLE', 'نقش پایه نامعتبر است');
+    if (t.account_type === 'staff') throw err(400, 'INVALID_ROLE', 'برای حساب کارکنان نمی‌توان نقش مالک یا ساکن ثبت کرد');
+    const additions = [...new Set(x.addBaseRoles)].filter(r => !t.roles.includes(r));
+    for (const role of additions) stmts.push(c.db.prepare('INSERT OR IGNORE INTO user_roles(user_id,role) VALUES(?,?)').bind(t.id, role));
+  }
   if ('roles' in x) {
     const extras = validateExtras(c.user, x.roles);
     if (t.account_type === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'حساب مدیر/کارکنان باید حداقل یک نقش داشته باشد');
