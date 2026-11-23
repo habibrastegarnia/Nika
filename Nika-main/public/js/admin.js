@@ -32,7 +32,7 @@ export function showAdmin(want) {
   if (personal) {
     back.className = 'header-action workspace-toggle is-admin';
     back.title = 'بازگشت به فضای شخصی'; back.setAttribute('aria-label', 'بازگشت به فضای شخصی');
-    back.innerHTML = '<span class="workspace-arrow workspace-arrow-left">←</span><span class="workspace-arrow workspace-arrow-right">→</span><span class="workspace-thumb"></span>';
+    back.innerHTML = '<span class="workspace-label workspace-label-left">ساکن</span><span class="workspace-label workspace-label-right">مدیر اجرایی</span><span class="workspace-thumb"></span>';
   } else { back.className = 'nika-secondary sm'; back.textContent = 'بازگشت به برنامه'; }
   $('#nikaAdmin').classList.remove('nika-hide'); $('.phone').classList.add('nika-hide'); renderNav(); loadTab();
 }
