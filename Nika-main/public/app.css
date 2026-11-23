@@ -145,10 +145,69 @@ button,select{font:inherit}.phone{width:min(100vw,430px);min-height:100svh;posit
 @media(max-width:360px){.profile-details{gap:7px}.profile-detail{padding:9px}.profile-detail strong{font-size:10px}}
 
 
-/* Light main-app canvas: keep existing dark cards and components intact */
-html,body{background:#fff;color:#242938}
-.phone{background:#fff;box-shadow:0 0 35px rgba(20,30,50,.10)}
-.header h1{color:#242938}
-.header p{color:#697386}
-.category{color:#30394b}
-.notice-head h2{color:#242938}
+/* Optional light theme. Dark remains the untouched default. */
+html[data-theme="light"],html[data-theme="light"] body{background:#eef1f6;color:#263247}
+html[data-theme="light"] .phone{background:linear-gradient(160deg,#f8f9fc,#edf1f7);box-shadow:0 0 35px rgba(28,42,65,.10)}
+html[data-theme="light"] .header h1{color:#253149}
+html[data-theme="light"] .header p{color:#68758a}
+html[data-theme="light"] .header-action:not(.header-logout){background:#e7ebf3;color:#52627e}
+html[data-theme="light"] .header-action.header-logout{background:linear-gradient(145deg,#ffffffdd,#edf1f8cc);border-color:#ffffff;box-shadow:0 4px 12px #26324720,inset 0 1px 2px #fff;color:#c66c80}
+html[data-theme="light"] .panel,html[data-theme="light"] .page-card{background:linear-gradient(145deg,#fff,#f7f9fc);border-color:#e1e6ef;box-shadow:0 8px 22px rgba(39,56,83,.08)}
+html[data-theme="light"] .slide-title,html[data-theme="light"] .fin-label,html[data-theme="light"] .summary-value,html[data-theme="light"] .page-heading h2,html[data-theme="light"] .page-card h3{color:#27364e}
+html[data-theme="light"] .month{background:#e9edf5;color:#35445e}
+html[data-theme="light"] .month option{background:#fff;color:#263247}
+html[data-theme="light"] .total,html[data-theme="light"] .legend-value,html[data-theme="light"] .summary-label,html[data-theme="light"] .fin-detail,html[data-theme="light"] .tap-note{color:#77849a}
+html[data-theme="light"] .total strong{color:#27364e}
+html[data-theme="light"] .slide-arrow{background:#e9edf5;color:#455675;border-color:#dce3ee}
+html[data-theme="light"] .slide-dot{background:#cbd4e3}
+html[data-theme="light"] .slide-dot.active{background:#7187d8}
+html[data-theme="light"] .board-card{background:linear-gradient(100deg,#f0f4fa,#e5ebf4);border-color:#dce4ef}
+html[data-theme="light"] .board-meta,html[data-theme="light"] .board-bottom{color:#68778f}
+html[data-theme="light"] .board-text{color:#45546b}
+html[data-theme="light"] .board-title{color:#278b68}
+html[data-theme="light"] .category{color:#34435d}
+html[data-theme="light"] .cat-icon{background:linear-gradient(145deg,#fff,#e9eef7);border-color:#dfe6f0;box-shadow:0 6px 16px #26324712,inset 0 1px 0 #fff}
+html[data-theme="light"] .cat-icon svg{stroke:#7187d8}
+html[data-theme="light"] .notice-head h2{color:#293850}
+html[data-theme="light"] .notice{background:linear-gradient(145deg,#fff,#f7f9fc);border-color:#e1e6ef}
+html[data-theme="light"] .notice-meta,html[data-theme="light"] .notice-text,html[data-theme="light"] .notice-foot{color:#65738a}
+html[data-theme="light"] .notice-title{color:#278b68}
+html[data-theme="light"] .bottom-nav{background:rgba(250,251,253,.96);border-color:#e1e6ef;box-shadow:0 -8px 24px #26324712}
+html[data-theme="light"] .nav-item{color:#758198}
+html[data-theme="light"] .nav-item.active{background:linear-gradient(145deg,#e9eef8,#dfe7f4);color:#344767}
+html[data-theme="light"] .nav-item.active svg{stroke:#7187d8}
+html[data-theme="light"] .page-back{background:#edf1f7;color:#465675}
+html[data-theme="light"] .page-heading p,html[data-theme="light"] .page-kicker{color:#78869b}
+html[data-theme="light"] .page-card p{color:#53627a}
+html[data-theme="light"] .page-stat{background:#edf2f8;border-color:#e0e7f0}
+html[data-theme="light"] .page-stat small{color:#748198}
+html[data-theme="light"] .page-row,html[data-theme="light"] .page-view .page-card .page-row{background:#f0f3f8;border-color:#e2e8f0}
+html[data-theme="light"] .page-row-main small{color:#718098}
+html[data-theme="light"] .page-row-icon{background:#e2e9f4;color:#7187d8}
+html[data-theme="light"] .page-chip{background:#e8edf5;color:#52627d}
+html[data-theme="light"] .page-btn.secondary{background:#edf1f7;color:#465675;border-color:#dfe6f0}
+html[data-theme="light"] .page-input,html[data-theme="light"] .page-select,html[data-theme="light"] .page-textarea{background:#fff;color:#293850;border-color:#dce3ed;color-scheme:light}
+html[data-theme="light"] .page-form label{color:#596982}
+html[data-theme="light"] .profile-panel{background:linear-gradient(135deg,#f7f9fc,#e9eef6);border-color:#e0e6ef}
+html[data-theme="light"] .profile-detail{background:#fff;border-color:#e4e9f1}
+html[data-theme="light"] .profile-detail small{color:#78869b}
+html[data-theme="light"] .profile-detail strong{color:#2c3b53}
+html[data-theme="light"] .profile-actions .page-row{background:#f0f3f8;color:#293850}
+html[data-theme="light"] .profile-action-icon{background:#e2e9f4;color:#6179ac}
+html[data-theme="light"] .modal{background:linear-gradient(145deg,#fff,#f0f3f8);border-color:#dfe5ee}
+html[data-theme="light"] .modal-content,html[data-theme="light"] .modal-content p{color:#4c5b73}
+html[data-theme="light"] .close{background:#e9eef5;color:#455675}
+html[data-theme="light"] .action-card{background:#f1f4f8;color:#2d3c54;border-color:#e0e6ef}
+html[data-theme="light"] .action-card small{color:#718098}
+html[data-theme="light"] .compose-label,html[data-theme="light"] .compose-check{color:#596982}
+html[data-theme="light"] .compose-input{background:#fff;color:#293850;border-color:#dce3ed}
+html[data-theme="light"] .page-calendar span{background:#edf1f7;color:#53627a}
+html[data-theme="light"] .page-calendar span.dow{background:none;color:#8490a3}
+html[data-theme="light"] .page-timeline{border-color:#cbd5e3}
+html[data-theme="light"] .page-event:before{box-shadow:0 0 0 4px #e7edf5}
+html[data-theme="light"] .page-divider{background:#e1e7ef}
+html[data-theme="light"] .seg button{background:#edf1f7;color:#52627d;border-color:#dfe6f0}
+html[data-theme="light"] .seg button.on{background:#536b9c;color:#fff}
+html[data-theme="light"] .bar{background:#e5eaf2}
+html[data-theme="light"] .page-empty{color:#78869b}
+html[data-theme="light"] .nika-input,html[data-theme="light"] .page-input,html[data-theme="light"] .page-select,html[data-theme="light"] .page-textarea{color-scheme:light}
