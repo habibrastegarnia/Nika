@@ -154,6 +154,10 @@ R('POST', '/api/password', async c => {
   const prob = passwordProblem(x.newPassword, row.phone);
   if (prob) throw err(400, 'WEAK_PASSWORD', prob);
   if (x.newPassword === x.currentPassword) throw err(400, 'SAME_PASSWORD', 'رمز جدید باید با رمز قبلی متفاوت باشد');
+  if (c.user.unit_id) {
+    const other = await c.db.prepare("SELECT password_hash,password_salt FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND id!=? AND active=1 LIMIT 1").bind(c.user.unit_id, c.user.id).first();
+    if (other && safeEqual(await hashPassword(x.newPassword, other.password_salt), other.password_hash)) throw err(409, 'SHARED_UNIT_PASSWORD', 'رمز عبور مالک و ساکن یک واحد نمی‌تواند یکسان باشد');
+  }
   const salt = newSalt(), ph = await hashPassword(x.newPassword, salt);
   await c.db.batch([
     c.db.prepare('UPDATE users SET password_hash=?,password_salt=?,must_change_password=0,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(ph, salt, c.user.id),
