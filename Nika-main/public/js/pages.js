@@ -2,7 +2,7 @@
 import { api } from './api.js';
 import { S, can, readableFunds, dashFunds, isManager } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, isRecent, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
-  FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
+  FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, route, open, fields, onSubmit } from './ui.js';
 
 // ====================== خانه ======================
@@ -120,21 +120,19 @@ export function facilitiesPage() {
 export async function requestsPage() {
   const { requests } = await api('/requests');
   const openCount = requests.filter(r => ['new', 'in_progress'].includes(r.status)).length;
-  const v = route('خانه', 'درخواست و پیشنهاد', 'ثبت و پیگیری درخواست‌ها', html`<div class="page-stat-grid"><div class="page-stat"><small>کل موارد</small><strong>${fa(requests.length)}</strong></div><div class="page-stat"><small>در جریان</small><strong class="blue">${fa(openCount)}</strong></div></div>
-    <div class="quick-grid" style="margin-bottom:12px"><button class="page-btn" id="rqNew">+ ثبت درخواست</button><button class="page-btn secondary" id="rqIdea">+ ثبت پیشنهاد</button></div>
-    <div class="page-list">${requests.length ? requests.map(r => html`<div class="page-card"><div class="page-row" style="background:none;border:0;padding:0"><div class="page-row-main"><strong>${r.title}</strong><small>${REQ_KIND[r.kind]} · ${r.category || 'عمومی'} · ${fdate(r.created_at)}</small></div>${chip(REQ_STATUS[r.status] || [r.status, ''])}</div><p>${r.body}</p>${r.response ? html`<div class="page-divider"></div><div class="page-kicker">پاسخ مدیریت</div><p>${r.response}</p>` : ''}${r.board_requested === 1 ? html`<span class="page-chip">در انتظار انتشار در تابلو</span>` : r.board_requested === 2 ? html`<span class="page-chip green">منتشرشده در تابلو</span>` : ''}</div>`) : html`<div class="page-card"><div class="page-empty">هنوز موردی ثبت نکرده‌اید.</div></div>`}</div>`);
+  const v = route('خانه', 'درخواست‌ها', 'ثبت و پیگیری درخواست‌ها', html`<div class="page-stat-grid"><div class="page-stat"><small>کل موارد</small><strong>${fa(requests.length)}</strong></div><div class="page-stat"><small>در جریان</small><strong class="blue">${fa(openCount)}</strong></div></div>
+    <button class="page-btn full" id="rqNew" style="margin:0 0 12px">+ ثبت درخواست</button>
+    <div class="page-list">${requests.length ? requests.map(r => html`<div class="page-card"><div class="page-row" style="background:none;border:0;padding:0"><div class="page-row-main"><strong>${r.title}</strong><small>${r.category || 'عمومی'} · ${fdate(r.created_at)}</small></div>${chip(REQ_STATUS[r.status] || [r.status, ''])}</div><p>${r.body}</p>${r.response ? html`<div class="page-divider"></div><div class="page-kicker">پاسخ مدیریت</div><p>${r.response}</p>` : ''}${r.board_requested === 1 ? html`<span class="page-chip">در انتظار انتشار در تابلو</span>` : r.board_requested === 2 ? html`<span class="page-chip green">منتشرشده در تابلو</span>` : ''}</div>`) : html`<div class="page-card"><div class="page-empty">هنوز موردی ثبت نکرده‌اید.</div></div>`}</div>`);
   $('#rqNew', v).onclick = () => open(() => composePage('request'));
-  $('#rqIdea', v).onclick = () => open(() => composePage('idea'));
 }
 export function composePage(kind = 'request', category = 'عمومی', subject = '') {
   const v = route('خانه', kind === 'idea' ? 'ثبت پیشنهاد' : kind === 'issue' ? 'گزارش مشکل' : 'ثبت درخواست', 'پیام شما برای مدیریت ساختمان ارسال می‌شود', html`<form class="page-card page-form" novalidate>${fields([
-    { name: 'kind', label: 'نوع', type: 'select', value: kind, options: Object.entries(REQ_KIND) },
     { name: 'category', label: 'دسته‌بندی', type: 'select', value: category, options: REQ_CATEGORIES.map(c => [c, c]) },
     { name: 'title', label: 'موضوع', value: subject ? `مشکل ${subject}` : '', required: true, placeholder: 'عنوان کوتاه' },
     { name: 'body', label: 'شرح', type: 'textarea', required: true, placeholder: 'توضیح کامل را بنویسید' },
     { name: 'boardRequested', label: 'نمایش در تابلوی ساختمان (پس از تأیید مدیریت)', type: 'checkbox' }])}<button class="page-btn full" type="submit">ارسال</button></form>`);
   onSubmit($('form', v), async d => {
-    await api('/requests', { method: 'POST', body: d });
+    await api('/requests', { method: 'POST', body: { ...d, kind: 'request' } });
     toast('ثبت شد'); open(requestsPage, { replace: true }); refreshSummary();
   });
 }
