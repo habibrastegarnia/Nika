@@ -1,6 +1,6 @@
 // مدیریت کاربران، واحدها و گزارش ممیزی
 import { R } from './router.js';
-import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, tempPassword, hashPassword, newSalt, audit } from './lib.js';
+import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, tempPassword, hashPassword, newSalt, safeEqual, audit } from './lib.js';
 import { can, EXTRA_ROLES, assignableExtraRoles, canManageTarget } from './perms.js';
 
 const rolesOf = async (db, id) => (await db.prepare('SELECT role FROM user_roles WHERE user_id=?').bind(id).all()).results.map(r => r.role);
@@ -109,7 +109,7 @@ R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async
   const initialPassword = row.account_type === 'staff' ? tempPassword() : row.phone;
   if (t.account_type !== 'staff') {
     const other = await c.db.prepare("SELECT password_hash,password_salt FROM users WHERE unit_id=(SELECT unit_id FROM users WHERE id=?) AND account_type IN ('owner','resident') AND id!=? AND active=1 LIMIT 1").bind(t.id, t.id).first();
-    if (other && (await hashPassword(initialPassword, other.password_salt)) === other.password_hash) throw err(409, 'SHARED_UNIT_PASSWORD', 'رمز فعلی مالک یا ساکن دیگر با این شماره موبایل یکسان است؛ ابتدا رمز آن حساب را تغییر دهید');
+    if (other && safeEqual(await hashPassword(initialPassword, other.password_salt), other.password_hash)) throw err(409, 'SHARED_UNIT_PASSWORD', 'رمز فعلی مالک یا ساکن دیگر با این شماره موبایل یکسان است؛ ابتدا رمز آن حساب را تغییر دهید');
   }
   const salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
