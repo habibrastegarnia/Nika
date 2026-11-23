@@ -52,19 +52,22 @@ async function usersTab() {
       { name: 'phone', label: 'شماره موبایل', required: true, inputmode: 'tel', dir: 'ltr' },
       { name: 'email', label: 'ایمیل (اختیاری)', dir: 'ltr' },
       ...(opts.length ? [{ name: 'roles', label: 'نقش‌های اضافه' + (opts.length ? '' : ''), type: 'checks', options: opts, value: [] }] : [])], 'nika')}
-      <div class="nika-footnote">رمز موقت به‌صورت تصادفی ساخته و فقط یک‌بار به شما نمایش داده می‌شود؛ کاربر در اولین ورود باید رمز خود را عوض کند. حساب «مدیر / کارکنان» حداقل یک نقش لازم دارد.</div>
+      <div class="nika-footnote">نام کاربری مالک و ساکن شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است؛ در اولین ورود باید رمز تغییر کند. شماره موبایل مالک و ساکن یک واحد باید متفاوت باشد. حساب مدیر/کارکنان همچنان با موبایل و رمز موقت وارد می‌شود.</div>
       <div class="nika-actions"><button class="nika-primary" type="submit">ساخت حساب</button></div></form>`)}
     ${card(`حساب‌ها (${fa(users.length)})`, html`<input class="nika-input" id="uSearch" placeholder="جستجوی نام، موبایل یا واحد" style="margin-bottom:10px"><div class="nika-users" id="uList">${users.map(u => userCard(u))}</div>`)}</div>`,
     bind(box) {
       onSubmit($('#uNew', box), async d => {
         const r = await api('/admin/users', { method: 'POST', body: d });
-        showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword); reload();
+        if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
+        else toast('حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.'); reload();
       });
       $('#uSearch', box).oninput = e => { const q = normDigits(e.target.value).toLowerCase(); $$('#uList .nika-usercard', box).forEach(c => c.style.display = c.dataset.q.includes(q) ? '' : 'none'); };
       act(box, '[data-edit]', async b => editUser(users.find(u => u.id === b.dataset.edit), opts));
       act(box, '[data-reset]', async b => {
-        if (!await ask('بازنشانی رمز', 'رمز موقت جدید ساخته می‌شود و همه‌ی نشست‌های این کاربر بسته می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
-        const r = await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST' }); showSecret('رمز موقت جدید', 'این رمز را به کاربر بدهید؛ فقط همین یک‌بار نمایش داده می‌شود.', r.tempPassword);
+        if (!await ask('بازنشانی رمز', 'رمز به شماره موبایل ثبت‌شده کاربر برمی‌گردد و همه‌ی نشست‌های او بسته می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
+        const r = await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST' });
+        if (r.tempPassword) showSecret('رمز موقت جدید', 'این رمز را به کاربر بدهید؛ فقط همین یک‌بار نمایش داده می‌شود.', r.tempPassword);
+        else toast('رمز به شماره موبایل ثبت‌شده کاربر بازنشانی شد.');
       });
     }
   };
