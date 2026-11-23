@@ -2,7 +2,7 @@
 import { api } from './api.js';
 import { S, can, readableFunds, dashFunds, isManager } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, isRecent, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
-  JM, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
+  FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, route, open, fields, onSubmit } from './ui.js';
 
 // ====================== خانه ======================
