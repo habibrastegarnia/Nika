@@ -214,11 +214,9 @@ export function profilePage() {
     <div class="profile-actions">
       <button class="page-row clickable" data-go="edit"><span class="profile-action-icon">✎</span><span class="page-row-main"><strong>ویرایش پروفایل</strong><small>اطلاعات تماس و تصویر</small></span><span class="page-row-tail">←</span></button>
       <button class="page-row clickable" data-go="set"><span class="profile-action-icon">⚙</span><span class="page-row-main"><strong>تنظیمات و امنیت</strong><small>تغییر رمز عبور</small></span><span class="page-row-tail">←</span></button>
-      <button class="page-row clickable profile-logout" id="profileLogout"><span class="profile-action-icon">⇥</span><span class="page-row-main"><strong>خروج از حساب</strong></span><span class="page-row-tail">←</span></button>
     </div>`);
   const map = { edit: editProfilePage, set: settingsPage };
   $$('[data-go]', v).forEach(r => r.onclick = () => open(map[r.dataset.go]));
-  $('#profileLogout', v).onclick = () => document.dispatchEvent(new CustomEvent('nika:logout'));
 }
 // کوچک‌کردن تصویر در مرورگر (حداکثر ۲۵۶ پیکسل) پیش از ارسال
 async function toAvatar(file) {
@@ -250,10 +248,9 @@ export function settingsPage() {
     { name: 'currentPassword', label: 'رمز فعلی', type: 'password', required: true, dir: 'ltr', autocomplete: 'current-password' },
     { name: 'newPassword', label: 'رمز جدید (حداقل ۱۰ کاراکتر، نه فقط عدد)', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' },
     { name: 'again', label: 'تکرار رمز جدید', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' }])}<button class="page-btn full" type="submit">تغییر رمز</button><p class="nika-footnote">پس از تغییر رمز، نشست سایر دستگاه‌ها بسته می‌شود.</p></form>
-    <div class="page-card"><h3>خروج</h3><button class="page-btn danger full" id="logoutBtn">خروج از حساب</button></div>`);
+`);
   onSubmit($('form', v), async (d, f) => {
     if (d.newPassword !== d.again) throw new Error('تکرار رمز با رمز جدید یکسان نیست');
     await api('/password', { method: 'POST', body: { currentPassword: d.currentPassword, newPassword: d.newPassword } }); f.reset(); toast('رمز عبور تغییر کرد');
   });
-  $('#logoutBtn', v).onclick = () => document.dispatchEvent(new CustomEvent('nika:logout'));
 }
