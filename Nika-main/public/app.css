@@ -211,3 +211,25 @@ html[data-theme="light"] .seg button.on{background:#536b9c;color:#fff}
 html[data-theme="light"] .bar{background:#e5eaf2}
 html[data-theme="light"] .page-empty{color:#78869b}
 html[data-theme="light"] .nika-input,html[data-theme="light"] .page-input,html[data-theme="light"] .page-select,html[data-theme="light"] .page-textarea{color-scheme:light}
+
+
+/* Animated day/night selector — scoped to the appearance setting card */
+.theme-setting{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.theme-setting-copy{min-width:0}
+.theme-setting-copy h3{margin:0 0 5px}
+.theme-setting-copy p{margin:0;font-size:11px;opacity:.72}
+.theme-switch-wrap{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.theme-current{font-size:11px;font-weight:700;min-width:24px;text-align:center;color:#d8e2f5}
+.theme-switch{position:relative;direction:ltr;width:72px;height:38px;flex:0 0 72px;padding:0;border:1px solid #53617b;border-radius:30px;background:linear-gradient(110deg,#26334d,#526b9c);box-shadow:inset 0 2px 5px #101827aa,0 3px 9px #0003;cursor:pointer;transition:background .3s,border-color .3s,box-shadow .3s}
+.theme-switch-sun,.theme-switch-moon{position:absolute;top:7px;width:22px;height:22px;display:grid;place-items:center;font-size:17px;line-height:1;transition:opacity .25s,color .25s}
+.theme-switch-sun{right:8px;color:#f7c96b;opacity:.48}
+.theme-switch-moon{left:8px;color:#dce7ff;opacity:1}
+.theme-switch-thumb{position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;background:linear-gradient(145deg,#fff,#dce5f4);box-shadow:0 2px 7px #0005,inset 0 1px 1px #fff;transition:transform .32s cubic-bezier(.2,.8,.2,1),background .3s}
+.theme-switch[aria-checked="true"]{background:linear-gradient(110deg,#d9e6f6,#f4d58c);border-color:#c5d3e7;box-shadow:inset 0 2px 5px #7385a233,0 3px 9px #26324720}
+.theme-switch[aria-checked="true"] .theme-switch-thumb{transform:translateX(34px);background:linear-gradient(145deg,#fff,#fff0c7)}
+.theme-switch[aria-checked="true"] .theme-switch-sun{opacity:1;color:#d58a28}
+.theme-switch[aria-checked="true"] .theme-switch-moon{opacity:.35}
+.theme-switch:focus-visible{outline:2px solid #829ce0;outline-offset:3px}
+html[data-theme="light"] .theme-current{color:#536782}
+html[data-theme="light"] .theme-switch{border-color:#d3ddec}
+@media(max-width:360px){.theme-setting{gap:8px}.theme-switch-wrap{gap:7px}.theme-switch{width:66px;flex-basis:66px}.theme-switch[aria-checked="true"] .theme-switch-thumb{transform:translateX(28px)}}
