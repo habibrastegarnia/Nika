@@ -46,7 +46,7 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
     let unit = await c.db.prepare('SELECT id FROM units WHERE unit_number=?').bind(unitNumber).first();
     if (!unit) { const q = await c.db.prepare('INSERT INTO units(unit_number) VALUES(?)').bind(unitNumber).run(); unit = { id: q.meta.last_row_id }; }
     unitId = unit.id;
-    if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident')").bind(unitId).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد، حساب مالک یا ساکن از قبل ثبت شده است');
+    if (await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=?').bind(unitId, accountType).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد، حسابی با همین نوع (مالک یا ساکن) از قبل ثبت شده است');
     if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND phone=?").bind(unitId, phone).first()) throw err(409, 'SHARED_INITIAL_PASSWORD', 'شماره موبایل مالک و ساکن یک واحد باید متفاوت باشد');
   }
   const uid = crypto.randomUUID(), initialPassword = accountType === 'staff' ? tempPassword() : phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
