@@ -64,7 +64,17 @@ async function usersTab() {
       });
       $('#uSearch', box).oninput = e => { const q = normDigits(e.target.value).toLowerCase(); $$('#uList .nika-usercard', box).forEach(c => c.style.display = c.dataset.q.includes(q) ? '' : 'none'); };
       act(box, '[data-edit]', async b => editUser(users.find(u => u.id === b.dataset.edit), opts));
-      act(box, '[data-delete-user]', async b => {\n        if (!await ask('حذف حساب کاربر', 'حساب این کاربر و سوابق وابسته به آن حذف شود؟ این کار برگشت‌پذیر نیست.', 'حذف حساب', true)) return;\n        await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE' }); toast('حساب و سوابق وابسته حذف شد'); reload();\n      });\n      const wipe = $('#wipeTestData', box); if (wipe) wipe.onclick = async () => {\n        if (!await ask('پاک‌سازی کامل', 'همه اطلاعات آزمایشی و همه کاربران به‌جز حساب رئیس فعلی حذف می‌شوند. ادامه می‌دهید؟', 'ادامه', true)) return;\n        const phrase = await promptText('تأیید نهایی', 'برای تأیید، عبارت «پاک‌سازی نیکا» را دقیقاً وارد کنید.', 'پاک‌سازی');\n        if (phrase !== 'پاک‌سازی نیکا') { if (phrase) toast('عبارت تأیید صحیح نبود'); return; }\n        await api('/admin/reset-test-data', { method: 'POST' }); toast('اطلاعات آزمایشی و کاربران دیگر پاک شدند'); reload();\n      };\n      act(box, '[data-reset]', async b => {
+      act(box, '[data-delete-user]', async b => {
+        if (!await ask('حذف حساب کاربر', 'حساب این کاربر و سوابق وابسته به آن حذف شود؟ این کار برگشت‌پذیر نیست.', 'حذف حساب', true)) return;
+        await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE' }); toast('حساب و سوابق وابسته حذف شد'); reload();
+      });
+      const wipe = $('#wipeTestData', box); if (wipe) wipe.onclick = async () => {
+        if (!await ask('پاک‌سازی کامل', 'همه اطلاعات آزمایشی و همه کاربران به‌جز حساب رئیس فعلی حذف می‌شوند. ادامه می‌دهید؟', 'ادامه', true)) return;
+        const phrase = await promptText('تأیید نهایی', 'برای تأیید، عبارت «پاک‌سازی نیکا» را دقیقاً وارد کنید.', 'پاک‌سازی');
+        if (phrase !== 'پاک‌سازی نیکا') { if (phrase) toast('عبارت تأیید صحیح نبود'); return; }
+        await api('/admin/reset-test-data', { method: 'POST' }); toast('اطلاعات آزمایشی و کاربران دیگر پاک شدند'); reload();
+      };
+      act(box, '[data-reset]', async b => {
         if (!await ask('بازنشانی رمز', 'رمز به شماره موبایل ثبت‌شده کاربر برمی‌گردد و همه‌ی نشست‌های او بسته می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
         const r = await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST' });
         if (r.tempPassword) showSecret('رمز موقت جدید', 'این رمز را به کاربر بدهید؛ فقط همین یک‌بار نمایش داده می‌شود.', r.tempPassword);
