@@ -81,35 +81,41 @@ R('POST', '/api/setup', { public: true }, async c => {
 
 R('POST', '/api/login', { public: true }, async c => {
   const x = await readJson(c.request);
-  const type = x.accountType;
-  if (!['member', 'staff'].includes(type)) throw err(400, 'INVALID_INPUT', 'نوع حساب نامعتبر است');
-  const identifier = typeof x.phone === 'string' ? x.phone.trim() : '';
-  const isRootAdmin = type === 'staff' && identifier.toLowerCase() === 'admin';
-  const phone = type === 'staff' && !isRootAdmin ? normPhone(identifier) : null;
+  const identifier = typeof x.identifier === 'string' ? x.identifier.trim() : '';
   const password = typeof x.password === 'string' ? x.password : '';
-  const unit = type === 'staff' ? null : unitOrNull(x.unit);
-  if ((type === 'staff' && !isRootAdmin && !phone) || !password || password.length > 128 || (type === 'member' && !unit)) throw err(400, 'INVALID_INPUT', 'اطلاعات ورود را کامل و صحیح وارد کنید');
+  if (!identifier || !password || password.length > 128) throw err(400, 'INVALID_INPUT', 'شناسه ورود و رمز عبور را وارد کنید');
+  const isRootAdmin = identifier.toLowerCase() === 'admin';
+  const normalizedPhone = /^\\+?[0-9۰-۹٠-٩]{8,15}$/.test(identifier) ? normPhone(identifier) : null;
+  const unit = unitOrNull(identifier);
   const ip = c.request.headers.get('CF-Connecting-IP') || 'unknown';
-  const loginId = type === 'staff' ? (isRootAdmin ? 'Admin' : phone) : unit;
-  const idKey = `id:${type}:${unit || '-'}:${loginId}`, ipKey = `ip:${ip}`;
+  const idKey = `id:unified:${identifier.toLowerCase()}`, ipKey = `ip:${ip}`;
   await assertNotLocked(c.db, [idKey, ipKey], c.now);
-  let u = null;
-  if (type === 'staff') {
-    u = isRootAdmin
-      ? await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND email='admin' AND active=1").first()
-      : await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=? AND active=1").bind(phone).first();
+  let candidates = [];
+  if (isRootAdmin) {
+    const root = await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND email='admin' AND active=1").first();
+    if (root) candidates.push(root);
   } else {
-    const candidates = await c.db.prepare("SELECT u.* FROM users u JOIN units n ON n.id=u.unit_id WHERE n.unit_number=? AND u.account_type IN ('owner','resident') AND u.active=1 ORDER BY u.created_at").bind(unit).all();
-    for (const candidate of candidates.results) {
-      const candidateHash = await hashPassword(password, candidate.password_salt);
-      if (safeEqual(candidateHash, candidate.password_hash)) { u = candidate; break; }
+    if (unit) {
+      const members = await c.db.prepare("SELECT u.* FROM users u JOIN units n ON n.id=u.unit_id WHERE n.unit_number=? AND u.account_type IN ('owner','resident') AND u.active=1 ORDER BY u.created_at").bind(unit).all();
+      candidates.push(...members.results);
     }
-    if (!candidates.results.length) await hashPassword(password, DUMMY_SALT);
+    if (normalizedPhone) {
+      const staff = await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=? AND active=1").bind(normalizedPhone).all();
+      candidates.push(...staff.results);
+    }
+    const staffByUsername = await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND lower(email)=lower(?) AND active=1").bind(identifier).all();
+    candidates.push(...staffByUsername.results);
   }
+  let u = null;
+  for (const candidate of candidates) {
+    const candidateHash = await hashPassword(password, candidate.password_salt);
+    if (safeEqual(candidateHash, candidate.password_hash)) { u = candidate; break; }
+  }
+  if (!candidates.length) await hashPassword(password, DUMMY_SALT);
   if (!u) {
     await registerFailure(c.db, idKey, MAX_ID_FAILS, c.now);
     await registerFailure(c.db, ipKey, MAX_IP_FAILS, c.now);
-    throw err(401, 'INVALID_CREDENTIALS', 'اطلاعات ورود صحیح نیست');
+    throw err(401, 'INVALID_CREDENTIALS', 'شناسه یا رمز عبور صحیح نیست');
   }
   await c.db.prepare('DELETE FROM login_attempts WHERE key=?').bind(idKey).run();
   await audit(c.db, u.id, 'login', 'user', u.id);
