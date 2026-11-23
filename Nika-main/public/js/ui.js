@@ -79,12 +79,12 @@ export const resetRouter = () => { hist = []; };
 // field: {name,label,type,value,required,placeholder,options:[[v,l]],rows,dir,hint}
 function formatMoneyInput(input) {
   const before = input.value.slice(0, input.selectionStart ?? input.value.length);
-  const digitsBefore = normDigits(before).replace(/\\D/g, '').length;
-  const digits = normDigits(input.value).replace(/\\D/g, '');
-  const formatted = digits.replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+  const digitsBefore = normDigits(before).replace(/\D/g, '').length;
+  const digits = normDigits(input.value).replace(/\D/g, '');
+  const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   input.value = formatted;
   let pos = 0, seen = 0;
-  while (pos < formatted.length && seen < digitsBefore) { if (/\\d/.test(formatted[pos])) seen++; pos++; }
+  while (pos < formatted.length && seen < digitsBefore) { if (/\d/.test(formatted[pos])) seen++; pos++; }
   try { input.setSelectionRange(pos, pos); } catch {}
 }
 export function fields(list, cls = 'page') {
