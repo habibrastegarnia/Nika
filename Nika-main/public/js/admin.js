@@ -3,7 +3,7 @@ import { api } from './api.js';
 import { S, can, canAny } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js';
-import { refreshSummary } from './pages.js';
+import { refreshSummary, loadLatestNotice } from './pages.js';
 
 const card = (title, body) => html`<div class="nika-admincard"><h3>${title}</h3>${body}</div>`;
 const empty = t => html`<p>${t}</p>`;
@@ -27,7 +27,7 @@ export function showAdmin(want) {
   $('#adminWho').textContent = `${S.user.name} · ${S.user.roles.map(r => ROLE_FA[r]).join('، ')}`;
   $('#nikaAdmin').classList.remove('nika-hide'); $('.phone').classList.add('nika-hide'); renderNav(); loadTab();
 }
-export function hideAdmin() { $('#nikaAdmin').classList.add('nika-hide'); $('.phone').classList.remove('nika-hide'); refreshSummary(); }
+export function hideAdmin() { $('#nikaAdmin').classList.add('nika-hide'); $('.phone').classList.remove('nika-hide'); refreshSummary(); loadLatestNotice().catch(() => {}); }
 function renderNav() {
   $('#adminNav').innerHTML = join(TABS().map(([k, l]) => html`<button class="${k === tab ? 'selected' : ''}" data-tab="${k}">${l}</button>`));
   $$('#adminNav [data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderNav(); loadTab(); });
