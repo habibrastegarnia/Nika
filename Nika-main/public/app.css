@@ -143,3 +143,12 @@ button,select{font:inherit}.phone{width:min(100vw,430px);min-height:100svh;posit
 .profile-logout .profile-action-icon{background:#593344;color:#f2aabd}
 .profile-logout .page-row-main strong,.profile-logout .page-row-tail{color:#f1a9ba}
 @media(max-width:360px){.profile-details{gap:7px}.profile-detail{padding:9px}.profile-detail strong{font-size:10px}}
+
+
+/* Light main-app canvas: keep existing dark cards and components intact */
+html,body{background:#fff;color:#242938}
+.phone{background:#fff;box-shadow:0 0 35px rgba(20,30,50,.10)}
+.header h1{color:#242938}
+.header p{color:#697386}
+.category{color:#30394b}
+.notice-head h2{color:#242938}
