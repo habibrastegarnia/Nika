@@ -11,6 +11,7 @@ const ALLOWED_WHILE_FORCED = ['/api/me', '/api/password', '/api/logout'];
 
 async function handle(request, env, url) {
   if (url.pathname === '/api/health') return reply({ ok: true, app: 'nika' });
+  if (url.pathname === '/api/config-check') return reply({ db: !!env.DB, jwt: typeof env.JWT_SECRET === 'string' && env.JWT_SECRET.length > 0, bootstrap: typeof env.BOOTSTRAP_KEY === 'string' && env.BOOTSTRAP_KEY.length > 0, test: env.TEST_DB === 'nika-test' });
   if (!env.DB || !env.JWT_SECRET) throw err(503, 'SERVER_NOT_CONFIGURED', 'سرور هنوز پیکربندی نشده است');
   const { route, params, pathOnly } = match(request.method, url.pathname);
   if (!route) throw pathOnly ? err(405, 'METHOD_NOT_ALLOWED', 'متد مجاز نیست') : err(404, 'NOT_FOUND', 'مسیر پیدا نشد');
