@@ -17,15 +17,13 @@
 </head>
 <body>
 <section id="nikaGate"><div class="nika-shell"><div class="nika-brand"><div class="nika-logo">N</div><div><h1>نیکا</h1><p>سامانه مدیریت مجتمع مسکونی</p></div></div>
-<div class="nika-authcard"><h2>ورود به حساب کاربری</h2><p class="sub">مالک و ساکن با شماره واحد و رمز اولیه شماره موبایل ثبت‌شده وارد می‌شوند. مدیران و کارکنان با اطلاعاتی که مدیریت در اختیارشان گذاشته وارد می‌شوند.</p>
+<div class="nika-authcard"><h2>ورود به حساب کاربری</h2><p class="sub">مالک و ساکن با شماره واحد و رمز خود؛ مدیران و کارکنان با شناسه‌ای که مدیریت برایشان تعریف کرده وارد می‌شوند.</p>
 <form id="loginForm" autocomplete="on" novalidate>
-<label class="nika-label" for="nikaAccountType">نوع حساب</label><select class="nika-input" id="nikaAccountType"><option value="member">مالک / ساکن</option><option value="staff">مدیر / کارکنان</option></select>
-<div id="unitField"><label class="nika-label" for="nikaUnit">شماره واحد</label><input class="nika-input" id="nikaUnit" inputmode="numeric" autocomplete="off" placeholder="مثلاً ۱۲"></div>
-<div id="loginIdentifierField"><label class="nika-label" for="nikaPhone">شماره موبایل یا نام کاربری مدیر اصلی</label><input class="nika-input" id="nikaPhone" inputmode="text" autocomplete="username" dir="ltr" placeholder="شماره موبایل یا Admin"></div>
+<label class="nika-label" for="nikaIdentifier">شماره واحد یا نام کاربری</label><input class="nika-input" id="nikaIdentifier" inputmode="text" autocomplete="username" dir="auto" placeholder="شماره واحد یا شناسه کاربری">
 <label class="nika-label" id="nikaPasswordLabel" for="nikaPassword">رمز عبور</label><input class="nika-input" id="nikaPassword" type="password" autocomplete="current-password" dir="ltr" placeholder="رمز عبور">
 <p class="nika-error" id="loginError" role="alert"></p>
 <div class="nika-actions"><button class="nika-primary" id="nikaLogin" type="submit">ورود به نیکا</button></div></form>
-<div class="nika-footnote">مالک و ساکن هر واحد می‌توانند حساب جداگانه داشته باشند؛ اگر یک نفر هر دو نقش را دارد، فقط یک حساب برای او ساخته می‌شود. در اولین ورود، رمز اولیه باید تغییر کند. برای بازنشانی رمز، با مدیریت ساختمان تماس بگیرید.</div></div>
+<div class="nika-footnote">مالک و ساکن هر واحد می‌توانند حساب جداگانه داشته باشند؛ اگر یک نفر هر دو نقش را دارد، فقط یک حساب برای او ساخته می‌شود. مدیران و کارکنان با شناسه اختصاصی خود وارد می‌شوند. در اولین ورود، رمز اولیه باید تغییر کند. برای بازنشانی رمز، با مدیریت ساختمان تماس بگیرید.</div></div>
 <div class="nika-footnote" style="text-align:center">ورود امن · اطلاعات حساب توسط مدیریت ساختمان تعریف می‌شود</div></div></section>
 <section id="nikaForce" class="nika-hide"><div class="nika-shell"><div class="nika-brand"><div class="nika-logo">N</div><div><h1>تعیین رمز جدید</h1><p>برای ادامه، رمز موقت را با رمز دلخواه خود عوض کنید</p></div></div>
 <div class="nika-authcard"><form id="forceForm" novalidate><label class="nika-label" for="fpNew">رمز جدید (حداقل ۱۰ کاراکتر)</label><input class="nika-input" id="fpNew" type="password" autocomplete="new-password" dir="ltr">
