@@ -114,7 +114,7 @@ export function readForm(form) {
 }
 // ثبت فرم با نمایش خطا زیر فرم و جلوگیری از ارسال دوباره
 export function onSubmit(form, fn) {
-  $('input[name="amount"]', form).forEach(input => { formatMoneyInput(input); input.addEventListener('input', () => formatMoneyInput(input)); });
+  $$('input[name="amount"]', form).forEach(input => { formatMoneyInput(input); input.addEventListener('input', () => formatMoneyInput(input)); });
   form.addEventListener('submit', async e => {
     e.preventDefault();
     let box = form.querySelector('.form-error');
