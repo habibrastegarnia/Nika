@@ -203,16 +203,24 @@ export async function refreshSummary() {
 }
 export function profilePage() {
   const u = S.user, unit = u.unit;
-  const rows = [['شماره موبایل', normFa(u.phone)], ['ایمیل', u.email || '—'], ['نوع حساب', u.account_type === 'staff' ? 'مدیر / کارکنان' : u.account_type === 'owner' ? 'مالک' : 'ساکن'],
-    ...(unit ? [['واحد', unit.number], ['بلوک', unit.block || '—'], ['طبقه', unit.floor || '—'], ['پارکینگ', unit.parking || '—']] : [])];
-  const v = route('حساب من', 'حساب من', 'اطلاعات کاربری و تنظیمات', html`<div class="profile-cover"><img src="${u.has_avatar ? `/api/avatar?v=${encodeURIComponent(u.avatar_v || '')}` : 'assets/avatar.jpg'}" alt="تصویر پروفایل"><div><strong>${u.name}</strong><small>${u.roles.map(r => ROLE_FA[r]).join(' · ')}</small></div></div>
-    <div class="page-card"><div class="page-list">${rows.map(([k, val]) => html`<div class="page-row"><div class="page-row-main"><small>${k}</small><strong>${val}</strong></div></div>`)}</div></div>
-    <div class="page-list"><div class="page-row clickable" data-go="edit"><div class="page-row-icon">✎</div><div class="page-row-main"><strong>ویرایش پروفایل</strong><small>نام، ایمیل، شماره موبایل و تصویر</small></div></div>
-    <div class="page-row clickable" data-go="docs"><div class="page-row-icon">▤</div><div class="page-row-main"><strong>اسناد و فرم‌ها</strong></div></div>
-    <div class="page-row clickable" data-go="fac"><div class="page-row-icon">☂</div><div class="page-row-main"><strong>امکانات و گزارش خرابی</strong></div></div>
-    <div class="page-row clickable" data-go="set"><div class="page-row-icon">⚙</div><div class="page-row-main"><strong>تنظیمات و امنیت</strong><small>تغییر رمز عبور و خروج</small></div></div></div>`);
-  const map = { edit: editProfilePage, docs: documentsPage, fac: facilitiesPage, set: settingsPage };
+  const details = [
+    ['شماره موبایل', normFa(u.phone)],
+    ['ایمیل', u.email || '—'],
+    ['نوع حساب', u.account_type === 'staff' ? 'مدیر / کارکنان' : u.account_type === 'owner' ? 'مالک' : 'ساکن'],
+    ...(unit ? [['شماره واحد', unit.number]] : [])
+  ];
+  const v = route('حساب من', 'حساب من', '', html`<section class="profile-panel">
+      <div class="profile-cover"><img src="${u.has_avatar ? `/api/avatar?v=${encodeURIComponent(u.avatar_v || '')}` : 'assets/avatar.jpg'}" alt="تصویر پروفایل"><div><strong>${u.name}</strong><small>${u.roles.map(r => ROLE_FA[r]).join(' · ')}</small></div></div>
+      <div class="profile-details">${details.map(([k, val]) => html`<div class="profile-detail"><small>${k}</small><strong>${val}</strong></div>`)}</div>
+    </section>
+    <div class="profile-actions">
+      <button class="page-row clickable" data-go="edit"><span class="profile-action-icon">✎</span><span class="page-row-main"><strong>ویرایش پروفایل</strong><small>اطلاعات تماس و تصویر</small></span><span class="page-row-tail">←</span></button>
+      <button class="page-row clickable" data-go="set"><span class="profile-action-icon">⚙</span><span class="page-row-main"><strong>تنظیمات و امنیت</strong><small>تغییر رمز عبور</small></span><span class="page-row-tail">←</span></button>
+      <button class="page-row clickable profile-logout" id="profileLogout"><span class="profile-action-icon">⇥</span><span class="page-row-main"><strong>خروج از حساب</strong></span><span class="page-row-tail">←</span></button>
+    </div>`);
+  const map = { edit: editProfilePage, set: settingsPage };
   $$('[data-go]', v).forEach(r => r.onclick = () => open(map[r.dataset.go]));
+  $('#profileLogout', v).onclick = () => document.dispatchEvent(new CustomEvent('nika:logout'));
 }
 // کوچک‌کردن تصویر در مرورگر (حداکثر ۲۵۶ پیکسل) پیش از ارسال
 async function toAvatar(file) {
