@@ -46,15 +46,16 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
     let unit = await c.db.prepare('SELECT id FROM units WHERE unit_number=?').bind(unitNumber).first();
     if (!unit) { const q = await c.db.prepare('INSERT INTO units(unit_number) VALUES(?)').bind(unitNumber).run(); unit = { id: q.meta.last_row_id }; }
     unitId = unit.id;
-    if (await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=? AND phone=?').bind(unitId, accountType, phone).first()) throw err(409, 'USER_EXISTS', 'این حساب قبلاً برای این واحد ثبت شده است');
+    if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident')").bind(unitId).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد، حساب مالک یا ساکن از قبل ثبت شده است');
+    if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND phone=?").bind(unitId, phone).first()) throw err(409, 'SHARED_INITIAL_PASSWORD', 'شماره موبایل مالک و ساکن یک واحد باید متفاوت باشد');
   }
-  const uid = crypto.randomUUID(), temp = tempPassword(), salt = newSalt(), ph = await hashPassword(temp, salt);
+  const uid = crypto.randomUUID(), initialPassword = accountType === 'staff' ? tempPassword() : phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
     c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,email,password_hash,password_salt,must_change_password) VALUES(?,?,?,?,?,?,?,?,1)').bind(uid, unitId, accountType, name, phone, email, ph, salt),
     ...roles.map(r => c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, r))
   ]);
   await audit(c.db, c.user.id, 'user.create', 'user', uid, { accountType, unit: x.unit || null, roles });
-  return reply({ ok: true, id: uid, tempPassword: temp }, 201);
+  return reply({ ok: true, id: uid, ...(accountType === 'staff' ? { tempPassword: initialPassword } : { initialPasswordIsPhone: true }) }, 201);
 });
 
 async function targetOrFail(c) {
@@ -78,7 +79,7 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
     const phone = phoneOrFail(x.phone);
     const u = await c.db.prepare('SELECT unit_id,account_type FROM users WHERE id=?').bind(t.id).first();
     const dup = u.unit_id
-      ? await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=? AND phone=? AND id!=?').bind(u.unit_id, u.account_type, phone, t.id).first()
+      ? await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND phone=? AND id!=?").bind(u.unit_id, phone, t.id).first()
       : await c.db.prepare("SELECT id FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=? AND id!=?").bind(phone, t.id).first();
     if (dup) throw err(409, 'PHONE_EXISTS', 'این شماره قبلاً ثبت شده است');
     sets.push('phone=?'); vals.push(phone);
@@ -104,13 +105,15 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
 R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async c => {
   const t = await targetOrFail(c);
   if (t.id === c.user.id) throw err(400, 'SELF_CHANGE', 'رمز خودتان را از بخش تنظیمات تغییر دهید');
-  const temp = tempPassword(), salt = newSalt(), ph = await hashPassword(temp, salt);
+  const row = await c.db.prepare('SELECT phone,account_type FROM users WHERE id=?').bind(t.id).first();
+  const initialPassword = row.account_type === 'staff' ? tempPassword() : row.phone;
+  const salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
     c.db.prepare('UPDATE users SET password_hash=?,password_salt=?,must_change_password=1,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(ph, salt, t.id),
     c.db.prepare('DELETE FROM sessions WHERE user_id=?').bind(t.id)
   ]);
   await audit(c.db, c.user.id, 'user.reset_password', 'user', t.id);
-  return reply({ ok: true, tempPassword: temp });
+  return reply({ ok: true, ...(row.account_type === 'staff' ? { tempPassword: initialPassword } : { initialPasswordIsPhone: true }) });
 });
 
 // ---------- واحدها ----------
