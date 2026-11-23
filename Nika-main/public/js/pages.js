@@ -244,11 +244,21 @@ export function editProfilePage() {
   const del = $('#avDel', v); if (del) del.onclick = async () => { S.user = (await api('/avatar', { method: 'DELETE' })).user; fillHeader(); toast('حذف شد'); open(profilePage, { replace: true }); };
 }
 export function settingsPage() {
-  const v = route('حساب من', 'تنظیمات و امنیت', '', html`<form class="page-card page-form" novalidate><h3>تغییر رمز عبور</h3>${fields([
+  const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const v = route('حساب من', 'تنظیمات و امنیت', '', html`<section class="page-card"><h3>نمایش برنامه</h3><p>حالت فعلی: <strong id="themeCurrent">${currentTheme === 'light' ? 'روشن' : 'تیره'}</strong></p><button class="page-btn secondary full" type="button" id="themeToggle">${currentTheme === 'light' ? 'فعال‌کردن حالت تیره' : 'فعال‌کردن حالت روشن'}</button></section>
+  <form class="page-card page-form" novalidate><h3>تغییر رمز عبور</h3>${fields([
     { name: 'currentPassword', label: 'رمز فعلی', type: 'password', required: true, dir: 'ltr', autocomplete: 'current-password' },
     { name: 'newPassword', label: 'رمز جدید (حداقل ۱۰ کاراکتر، نه فقط عدد)', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' },
     { name: 'again', label: 'تکرار رمز جدید', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' }])}<button class="page-btn full" type="submit">تغییر رمز</button><p class="nika-footnote">پس از تغییر رمز، نشست سایر دستگاه‌ها بسته می‌شود.</p></form>
 `);
+  const themeToggle = $('#themeToggle', v);
+  themeToggle.onclick = () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('nika-theme', next); } catch {}
+    $('#themeCurrent', v).textContent = next === 'light' ? 'روشن' : 'تیره';
+    themeToggle.textContent = next === 'light' ? 'فعال‌کردن حالت تیره' : 'فعال‌کردن حالت روشن';
+  };
   onSubmit($('form', v), async (d, f) => {
     if (d.newPassword !== d.again) throw new Error('تکرار رمز با رمز جدید یکسان نیست');
     await api('/password', { method: 'POST', body: { currentPassword: d.currentPassword, newPassword: d.newPassword } }); f.reset(); toast('رمز عبور تغییر کرد');
