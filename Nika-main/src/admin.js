@@ -174,9 +174,8 @@ R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
     c.db.prepare('DELETE FROM user_roles WHERE user_id!=?').bind(c.user.id),
     c.db.prepare("DELETE FROM user_roles WHERE user_id=? AND role!='chair'").bind(c.user.id),
     c.db.prepare("INSERT OR IGNORE INTO user_roles(user_id,role) VALUES(?,'chair')").bind(c.user.id),
-    c.db.prepare("UPDATE users SET unit_id=NULL,account_type='staff' WHERE id=?").bind(c.user.id),
     c.db.prepare('DELETE FROM users WHERE id!=?').bind(c.user.id),
-    c.db.prepare('DELETE FROM units')
+    c.db.prepare('DELETE FROM units WHERE id NOT IN (SELECT unit_id FROM users WHERE id=? AND unit_id IS NOT NULL)').bind(c.user.id)
   ]);
   await audit(c.db, c.user.id, 'system.test_data_reset', 'system', null);
   return reply({ ok: true, preservedUser: c.user.id });
