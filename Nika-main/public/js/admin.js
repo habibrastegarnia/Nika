@@ -30,7 +30,7 @@ export function showAdmin(want) {
   $('#adminAvatar').classList.toggle('nika-hide', !personal);
   $('#adminAvatar').src = S.user.has_avatar ? `/api/avatar?v=${encodeURIComponent(S.user.avatar_v || '')}` : 'assets/avatar.jpg';
   if (personal) {
-    back.className = 'header-action workspace-toggle';
+    back.className = 'header-action workspace-toggle is-admin';
     back.title = 'بازگشت به فضای شخصی'; back.setAttribute('aria-label', 'بازگشت به فضای شخصی');
     back.innerHTML = '<span class="workspace-arrow workspace-arrow-left">←</span><span class="workspace-arrow workspace-arrow-right">→</span><span class="workspace-thumb"></span>';
   } else { back.className = 'nika-secondary sm'; back.textContent = 'بازگشت به برنامه'; }
