@@ -1,33 +1,53 @@
 // نقش‌ها و مجوزها. کنترل دسترسی همیشه سمت سرور انجام می‌شود.
 export const ROLES = ['owner', 'resident', 'chair', 'finance', 'board', 'executive', 'system_admin', 'caretaker'];
 export const EXTRA_ROLES = ['chair', 'finance', 'board', 'executive', 'system_admin', 'caretaker'];
+
 const BASE = ['notices.read', 'requests.create', 'messages.use', 'profile.write'];
 export const ROLE_PERMS = {
   owner: ['finance.owner.read', 'finance.owner.pay'],
   resident: ['finance.monthly.read', 'finance.monthly.pay'],
-  executive: ['expenses.create', 'requests.manage'],
-  finance: ['finance.owner.read', 'finance.monthly.read', 'finance.approve', 'finance.charge', 'expenses.approve', 'finance.reports'],
-  board: ['board.read', 'reports.read', 'resolutions.manage'],
-  system_admin: ['users.manage', 'roles.assign', 'notices.manage', 'messages.manage', 'units.manage', 'requests.manage', 'expenses.create', 'content.manage', 'resolutions.manage', 'finance.owner.read', 'finance.owner.pay', 'finance.monthly.read', 'finance.monthly.pay', 'finance.approve', 'finance.charge', 'expenses.approve', 'finance.reports', 'board.read', 'reports.read', 'audit.read', 'system.settings'],
+
+  // مدیر اجرایی: مدیریت اطلاعات کاربران بدون اختیار تغییر نقش‌ها،
+  // مشاهده اطلاعات مالی و واحدها، ثبت هزینه و مدیریت رویدادهای تقویم.
+  executive: ['users.read', 'users.manage', 'units.read', 'finance.reports', 'expenses.create', 'requests.manage', 'events.manage'],
+
+  // مدیر مالی: مشاهده کاربران و واحدها، رسیدگی مالی و گزارش‌گیری؛ بدون تغییر تنظیمات شارژ.
+  finance: ['users.read', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.approve', 'expenses.approve', 'finance.reports'],
+
+  // عضو هیئت‌مدیره فقط مشاهده‌گر است.
+  board: ['units.read', 'finance.reports', 'reports.read'],
+
+  // مدیر سامانه فقط اختیارات فنی دارد و وارد عملیات مدیریتی ساختمان نمی‌شود.
+  system_admin: ['users.read', 'users.manage', 'system.settings', 'system.data.manage', 'audit.read'],
+
   caretaker: [],
+
+  // رئیس هیئت‌مدیره بالاترین اختیار مدیریتی ساختمان را دارد.
+  // مجوزهای فنیِ اختصاصی مدیر سامانه در این wildcard قرار نمی‌گیرند.
   chair: ['*']
 };
+
 export function userPerms(roles) {
   const s = new Set(BASE);
+  // مدیر سامانه‌ای که نقش ساکن/مالک ندارد، مجوزهای عمومی ساختمان را نمی‌گیرد.
+  if (roles.includes('system_admin') && !roles.some(r => ['owner', 'resident', 'chair'].includes(r))) {
+    for (const p of ['notices.read', 'requests.create', 'messages.use']) s.delete(p);
+  }
   for (const r of roles) for (const p of ROLE_PERMS[r] || []) s.add(p);
   return [...s];
 }
+
 export const can = (user, perm) => !!user && (user.perms.includes('*') || user.perms.includes(perm));
 export const canAny = (user, perms) => perms.some(p => can(user, p));
-// نقش‌هایی که این کاربر اجازه دارد به دیگران بدهد یا از آن‌ها بگیرد
+
+// فقط رئیس هیئت‌مدیره می‌تواند نقش‌ها و مسئولیت‌های مدیریتی را واگذار کند.
 export function assignableExtraRoles(user) {
-  if (can(user, '*')) return EXTRA_ROLES;
-  if (user?.roles?.includes('system_admin')) return EXTRA_ROLES.filter(r => r !== 'chair');
-  return can(user, 'roles.assign') ? ['executive'] : [];
+  return can(user, 'roles.assign') ? EXTRA_ROLES : [];
 }
-// آیا کاربر می‌تواند حسابی با این نقش‌ها را مدیریت کند؟ (مدیر ساختمان نمی‌تواند هیأت‌مدیره/مالی/رئیس را تغییر دهد)
+
+// مدیران دارای مجوز مدیریت کاربران می‌توانند اطلاعات حساب‌ها را مدیریت کنند؛
+// اما حساب رئیس هیئت‌مدیره و نقش‌های مدیریتی فقط با اختیار رئیس قابل تغییر است.
 export function canManageTarget(actor, targetRoles) {
-  if (can(actor, '*')) return true;
-  if (actor?.roles?.includes('system_admin')) return !targetRoles.includes('chair');
-  return targetRoles.every(r => ['owner', 'resident', 'executive'].includes(r));
+  if (!can(actor, 'users.manage')) return false;
+  return !targetRoles.includes('chair') || can(actor, 'roles.assign');
 }
