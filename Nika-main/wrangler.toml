@@ -13,6 +13,9 @@ database_name = "nika-db"
 database_id = "9247f224-c409-4ac5-8f38-2ffd866b9178"
 migrations_dir = "migrations"
 
+[triggers]
+crons = ["30 4 * * *"]
+
 [vars]
 ENVIRONMENT = "production"
 # فقط برای ساختمان‌های کوچک که یک نفر هم ثبت‌کننده و هم تأییدکننده است؛ به‌صورت پیش‌فرض ممنوع.
