@@ -218,7 +218,7 @@ test('درخواست پرداخت: ثبت، تأیید دومرحله‌ای، �
   assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'revision', reason: 'نیاز به فاکتور خواناتر' })).data.status, 'revision_chair');
   const mine = await exec.get('/api/expense-requests?scope=mine');
   assert.equal(mine.data.requests[0].status, 'revision_chair');
-  assert.equal((await fin.patch(\`/api/expense-requests/\${first}\`, { ...create(990000, 'قبض آب اصلاح‌شده'), files: [], reason: 'اصلاح توسط جانشین فعال مدیر اجرایی' })).status, 200);
+  assert.equal((await fin.patch(`/api/expense-requests/${first}`, { ...create(990000, 'قبض آب اصلاح‌شده'), files: [], reason: 'اصلاح توسط جانشین فعال مدیر اجرایی' })).status, 200);
   assert.equal((await fin.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' })).data.status, 'pending_chair');
   assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'approved' })).status, 200);
   assert.equal((await exec.get(`/api/expense-requests/${first}`)).data.request.status, 'finalized');
