@@ -4,7 +4,9 @@ import worker from '../src/index.js';
 import { createDB } from './d1-shim.mjs';
 
 const BASE = 'https://nika.test';
-const env = { DB: createDB(), JWT_SECRET: 'x'.repeat(40), BOOTSTRAP_KEY: 'setup-key-123', ENVIRONMENT: 'production', ALLOW_SELF_APPROVAL: 'false', ASSETS: { fetch: () => new Response('asset') } };
+const storedFiles = new Map();
+const FILES = { async put(key, value) { storedFiles.set(key, new Uint8Array(value)); }, async get(key) { const value = storedFiles.get(key); return value ? { body: value } : null; }, async delete(key) { storedFiles.delete(key); } };
+const env = { FILES, DB: createDB(), JWT_SECRET: 'x'.repeat(40), BOOTSTRAP_KEY: 'setup-key-123', ENVIRONMENT: 'production', ALLOW_SELF_APPROVAL: 'false', ASSETS: { fetch: () => new Response('asset') } };
 
 class Client {
   constructor(label) { this.label = label; this.cookie = ''; this.ip = '1.1.1.' + Math.floor(Math.random() * 250); }
@@ -65,7 +67,7 @@ test('بدون کوکی/CSRF: درخواست رد می‌شود', async () => {
 });
 
 test('ساخت کاربران توسط رئیس: رمز موقت تصادفی', async () => {
-  let r = await chair.post('/api/admin/users', { name: 'مدیر ساختمان', accountType: 'staff', phone: '09120000010', roles: ['building_admin'] });
+  let r = await chair.post('/api/admin/users', { name: 'مدیر ساختمان', accountType: 'staff', phone: '09120000010', roles: ['executive'] });
   assert.equal(r.status, 201); assert.ok(r.data.tempPassword.length >= 12); ids.adminTemp = r.data.tempPassword; ids.adminId = r.data.id;
   r = await chair.post('/api/admin/users', { name: 'مدیر مالی', accountType: 'staff', phone: '09120000011', roles: ['finance'] });
   ids.finTemp = r.data.tempPassword; ids.finId = r.data.id;
@@ -109,11 +111,12 @@ test('ارتقای دسترسی: مدیر ساختمان رئیس/مالی نم�
   r = await admin.post('/api/admin/users', { name: 'هکر2', accountType: 'staff', phone: '09129999998', roles: ['finance'] });
   assert.equal(r.status, 403);
   r = await admin.post('/api/admin/users', { name: 'اجرایی دوم', accountType: 'staff', phone: '09129999997', roles: ['executive'] });
-  assert.equal(r.status, 201);
+  assert.equal(r.status, 403, 'مدیر اجرایی حق تعیین نقش مدیریتی ندارد');
   assert.equal((await admin.patch(`/api/admin/users/${ids.finId}`, { roles: ['chair'] })).status, 403, 'تغییر کاربر مالی ممنوع');
-  assert.equal((await admin.post(`/api/admin/users/${ids.finId}/reset-password`)).status, 403);
+  const chairId = (await chair.get('/api/me')).data.user.id;
+  assert.equal((await admin.post(`/api/admin/users/${chairId}/reset-password`)).status, 403);
   assert.equal((await admin.get('/api/transactions?fund=monthly&scope=all')).status, 403, 'مدیر ساختمان مالی را نمی‌بیند');
-  assert.equal((await admin.get('/api/admin/audit')).status, 403);
+  assert.equal((await admin.get('/api/admin/audit')).status, 200);
   assert.equal((await chair.get('/api/admin/audit')).status, 200);
   assert.equal((await res1.get('/api/admin/users')).status, 403);
 });
@@ -155,11 +158,11 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
   assert.equal((await res1.post('/api/finance/charges', { fund: 'monthly', period: '1405-09', amount: 4000000 })).status, 403, 'ساکن شارژ نمی‌سازد');
   assert.equal((await res1.post('/api/transactions', { fund: 'monthly', kind: 'charge', amount: 1 })).status, 400);
   assert.equal((await res1.post('/api/transactions', { fund: 'owner', kind: 'payment', amount: 1000 })).status, 403, 'ساکن صندوق مالکانه ندارد');
-  let r = await fin.post('/api/finance/charges', { fund: 'monthly', period: '۱۴۰۵-۰۹', amount: 4000000, title: 'شارژ آذر' });
+  let r = await chair.post('/api/finance/charges', { fund: 'monthly', period: '۱۴۰۵-۰۹', amount: 4000000, title: 'شارژ آذر' });
   assert.equal(r.status, 201); assert.equal(r.data.created, 2);
-  assert.equal((await fin.post('/api/finance/charges', { fund: 'monthly', period: '1405-09', amount: 4000000, title: 'شارژ آذر' })).data.created, 0, 'تکراری ساخته نمی‌شود');
-  assert.equal((await fin.post('/api/finance/charges', { fund: 'owner', period: '1405-09', amount: 9000000, title: 'مالکانه', unitNumbers: ['۱۲'] })).data.created, 0, 'واحد ۱۲ فارسی با ۱۲ یکی نیست مگر نرمال شود');
-  r = await fin.post('/api/finance/charges', { fund: 'owner', period: '1405-09', amount: 9000000, title: 'مالکانه', unitNumbers: ['12'] });
+  assert.equal((await chair.post('/api/finance/charges', { fund: 'monthly', period: '1405-09', amount: 4000000, title: 'شارژ آذر' })).data.created, 0, 'تکراری ساخته نمی‌شود');
+  assert.equal((await chair.post('/api/finance/charges', { fund: 'owner', period: '1405-09', amount: 9000000, title: 'مالکانه', unitNumbers: ['۱۲'] })).data.created, 0, 'واحد ۱۲ فارسی با ۱۲ یکی نیست مگر نرمال شود');
+  r = await chair.post('/api/finance/charges', { fund: 'owner', period: '1405-09', amount: 9000000, title: 'مالکانه', unitNumbers: ['12'] });
   assert.equal(r.data.created, 1);
 
   r = await res1.get('/api/finance/my?fund=monthly'); assert.equal(r.data.balance, 4000000);
@@ -188,41 +191,64 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
   assert.equal((await fin.post(`/api/transactions/${r.data.id}/decision`, { status: 'rejected', note: 'رسید ناخوانا' })).status, 200);
 });
 
-test('هزینه‌ها: ثبت اجرایی، تأیید مالی، عدم خودتأییدی، داشبورد', async () => {
-  assert.equal((await res1.post('/api/transactions', { fund: 'monthly', kind: 'expense', amount: 1, title: 'x', period: '1405-09' })).status, 403);
-  let r = await exec.post('/api/transactions', { fund: 'monthly', kind: 'expense', amount: 990000, title: 'قبض آب', category: 'آب', period: '1405-09' });
-  assert.equal(r.status, 201); const e1 = r.data.id;
-  r = await exec.post('/api/transactions', { fund: 'monthly', kind: 'expense', amount: 450000, title: 'قبض برق', category: 'برق', period: '1405-09' }); const e2 = r.data.id;
-  assert.equal((await exec.post(`/api/transactions/${e1}/decision`, { status: 'approved' })).status, 403, 'اجرایی مجوز تأیید ندارد');
-  assert.equal((await fin.post(`/api/transactions/${e1}/decision`, { status: 'approved' })).status, 200);
-  assert.equal((await fin.post(`/api/transactions/${e2}/decision`, { status: 'approved' })).status, 200);
-  // خودتأییدی: مدیر مالی هزینه می‌سازد؟ (مجوز ثبت ندارد) → رئیس هزینه می‌سازد و خودش تأیید نمی‌کند
-  r = await chair.post('/api/transactions', { fund: 'monthly', kind: 'expense', amount: 1000, title: 'تست', period: '1405-09' }); const e3 = r.data.id;
-  assert.equal((await chair.post(`/api/transactions/${e3}/decision`, { status: 'approved' })).data.error, 'SELF_APPROVAL');
-  assert.equal((await fin.post(`/api/transactions/${e3}/decision`, { status: 'rejected', note: 'تست' })).status, 200);
+test('درخواست پرداخت: ثبت، تأیید دومرحله‌ای، کنترل صندوق و سوابق', async () => {
+  const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  const create = (amount, title) => ({ fund: 'monthly', amount, documentTitle: title, documentDate: '1405-09-01', description: 'سند آزمایشی', files: [{ name: 'invoice.png', data: image }] });
+  assert.equal((await res1.post('/api/transactions', { fund: 'monthly', kind: 'expense', amount: 1, title: 'x', period: '1405-09' })).status, 410);
+  assert.equal((await exec.post('/api/transactions', { fund: 'monthly', kind: 'expense', amount: 1, title: 'x', period: '1405-09' })).status, 410);
 
-  r = await res1.get('/api/dashboard?fund=monthly'); assert.equal(r.status, 200);
-  assert.equal(r.data.period, '1405-09'); assert.equal(r.data.expenseTotal, 1440000);
-  assert.deepEqual(r.data.expenses.map(x => x.category), ['آب', 'برق']);
-  assert.deepEqual({ ...r.data.charges }, { units: 2, total: 8000000, paid: 3000000, paidUnits: 0, unpaid: 5000000, unpaidUnits: 2 });
+  let r = await exec.post('/api/expense-requests', create(990000, 'قبض آب'));
+  assert.equal(r.status, 201, JSON.stringify(r.data)); const first = r.data.id;
+  assert.match(r.data.referenceNo, /^1405-\\d{6}$/);
+  assert.equal((await exec.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' })).status, 403);
+  let review = await fin.get('/api/expense-requests?scope=review');
+  assert.equal(review.data.requests.length, 1); assert.equal(review.data.requests[0].cash_balance, 3000000);
+  assert.equal((await fin.get(`/api/expense-requests/${first}`)).data.files.length, 1);
+  assert.equal((await fin.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' })).data.status, 'pending_chair');
+  assert.equal((await fin.post(`/api/expense-requests/${first}/chair-decision`, { status: 'approved' })).status, 403);
+  assert.equal((await chair.get('/api/expense-requests?scope=final')).data.requests.length, 1);
+  const detail = await chair.get(`/api/expense-requests/${first}`);
+  assert.equal(detail.data.history.length, 2);
+  const file = await chair.get(detail.data.files[0].url);
+  assert.equal(file.status, 200); assert.equal(file.res.headers.get('Content-Type'), 'image/png');
+  assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'approved' })).data.error, 'SELF_APPROVAL');
+  assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'revision', reason: 'نیاز به فاکتور خواناتر' })).data.status, 'revision_chair');
+  const mine = await exec.get('/api/expense-requests?scope=mine');
+  assert.equal(mine.data.requests[0].status, 'revision_chair');
+  assert.equal((await exec.patch(`/api/expense-requests/${first}`, { ...create(990000, 'قبض آب اصلاح‌شده'), files: [], reason: 'اصلاح عنوان سند' })).status, 200);
+  assert.equal((await fin.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' })).data.status, 'pending_chair');
+  assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'approved' })).status, 200);
+  assert.equal((await exec.get(`/api/expense-requests/${first}`)).data.request.status, 'finalized');
+  assert.equal((await fin.get('/api/finance/funds')).data.funds.find(f => f.fund_id === 'monthly').balance, 2010000);
+
+  r = await exec.post('/api/expense-requests', create(4000000, 'هزینه بیش از موجودی'));
+  assert.equal(r.status, 201);
+  await fin.post(`/api/expense-requests/${r.data.id}/finance-decision`, { status: 'approved' });
+  const insufficient = await chair.post(`/api/expense-requests/${r.data.id}/chair-decision`, { status: 'approved' });
+  assert.equal(insufficient.status, 409); assert.equal(insufficient.data.error, 'INSUFFICIENT_FUNDS');
+  assert.equal((await exec.get(`/api/expense-requests/${r.data.id}`)).data.request.status, 'pending_chair');
+
+  const dashboard = await res1.get('/api/dashboard?fund=monthly');
+  assert.equal(dashboard.status, 200); assert.equal(dashboard.data.period, '1405-09');
+  assert.equal(dashboard.data.expenseTotal, 990000);
+  assert.deepEqual({ ...dashboard.data.charges }, { units: 2, total: 8000000, paid: 3000000, paidUnits: 0, unpaid: 5000000, unpaidUnits: 2 });
   assert.equal((await res1.get('/api/dashboard?fund=owner')).status, 403);
-  assert.equal((await exec.get('/api/dashboard?fund=monthly')).status, 403);
   assert.equal((await fin.get('/api/dashboard?fund=owner')).status, 200);
   assert.equal((await fin.get('/api/finance/balances?fund=monthly')).data.balances.length, 2);
   assert.equal((await res1.get('/api/finance/balances?fund=monthly')).status, 403);
-  const pend = await fin.get('/api/transactions?fund=monthly&scope=all&status=pending'); assert.equal(pend.status, 200);
+  assert.equal((await fin.get('/api/transactions?fund=monthly&scope=all&status=pending')).status, 200);
   assert.equal((await res1.get('/api/transactions?fund=monthly&scope=all')).status, 403);
-  const s = (await fin.get('/api/summary')).data; assert.equal(typeof s.pendingApprovals, 'number');
+  assert.equal(typeof (await fin.get('/api/summary')).data.pendingApprovals, 'number');
 });
 
 test('اطلاعیه، درخواست، پیام و اتصال بین آن‌ها', async () => {
   assert.equal((await res1.post('/api/notices', { title: 'a', body: 'b' })).status, 403);
-  assert.equal((await admin.post('/api/notices', { title: 'سرویس آسانسور', body: 'شنبه', kind: 'اطلاعیه' })).status, 201);
-  assert.equal((await admin.post('/api/notices', { title: 'فقط مالکان', body: 'x', audience: 'owner' })).status, 201);
-  assert.equal((await admin.post('/api/notices', { title: 'x', body: 'y', audience: 'weird' })).status, 400);
+  assert.equal((await chair.post('/api/notices', { title: 'سرویس آسانسور', body: 'شنبه', kind: 'اطلاعیه' })).status, 201);
+  assert.equal((await chair.post('/api/notices', { title: 'فقط مالکان', body: 'x', audience: 'owner' })).status, 201);
+  assert.equal((await chair.post('/api/notices', { title: 'x', body: 'y', audience: 'weird' })).status, 400);
   assert.equal((await res1.get('/api/notices')).data.notices.length, 1, 'ساکن اطلاعیه‌ی مالکان را نمی‌بیند');
   assert.equal((await own.get('/api/notices')).data.notices.length, 2);
-  assert.equal((await admin.get('/api/notices')).data.notices.length, 2);
+  assert.equal((await chair.get('/api/notices')).data.notices.length, 2);
 
   let r = await res1.post('/api/requests', { title: 'لامپ سوخته', body: 'پارکینگ', category: 'تأسیسات و تعمیرات', kind: 'issue', boardRequested: true });
   assert.equal(r.status, 201); const rid = r.data.id;
@@ -243,37 +269,37 @@ test('اطلاعیه، درخواست، پیام و اتصال بین آن‌ه�
   // پیام به مدیریت و پاسخ مدیر
   r = await res1.post('/api/messages', { title: 'سؤال', body: 'شارژ؟' }); assert.equal(r.status, 201);
   assert.equal((await res1.post('/api/messages', { title: 'x', body: 'y', recipientId: ids.adminId })).status, 403);
-  const inbox = (await admin.get('/api/messages')).data.messages; assert.equal(inbox[0].title, 'سؤال'); assert.equal(inbox[0].sender_unit, '12');
+  const inbox = (await chair.get('/api/messages')).data.messages; assert.equal(inbox[0].title, 'سؤال'); assert.equal(inbox[0].sender_unit, '12');
   assert.equal((await res2.get('/api/messages')).data.messages.length, 0);
   const sender = inbox[0].sender_id;
-  assert.equal((await admin.post('/api/messages', { title: 'پاسخ', body: 'تا ۵ام', recipientId: sender })).status, 201);
+  assert.equal((await chair.post('/api/messages', { title: 'پاسخ', body: 'تا ۵ام', recipientId: sender })).status, 201);
   assert.equal((await res1.get('/api/messages')).data.messages[0].title, 'پاسخ');
   assert.equal((await res1.get('/api/messages?box=sent')).data.messages[0].title, 'سؤال');
-  assert.equal((await admin.del(`/api/notices/${(await admin.get('/api/notices')).data.notices[0].id}`)).status, 200);
+  assert.equal((await admin.del(`/api/notices/${(await chair.get('/api/notices')).data.notices[0].id}`)).status, 200);
 });
 
 test('محتوای ساختمان: قوانین، مصوبات، رویدادها، اسناد', async () => {
   assert.equal((await res1.post('/api/rules', { title: 'a', body: 'b' })).status, 403);
-  let r = await admin.post('/api/rules', { title: 'ساعات سکوت', body: '۲۲ تا ۸', sort_order: '۲' }); assert.equal(r.status, 201);
+  let r = await chair.post('/api/rules', { title: 'ساعات سکوت', body: '۲۲ تا ۸', sort_order: '۲' }); assert.equal(r.status, 201);
   assert.equal((await res1.get('/api/rules')).data.items[0].sort_order, 2);
-  assert.equal((await admin.put(`/api/rules/${r.data.id}`, { title: 'سکوت', body: 'x' })).status, 200);
-  assert.equal((await admin.del(`/api/rules/${r.data.id}`)).status, 200);
-  assert.equal((await admin.del(`/api/rules/${r.data.id}`)).status, 404);
-  assert.equal((await admin.post('/api/resolutions', { title: 'سرویس', body: 'تصویب', decided_on: '۱۴۰۵/۰۹/۰۱' })).status, 201);
-  assert.equal((await admin.post('/api/resolutions', { title: 'سرویس', body: 'تصویب', decided_on: 'دیروز' })).status, 400);
-  assert.equal((await admin.post('/api/events', { title: 'جلسه', body: '', event_date: '1405/09/05', event_time: '۱۸:۳۰' })).status, 201);
+  assert.equal((await chair.put(`/api/rules/${r.data.id}`, { title: 'سکوت', body: 'x' })).status, 200);
+  assert.equal((await chair.del(`/api/rules/${r.data.id}`)).status, 200);
+  assert.equal((await chair.del(`/api/rules/${r.data.id}`)).status, 404);
+  assert.equal((await chair.post('/api/resolutions', { title: 'سرویس', body: 'تصویب', decided_on: '۱۴۰۵/۰۹/۰۱' })).status, 201);
+  assert.equal((await chair.post('/api/resolutions', { title: 'سرویس', body: 'تصویب', decided_on: 'دیروز' })).status, 400);
+  assert.equal((await chair.post('/api/events', { title: 'جلسه', body: '', event_date: '1405/09/05', event_time: '۱۸:۳۰' })).status, 201);
   assert.equal((await res1.get('/api/events?month=1405-09')).data.items[0].event_date, '1405-09-05');
   assert.equal((await res1.get('/api/events?month=1405-10')).data.items.length, 0);
-  assert.equal((await admin.post('/api/documents', { title: 'آیین‌نامه', url: 'http://insecure.example/x.pdf' })).status, 400);
-  assert.equal((await admin.post('/api/documents', { title: 'آیین‌نامه', url: 'javascript:alert(1)' })).status, 400);
-  assert.equal((await admin.post('/api/documents', { title: 'آیین‌نامه', url: 'https://drive.example.com/x.pdf' })).status, 201);
+  assert.equal((await chair.post('/api/documents', { title: 'آیین‌نامه', url: 'http://insecure.example/x.pdf' })).status, 400);
+  assert.equal((await chair.post('/api/documents', { title: 'آیین‌نامه', url: 'javascript:alert(1)' })).status, 400);
+  assert.equal((await chair.post('/api/documents', { title: 'آیین‌نامه', url: 'https://drive.example.com/x.pdf' })).status, 201);
   assert.equal((await exec.post('/api/resolutions', { title: 'a', body: 'b', decided_on: '1405/09/01' })).status, 403);
 });
 
 test('واحدها و بازنشانی رمز و غیرفعال‌سازی', async () => {
-  assert.equal((await admin.post('/api/admin/units', { unitNumber: '14', block: 'A', floor: '۳', parking: '۱۴' })).status, 201);
-  const units = (await admin.get('/api/admin/units')).data.units; const u14 = units.find(u => u.unit_number === '14');
-  assert.equal((await admin.patch(`/api/admin/units/${u14.id}`, { block: 'B', floor: '4', parking: '14' })).status, 200);
+  assert.equal((await chair.post('/api/admin/units', { unitNumber: '14', block: 'A', floor: '۳', parking: '۱۴' })).status, 201);
+  const units = (await chair.get('/api/admin/units')).data.units; const u14 = units.find(u => u.unit_number === '14');
+  assert.equal((await chair.patch(`/api/admin/units/${u14.id}`, { block: 'B', floor: '4', parking: '14' })).status, 200);
   assert.equal((await res1.get('/api/me')).data.user.unit.block, null);
   const list = (await admin.get('/api/admin/users?q=13')).data.users; assert.equal(list.length, 1);
   const id13 = list[0].id;
