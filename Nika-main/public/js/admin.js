@@ -12,50 +12,75 @@ let tab = 'users', sub = {};
 const TABS = () => [
   ['users', 'کاربران', can('users.manage')],
   ['units', 'واحدها', can('units.manage')],
-  ['finance', 'تنظیمات مالی', can('*') || can('system.settings')],
-  ['finance-approvals', 'تأییدهای مالی', canAny(['finance.approve', 'expenses.approve'])],
-  ['expenses', 'ثبت هزینه', can('expenses.create')],
-  ['requests', 'درخواست‌ها', can('requests.manage')],
-  ['messages', 'پیام‌ها', can('messages.manage')],
-  ['notices', 'اطلاعیه‌ها', can('notices.manage')],
-  ['content', 'محتوا', canAny(['content.manage', 'resolutions.manage'])],
-  ['audit', 'ممیزی', can('audit.read')]
+  ['finance', 'مالی', canAny(['system.settings', 'finance.approve', 'expenses.approve', 'expenses.create'])],
 ].filter(t => t[2]);
 
+let managerHome = false;
 export function adminAvailable() { return TABS().length > 0; }
 export function canSwitchWorkspace() { return !!S.user && (['owner', 'resident', 'both'].includes(S.user.account_type) || (Array.isArray(S.user.roles) && S.user.roles.some(r => ['owner', 'resident'].includes(r)))) && adminAvailable(); }
-export function showAdmin(want) {
-  const tabs = TABS(); if (!tabs.length) return;
-  tab = tabs.some(t => t[0] === want) ? want : tabs[0][0];
+
+function updateWorkspaceToggle(manager) {
   const toggle = $('#workspaceToggle');
-  toggle.classList.add('is-admin');
-  toggle.setAttribute('aria-label', 'بازگشت به داشبورد');
-  toggle.title = 'بازگشت به داشبورد';
+  toggle.classList.toggle('is-admin', manager);
+  toggle.setAttribute('aria-label', manager ? 'نمایش امکانات مدیر' : 'نمایش امکانات ساکن');
+  toggle.title = manager ? 'نمایش امکانات مدیر' : 'نمایش امکانات ساکن';
   toggle.querySelector('.workspace-label-left').textContent = 'ساکن';
   toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
-  $('#nikaAdmin').classList.remove('nika-hide');
-  $$('.category[data-admin-tab]').forEach(el => el.classList.remove('nika-hide'));
-  $('.phone > .page-view').classList.add('nika-dashboard-hidden');
-  renderNav(); loadTab();
+}
+function showManagerShortcuts(show) {
+  $$('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
+  $('#noticeHead')?.classList.toggle('nika-hide', show);
+  $('#noticeCard')?.classList.toggle('nika-hide', show);
+}
+export function showAdmin(want) {
+  managerHome = true;
+  updateWorkspaceToggle(true);
+  showManagerShortcuts(true);
+  if (!want) {
+    $('#nikaAdmin').classList.add('nika-hide');
+    $('.phone > .page-view').classList.remove('nika-dashboard-hidden');
+    return;
+  }
+  const tabs = TABS(); if (!tabs.some(t => t[0] === want)) return;
+  tab = want;
+  $('#nikaAdmin').classList.add('nika-hide');
+  $('.phone > .carousel').classList.add('nika-dashboard-hidden');
+  $('.phone > .slide-controls').classList.add('nika-dashboard-hidden');
+  $('.phone > .categories').classList.add('nika-dashboard-hidden');
+  $('#noticeHead')?.classList.add('nika-dashboard-hidden');
+  $('#noticeCard')?.classList.add('nika-dashboard-hidden');
+  const box = $('.phone > .page-view');
+  box.classList.remove('nika-dashboard-hidden');
+  loadTab();
 }
 export function hideAdmin() {
   $('#nikaAdmin').classList.add('nika-hide');
-  $$('.category[data-admin-tab]').forEach(el => el.classList.add('nika-hide'));
-  $('.phone > .page-view').classList.remove('nika-dashboard-hidden');
-  const toggle = $('#workspaceToggle');
-  toggle.classList.remove('is-admin');
-  toggle.setAttribute('aria-label', 'ورود به فضای مدیریت');
-  toggle.title = 'ورود به فضای مدیریت';
-  refreshSummary(); loadLatestNotice().catch(() => {});
+  $('.phone > .carousel').classList.remove('nika-dashboard-hidden');
+  $('.phone > .slide-controls').classList.remove('nika-dashboard-hidden');
+  $('.phone > .categories').classList.remove('nika-dashboard-hidden');
+  $('#noticeHead')?.classList.toggle('nika-hide', managerHome);
+  $('#noticeCard')?.classList.toggle('nika-hide', managerHome);
+  $('#noticeHead')?.classList.remove('nika-dashboard-hidden');
+  $('#noticeCard')?.classList.remove('nika-dashboard-hidden');
+  $('.phone > .page-view').classList.add('nika-dashboard-hidden');
+  showManagerShortcuts(managerHome);
+  updateWorkspaceToggle(managerHome);
+  if (!managerHome) { refreshSummary(); loadLatestNotice().catch(() => {}); }
 }
-function renderNav() {
-  $('#adminNav').innerHTML = join(TABS().map(([k, l]) => html`<button class="${k === tab ? 'selected' : ''}" data-tab="${k}">${l}</button>`));
-  $$('#adminNav [data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderNav(); loadTab(); });
+export function showResidentMode() {
+  managerHome = false;
+  hideAdmin();
 }
 async function loadTab() {
-  const box = $('#nikaAdminContent'); box.innerHTML = '<div class="nika-admincard"><p>در حال بارگذاری…</p></div>';
-  try { const out = await RENDER[tab](); box.innerHTML = String(out.html); out.bind && out.bind(box); }
-  catch (e) { box.innerHTML = String(card('خطا', empty(e.message))); }
+  const box = $('.phone > .page-view');
+  box.innerHTML = '<div class="page-head"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div><h2>در حال بارگذاری…</h2></div></div>';
+  $('#managerPageBack').onclick = hideAdmin;
+  try {
+    const out = await RENDER[tab]();
+    box.innerHTML = '<div class="page-head"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div><h2>' + ({users:'کاربران',units:'واحدها',finance:'مالی'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
+    $('#managerPageBack',box).onclick = hideAdmin;
+    out.bind && out.bind(box);
+  } catch (e) { box.innerHTML = '<div class="page-head"><button class="page-back" id="managerPageBack">‹</button><h2>خطا</h2></div>' + String(card('خطا', empty(e.message))); $('#managerPageBack',box).onclick=hideAdmin; }
 }
 const reload = () => loadTab();
 const act = (box, sel, fn) => $$(sel, box).forEach(b => b.onclick = () => fn(b).catch(e => toast(e.message)));
@@ -211,19 +236,29 @@ function bindGroupedMoneyInputs(root){
  });
 }
 async function financeTab() {
- if(!(can('*')||can('system.settings'))) return {html:empty('دسترسی به تنظیمات مالی ندارید.')};
- const {settings}=await api('/finance/reminder-settings');
- const t=jToday(),today=`${t.y}-${String(t.m).padStart(2,'0')}-${String(t.d).padStart(2,'0')}`;
+ const settingsAllowed = can('*') || can('system.settings');
+ const approvalsAllowed = canAny(['finance.approve','expenses.approve']);
+ const expenseAllowed = can('expenses.create');
+ const parts = [];
+ let settingsOut = null, approvalsOut = null, expenseOut = null;
+ if (settingsAllowed) {
+  const {settings}=await api('/finance/reminder-settings');
+  const t=jToday(),today=`${t.y}-${String(t.m).padStart(2,'0')}-${String(t.d).padStart(2,'0')}`;
+  settingsOut = {
+   html:html`<div class="nika-admin-grid finance-settings-grid">${card('تنظیمات مالی',html`<form id="financeSettings" novalidate>
+    <section class="finance-setting-block"><h4>شارژ ماهیانه</h4><div class="finance-setting-row">${financeNumberField('monthlyAmount','مبلغ شارژ (تومان)',settings?.monthly_amount)}${financeNumberField('monthlyDueDay','روز چندم ماه (سررسید)',settings?.monthly_due_day)}</div>${jalaliDateControl('monthlyEffectiveFrom','تاریخ مصوب اجرا',settings?.monthly_effective_from||settings?.effective_from||today)}</section>
+    <section class="finance-setting-block"><h4>شارژ مالکانه</h4><div class="finance-setting-row finance-owner-row">${financeNumberField('ownerAmount','مبلغ شارژ (تومان)',settings?.owner_amount)}${jalaliDateControl('ownerDueDate','تاریخ سررسید پرداخت',settings?.owner_due_date||today)}</div>${jalaliDateControl('ownerEffectiveFrom','تاریخ مصوب اجرا',settings?.owner_effective_from||settings?.effective_from||today)}</section>
+    <div class="nika-actions"><button class="nika-primary" type="submit">ثبت مصوبه جدید</button></div></form><div class="nika-footnote">با رسیدن تاریخ اجرای مصوبه، شارژها به‌صورت خودکار ثبت می‌شوند؛ سوابق مصوبه‌ها و بدهی‌های قبلی محفوظ می‌مانند.</div>`)} </div>`,
+   bind(box){bindGroupedMoneyInputs(box);const fs=$('#financeSettings',box);if(fs){bindJalaliDateControls(fs);onSubmit(fs,async d=>{const num=v=>parseAmount(v);await api('/finance/reminder-settings',{method:'POST',body:{monthlyAmount:num(d.monthlyAmount),monthlyDueDay:num(d.monthlyDueDay),ownerAmount:num(d.ownerAmount),monthlyEffectiveFrom:normDigits(d.monthlyEffectiveFrom),ownerEffectiveFrom:normDigits(d.ownerEffectiveFrom),ownerDueDate:normDigits(d.ownerDueDate)}});toast('مصوبه مالی جدید ثبت شد؛ شارژها طبق تاریخ اجرا به‌صورت خودکار ثبت می‌شوند');reload();});}}
+  };
+  parts.push(settingsOut.html);
+ }
+ if (approvalsAllowed) { approvalsOut = await financeApprovalsTab(); parts.push(approvalsOut.html); }
+ if (expenseAllowed) { expenseOut = await expensesTab(); parts.push(expenseOut.html); }
+ if (!parts.length) return {html:empty('امکان مشاهده بخش مالی برای شما فعال نیست.')};
  return {
-  html:html`<div class="nika-admin-grid finance-settings-grid">${card('تنظیمات مالی',html`<form id="financeSettings" novalidate>
-   <section class="finance-setting-block"><h4>شارژ ماهیانه</h4><div class="finance-setting-row">${financeNumberField('monthlyAmount','مبلغ شارژ (تومان)',settings?.monthly_amount)}${financeNumberField('monthlyDueDay','روز چندم ماه (سررسید)',settings?.monthly_due_day)}</div>${jalaliDateControl('monthlyEffectiveFrom','تاریخ مصوب اجرا',settings?.monthly_effective_from||settings?.effective_from||today)}</section>
-   <section class="finance-setting-block"><h4>شارژ مالکانه</h4><div class="finance-setting-row finance-owner-row">${financeNumberField('ownerAmount','مبلغ شارژ (تومان)',settings?.owner_amount)}${jalaliDateControl('ownerDueDate','تاریخ سررسید پرداخت',settings?.owner_due_date||today)}</div>${jalaliDateControl('ownerEffectiveFrom','تاریخ مصوب اجرا',settings?.owner_effective_from||settings?.effective_from||today)}</section>
-   <div class="nika-actions"><button class="nika-primary" type="submit">ثبت مصوبه جدید</button></div></form><div class="nika-footnote">با رسیدن تاریخ اجرای مصوبه، شارژ ماهیانه برای واحدها و شارژ مالکانه برای مالکان به‌صورت خودکار در حساب‌ها ثبت می‌شود. ثبت خودکار روزانه انجام می‌شود؛ سوابق مصوبه‌ها و بدهی‌های قبلی محفوظ می‌مانند.</div>`)}</div>`,
-  bind(box){
-   bindGroupedMoneyInputs(box);
-   const fs=$('#financeSettings',box);
-   if(fs){bindJalaliDateControls(fs);onSubmit(fs,async d=>{const num=v=>parseAmount(v);await api('/finance/reminder-settings',{method:'POST',body:{monthlyAmount:num(d.monthlyAmount),monthlyDueDay:num(d.monthlyDueDay),ownerAmount:num(d.ownerAmount),monthlyEffectiveFrom:normDigits(d.monthlyEffectiveFrom),ownerEffectiveFrom:normDigits(d.ownerEffectiveFrom),ownerDueDate:normDigits(d.ownerDueDate)}});toast('مصوبه مالی جدید ثبت شد؛ شارژها طبق تاریخ اجرا به‌صورت خودکار ثبت می‌شوند');reload();});}
-  }
+  html:html`<div class="manager-finance-page">${parts.map(x=>x)}</div>`,
+  bind(box){ settingsOut?.bind?.(box); approvalsOut?.bind?.(box); expenseOut?.bind?.(box); }
  };
 }
 async function financeApprovalsTab() {
@@ -323,4 +358,4 @@ async function auditTab() {
   return { html: card('گزارش ممیزی (۱۵۰ رویداد اخیر)', html`<table class="nika-table"><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>جزئیات</th></tr>${logs.map(l => html`<tr><td>${fdt(l.created_at)}</td><td>${l.actor || '—'}</td><td dir="ltr" style="text-align:left">${l.action}</td><td dir="ltr" style="text-align:left;font-size:9px;overflow-wrap:anywhere">${l.details && l.details !== '{}' ? l.details : ''}</td></tr>`)}</table>`) };
 }
 
-const RENDER = { users: usersTab, units: unitsTab, finance: financeTab, 'finance-approvals': financeApprovalsTab, expenses: expensesTab, requests: requestsTab, messages: messagesTab, notices: noticesTab, content: contentTab, audit: auditTab };
+const RENDER = { users: usersTab, units: unitsTab, finance: financeTab };
