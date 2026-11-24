@@ -27,15 +27,6 @@ export function canSwitchWorkspace() { return !!S.user && (['owner', 'resident',
 export function showAdmin(want) {
   const tabs = TABS(); if (!tabs.length) return;
   tab = tabs.some(t => t[0] === want) ? want : tabs[0][0];
-  $('#adminWho').textContent = `${S.user.name} · ${S.user.roles.map(r => ROLE_FA[r]).join('، ')}`;
-  const personal = canSwitchWorkspace(), back = $('#adminBack');
-  $('#adminAvatar').classList.toggle('nika-hide', !personal);
-  $('#adminAvatar').src = S.user.has_avatar ? `/api/avatar?v=${encodeURIComponent(S.user.avatar_v || '')}` : 'assets/avatar.jpg';
-  if (personal) {
-    back.className = 'header-action workspace-toggle is-admin';
-    back.title = 'بازگشت به فضای شخصی'; back.setAttribute('aria-label', 'بازگشت به فضای شخصی');
-    back.innerHTML = '<span class="workspace-label workspace-label-left">ساکن</span><span class="workspace-label workspace-label-right">مدیر اجرایی</span><span class="workspace-thumb"></span>';
-  } else { back.className = 'nika-secondary sm'; back.textContent = 'بازگشت به برنامه'; }
   const toggle = $('#workspaceToggle');
   toggle.classList.add('is-admin');
   toggle.setAttribute('aria-label', 'بازگشت به داشبورد');
@@ -43,12 +34,12 @@ export function showAdmin(want) {
   toggle.querySelector('.workspace-label-left').textContent = 'ساکن';
   toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
   $('#nikaAdmin').classList.remove('nika-hide');
-  $('.phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice, .phone > .page-view').forEach(el => el.classList.add('nika-dashboard-hidden'));
+  $$('.phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice, .phone > .page-view').forEach(el => el.classList.add('nika-dashboard-hidden'));
   renderNav(); loadTab();
 }
 export function hideAdmin() {
   $('#nikaAdmin').classList.add('nika-hide');
-  $('.phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice, .phone > .page-view').forEach(el => el.classList.remove('nika-dashboard-hidden'));
+  $$('.phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice, .phone > .page-view').forEach(el => el.classList.remove('nika-dashboard-hidden'));
   const toggle = $('#workspaceToggle');
   toggle.classList.remove('is-admin');
   toggle.setAttribute('aria-label', 'ورود به فضای مدیریت');
