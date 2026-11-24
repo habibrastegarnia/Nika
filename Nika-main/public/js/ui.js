@@ -13,7 +13,7 @@ export function openModal(title, content) {
   $('#modalBackdrop').classList.add('open');
   return $('#modalContent');
 }
-export const closeModal = () => $('#modalBackdrop').classList.remove('open');
+export const closeModal = () => { const backdrop=$('#modalBackdrop'); backdrop.classList.remove('open','jalali-calendar-open'); };
 function jalaliParts(value) {
   const s = normDigits(value || '');
   const m = s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
@@ -28,7 +28,7 @@ function showJalaliPicker(display) {
   const selected = jalaliParts(hidden.value || display.value);
   let year = selected.y, month = selected.m;
   const weekdays = ['ش','ی','د','س','چ','پ','ج'];
-  const modal = openModal('انتخاب تاریخ شمسی', html`<div class="jalali-picker" dir="rtl"></div>`);
+  const modal = openModal('انتخاب تاریخ شمسی', html`<div class="jalali-picker" dir="rtl"></div>`);\n  $('#modalBackdrop').classList.add('jalali-calendar-open');
   const render = () => {
     const offset = (monthStart(year, month).getUTCDay() + 1) % 7;
     const count = monthLen(year, month);
