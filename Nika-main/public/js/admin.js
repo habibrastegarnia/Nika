@@ -129,8 +129,8 @@ async function usersTab() {
       if (userSearch) userSearch.oninput = e => { const q = normDigits(e.target.value).toLowerCase(); $$('#uList .nika-usercard', box).forEach(c => c.style.display = c.dataset.q.includes(q) ? '' : 'none'); };
       act(box, '[data-edit]', async b => editUser(users.find(u => u.id === b.dataset.edit), opts));
       act(box, '[data-delete-user]', async b => {
-        if (!await ask('حذف حساب کاربر', 'حساب این کاربر و سوابق وابسته به آن حذف شود؟ این کار برگشت‌پذیر نیست.', 'حذف حساب', true)) return;
-        await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE' }); toast('حساب و سوابق وابسته حذف شد'); reload();
+        if (!await ask('غیرفعال‌سازی حساب کاربر', 'حساب این کاربر غیرفعال شود؟ سوابق مالی و مدیریتی او حفظ خواهد شد.', 'غیرفعال‌سازی', true)) return;
+        await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE' }); toast('حساب غیرفعال شد؛ سوابق حفظ شدند'); reload();
       });
       act(box, '[data-reset]', async b => {
         if (!await ask('بازنشانی رمز', 'رمز به شماره موبایل ثبت‌شده کاربر برمی‌گردد و همه‌ی نشست‌های او بسته می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
@@ -141,7 +141,7 @@ async function usersTab() {
     }
   };
 }
-const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.secondary_phone ? ' · تماس پشتیبان: ' + u.secondary_phone : ''}</small><div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div>${can('users.manage') ? html`<div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button><button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button>${(can('*') || S.user.roles.includes('system_admin')) && u.id !== S.user.id ? html`<button class="nika-secondary sm danger" data-delete-user="${u.id}">حذف حساب</button>` : ''}</div>` : ''}</div>`;
+const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.secondary_phone ? ' · تماس پشتیبان: ' + u.secondary_phone : ''}</small><div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div>${can('users.manage') ? html`<div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button><button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button>${can('users.delete') && u.id !== S.user.id ? html`<button class="nika-secondary sm danger" data-delete-user="${u.id}">حذف حساب</button>` : ''}</div>` : ''}</div>`;
 
 function editUser(u, opts) {
   const baseOptions = u.account_type === 'staff' ? [] : [['owner', 'مالک'], ['resident', 'ساکن']].filter(([r]) => !u.roles.includes(r));
@@ -244,7 +244,7 @@ function bindGroupedMoneyInputs(root){
  });
 }
 async function financeTab() {
- const settingsAllowed = can('*') || can('finance.settings');
+ const settingsAllowed = can('finance.settings');
  const approvalsAllowed = canAny(['finance.approve','expenses.approve']);
  const expenseAllowed = can('expenses.create');
  const reportsAllowed = can('finance.reports');
