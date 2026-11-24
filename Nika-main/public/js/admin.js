@@ -12,7 +12,7 @@ let tab = 'users', sub = {};
 const TABS = () => [
   ['users', 'کاربران', can('users.manage')],
   ['units', 'واحدها', can('units.manage')],
-  ['finance', 'مالی', canAny(['system.settings', 'finance.approve', 'expenses.approve', 'expenses.create'])],
+  ['finance', 'تنظیمات مالی', canAny(['system.settings', 'finance.approve', 'expenses.approve', 'expenses.create'])],
 ].filter(t => t[2]);
 
 let managerHome = false;
@@ -28,7 +28,8 @@ function updateWorkspaceToggle(manager) {
   toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
 }
 function showManagerShortcuts(show) {
-  $$('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
+  $('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
+  $('.category[data-menu="requests"]')?.classList.toggle('nika-hide', show);
   $('#noticeHead')?.classList.toggle('nika-hide', show);
   $('#noticeCard')?.classList.toggle('nika-hide', show);
 }
@@ -82,7 +83,7 @@ async function loadTab() {
   $('#managerPageBack').onclick = hideAdmin;
   try {
     const out = await RENDER[tab]();
-    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({users:'کاربران',units:'واحدها',finance:'مالی'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
+    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({users:'کاربران',units:'واحدها',finance:'تنظیمات مالی'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
     $('#managerPageBack',box).onclick = hideAdmin;
     out.bind && out.bind(box);
   } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack">‹</button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); $('#managerPageBack',box).onclick=hideAdmin; }
