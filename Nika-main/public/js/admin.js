@@ -62,7 +62,7 @@ async function usersTab() {
       ...(opts.length ? [{ name: 'roles', label: 'نقش‌های انتخابی', type: 'checks', options: opts, value: [] }] : [])], 'nika')}
       <div class="nika-footnote">برای حساب مالک یا ساکن، گزینه مربوط را انتخاب کنید. حساب‌های مدیریتی و سرایدار می‌توانند بدون اتصال به واحد ساخته شوند. برای حساب‌های متصل به واحد، نام کاربری شماره واحد و رمز اولیه شماره موبایل است؛ برای حساب مستقل، رمز موقت صادر می‌شود.</div>
       <div class="nika-actions"><button class="nika-primary" type="submit">ساخت حساب</button></div></form>`)}
-    ${card(`حساب‌ها (${fa(users.length)})`, html`<input class="nika-input" id="uSearch" placeholder="جستجوی نام، موبایل یا واحد" style="margin-bottom:10px"><div class="nika-users" id="uList">${users.map(u => userCard(u))}</div>`)}${can('*') ? card('پاک‌سازی اطلاعات آزمایشی', html`<p>تمام تراکنش‌ها، درخواست‌ها، پیام‌ها، اطلاعیه‌ها، محتوا، واحدها و حساب‌های دیگر حذف می‌شوند. حساب رئیس فعلی و دسترسی او باقی می‌ماند.</p><div class="nika-actions"><button class="nika-secondary sm danger" id="wipeTestData">پاک‌سازی کامل اطلاعات و کاربران</button></div>`) : ''}</div>`,
+${can('*') ? card('پاک‌سازی اطلاعات آزمایشی', html`<p>تمام تراکنش‌ها، درخواست‌ها، پیام‌ها، اطلاعیه‌ها، محتوا، واحدها و حساب‌های دیگر حذف می‌شوند. حساب رئیس فعلی و دسترسی او باقی می‌ماند.</p><div class="nika-actions"><button class="nika-secondary sm danger" id="wipeTestData">پاک‌سازی کامل اطلاعات و کاربران</button></div>`) : ''}</div>`,
     bind(box) {
       onSubmit($('#uNew', box), async d => {
         const accountType = d.owner && d.resident ? 'both' : (d.owner ? 'owner' : (d.resident ? 'resident' : 'staff'));
