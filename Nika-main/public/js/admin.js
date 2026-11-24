@@ -328,7 +328,7 @@ async function toDocumentImage(file) {
  const canvas = document.createElement('canvas'); canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale);
  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
  const data = canvas.toDataURL('image/jpeg', 0.78);
- if (data.length > 610000) throw new Error('حجم تصویر پس از فشرده‌سازی زیاد است؛ تصویر دیگری انتخاب کنید');
+ if (data.length > 600000) throw new Error('حجم تصویر پس از فشرده‌سازی زیاد است؛ تصویر دیگری انتخاب کنید');
  return { name: file.name || 'document.jpg', data };
 }
 
