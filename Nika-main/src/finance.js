@@ -112,7 +112,7 @@ R('GET', '/api/finance/my', async c => {
 });
 
 // مانده‌ی همه‌ی واحدها
-R('GET', '/api/finance/balances', { any: ['finance.reports', 'finance.approve'] }, async c => {
+R('GET', '/api/finance/balances', { any: ['finance.reports', 'finance.approve', 'units.manage'] }, async c => {
   const fund = fundOf(c.url.searchParams.get('fund'));
   const r = await c.db.prepare(
     `SELECT n.unit_number,
