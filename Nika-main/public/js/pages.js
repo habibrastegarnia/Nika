@@ -138,7 +138,7 @@ export function composePage(kind = 'request', category = 'عمومی', subject =
 }
 
 // ====================== مالی ======================
-const txRow = (t, mine) => html`<div class="page-row"><div class="page-row-icon">${t.kind === 'payment' ? '↗' : t.kind === 'expense' ? '↘' : '◈'}</div><div class="page-row-main"><strong>${t.title}</strong><small>${KIND_FA[t.kind]}${t.period ? ' · ' + periodLabel(t.period) : ''} · ${fdate(t.created_at)}${t.reference ? ' · پیگیری ' + t.reference : ''}${t.unit_number && !mine ? ' · واحد ' + t.unit_number : ''}</small>${t.status === 'rejected' && t.note ? html`<small style="color:#ee9bae">دلیل رد: ${t.note}</small>` : ''}</div><div style="text-align:left"><div class="page-row-tail" style="color:#e6edf9">${toman(t.amount)}</div>${chip(TX_STATUS[t.status] || [t.status, ''])}${mine && t.status === 'pending' && t.created_by === S.user.id ? html`<div><button class="page-btn sm secondary" data-cancel="${t.id}" style="margin-top:5px">لغو</button></div>` : ''}</div></div>`;
+const txRow = (t, mine) => html`<div class="page-row"><div class="page-row-icon">${t.kind === 'payment' ? '↗' : t.kind === 'expense' ? '↘' : '◈'}</div><div class="page-row-main"><strong>${t.title}</strong><small>${KIND_FA[t.kind]}${t.period ? ' · ' + (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) : ''} · ${fdate(t.created_at)}${t.reference ? ' · پیگیری ' + t.reference : ''}${t.unit_number && !mine ? ' · واحد ' + t.unit_number : ''}</small>${t.status === 'rejected' && t.note ? html`<small style="color:#ee9bae">دلیل رد: ${t.note}</small>` : ''}</div><div style="text-align:left"><div class="page-row-tail" style="color:#e6edf9">${toman(t.amount)}</div>${chip(TX_STATUS[t.status] || [t.status, ''])}${mine && t.status === 'pending' && t.created_by === S.user.id ? html`<div><button class="page-btn sm secondary" data-cancel="${t.id}" style="margin-top:5px">لغو</button></div>` : ''}</div></div>`;
 
 export async function financePage(fund) {
   const funds = readableFunds();
@@ -149,7 +149,7 @@ export async function financePage(fund) {
   const v = route('مالی', 'امور مالی', FUND_FA[fund], html`${funds.length > 1 ? html`<div class="seg">${funds.map(f => html`<button class="${f === fund ? 'on' : ''}" data-fund="${f}">${FUND_FA[f]}</button>`)}</div>` : ''}
     <div class="page-stat-grid"><div class="page-stat"><small>مانده بدهی واحد</small><strong class="${my.balance > 0 ? '' : 'green'}">${toman(Math.max(my.balance, 0))}</strong></div><div class="page-stat"><small>${my.balance < 0 ? 'اعتبار واحد' : 'در انتظار تأیید'}</small><strong class="blue">${toman(my.balance < 0 ? -my.balance : my.pending)}</strong></div><div class="page-stat"><small>کل شارژ</small><strong>${toman(my.charged)}</strong></div><div class="page-stat"><small>آخرین پرداخت</small><strong style="font-size:13px">${my.lastPaymentAt ? fdate(my.lastPaymentAt) : '—'}</strong></div></div>
     ${can(`finance.${fund}.pay`) && S.user.unit_id ? html`<button class="page-btn full" id="payBtn" style="margin:0 0 12px">ثبت پرداخت و ارسال رسید</button>` : ''}
-    ${pct != null ? html`<div class="page-card"><h3>وصول شارژ ساختمان · ${periodLabel(dash.period || curPeriod())}</h3><div class="bar"><div style="width:${pct}%"></div></div><p>${fa(pct)}٪ وصول‌شده · ${fa(dash.charges.paidUnits)} از ${fa(dash.charges.units)} واحد تسویه‌اند</p></div>` : ''}
+    ${pct != null ? html`<div class="page-card"><h3>وصول شارژ ساختمان · ${(fund === 'owner' ? fa(dash.period || jToday().y) : periodLabel(dash.period || curPeriod()))}</h3><div class="bar"><div style="width:${pct}%"></div></div><p>${fa(pct)}٪ وصول‌شده · ${fa(dash.charges.paidUnits)} از ${fa(dash.charges.units)} واحد تسویه‌اند</p></div>` : ''}
     <div class="page-card"><h3>تراکنش‌های واحد شما</h3><div class="page-list">${tx.transactions.length ? tx.transactions.map(t => txRow(t, true)) : html`<div class="page-empty">تراکنشی ثبت نشده است.</div>`}</div></div>
     ${can('finance.approve') || can('expenses.approve') ? html`<button class="page-btn secondary full" id="goApprove">رفتن به تأیید پرداخت‌ها در بخش مدیریت</button>` : ''}`);
   $$('[data-fund]', v).forEach(b => b.onclick = () => open(() => financePage(b.dataset.fund), { replace: true }));
@@ -161,11 +161,11 @@ function payPage(fund, balance) {
   const v = route('مالی', 'ثبت پرداخت', FUND_FA[fund], html`<form class="page-card page-form" novalidate><p>پس از پرداخت (کارت‌به‌کارت یا واریز)، مبلغ و شماره پیگیری را ثبت کنید. پرداخت پس از بررسی مدیر مالی در حساب شما اعمال می‌شود.</p>${fields([
     { name: 'amount', label: 'مبلغ (تومان)', inputmode: 'numeric', required: true, value: balance > 0 ? fa(balance).replace(/٬/g, '') : '', dir: 'ltr' },
     { name: 'reference', label: 'شماره پیگیری / ۴ رقم آخر کارت', required: true, dir: 'ltr' },
-    { name: 'period', label: 'بابت دوره', type: 'select', value: curPeriod(), options: JM.map((month, i) => [`${curPeriod().slice(0, 4)}-${String(i + 1).padStart(2, '0')}`, month]) },
+    ...(fund === 'owner' ? [] : [{ name: 'period', label: 'بابت دوره', type: 'select', value: curPeriod(), options: JM.map((month, i) => [`${curPeriod().slice(0, 4)}-${String(i + 1).padStart(2, '0')}`, month]) }]),
     { name: 'note', label: 'توضیحات (اختیاری)', type: 'textarea', rows: 3 }])}<button class="page-btn full" type="submit">ثبت پرداخت</button></form>`);
   onSubmit($('form', v), async d => {
     const amount = parseAmount(d.amount); if (!amount) throw new Error('مبلغ را به‌صورت عدد وارد کنید');
-    await api('/transactions', { method: 'POST', body: { kind: 'payment', fund, amount, reference: d.reference, period: d.period || undefined, note: d.note || undefined } });
+    await api('/transactions', { method: 'POST', body: { kind: 'payment', fund, amount, reference: d.reference, ...(fund === 'owner' ? {} : { period: d.period || undefined }), note: d.note || undefined } });
     toast('پرداخت ثبت شد و در انتظار تأیید است'); open(() => financePage(fund), { replace: true }); refreshSummary();
   });
 }
