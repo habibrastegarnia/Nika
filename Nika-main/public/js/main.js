@@ -4,7 +4,7 @@ import { S, can, canAny, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
 import * as P from './pages.js?v=4';
-import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=10';
+import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=11';
 
 let managerMode = false;
 const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList.toggle('nika-hide', s !== id); $('.phone').classList.toggle('nika-hide', id !== '#app'); $('#nikaAdmin').classList.add('nika-hide'); };
@@ -88,7 +88,7 @@ function initNav() {
     else if (n === 'پیام‌ها') open(() => P.messagesPage(), { root: true });
   }; });
   $('#headerLogout').onclick = logout;
-  $( '.category[data-menu]').forEach(b => b.onclick = () => {
+  $$('.category[data-menu]').forEach(b => b.onclick = () => {
     if (managerMode) hideAdmin();
     const m = b.dataset.menu;
     open({ rules: P.rulesPage, requests: P.requestsPage, calendar: () => P.calendarPage(), resolutions: P.resolutionsPage }[m], { root: true });
