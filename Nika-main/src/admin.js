@@ -196,6 +196,6 @@ R('PATCH', '/api/admin/units/:id', { perm: 'units.manage' }, async c => {
 R('GET', '/api/admin/audit', { perm: 'audit.read' }, async c => {
   const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 100, 1), 300);
   const r = await c.db.prepare(
-    `SELECT a.id,a.action,a.entity_type,a.entity_id,a.details,a.created_at,u.name actor FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_id ORDER BY a.created_at DESC,a.rowid DESC LIMIT ?`).bind(limit).all();
+    `SELECT a.id,a.action,a.entity_type,a.entity_id,a.details,a.actor_role,a.is_delegate,a.reason,a.created_at,u.name actor FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_id ORDER BY a.created_at DESC,a.rowid DESC LIMIT ?`).bind(limit).all();
   return reply({ logs: r.results });
 });
