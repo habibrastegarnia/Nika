@@ -138,10 +138,10 @@ async function financeTab() {
     const { settings } = await api('/finance/reminder-settings');
     sections.push(card('تنظیمات پایدار شارژ و سررسید', html`<form id="financeSettings" novalidate>${fields([
       { name: 'monthlyAmount', label: 'مبلغ شارژ ماهیانه هر واحد (تومان)', value: settings?.monthly_amount ?? '', inputmode: 'numeric', required: true, dir: 'ltr' },
-      { name: 'monthlyDueDay', label: 'روز سررسید شارژ ماهیانه', value: settings?.monthly_due_day ?? '5', inputmode: 'numeric', required: true, dir: 'ltr' },
+      { name: 'monthlyDueDay', label: 'روز سررسید شارژ ماهیانه', value: settings?.monthly_due_day ?? '', inputmode: 'numeric', required: true, dir: 'ltr' },
       { name: 'ownerAmount', label: 'مبلغ شارژ مالکانه سالیانه هر واحد (تومان)', value: settings?.owner_amount ?? '', inputmode: 'numeric', required: true, dir: 'ltr' },
-      { name: 'ownerDueMonth', label: 'ماه سررسید شارژ مالکانه (۱ تا ۱۲ شمسی)', value: settings?.owner_due_month ?? '1', inputmode: 'numeric', required: true, dir: 'ltr' },
-      { name: 'ownerDueDay', label: 'روز سررسید شارژ مالکانه', value: settings?.owner_due_day ?? '1', inputmode: 'numeric', required: true, dir: 'ltr' },
+      { name: 'ownerDueMonth', label: 'ماه سررسید شارژ مالکانه (۱ تا ۱۲ شمسی)', value: settings?.owner_due_month ?? '', inputmode: 'numeric', required: true, dir: 'ltr' },
+      { name: 'ownerDueDay', label: 'روز سررسید شارژ مالکانه', value: settings?.owner_due_day ?? '', inputmode: 'numeric', required: true, dir: 'ltr' },
       { name: 'effectiveFrom', label: 'تاریخ اجرای مصوبه (شمسی)', value: settings?.effective_from ?? (curPeriod() + '-01'), required: true, dir: 'ltr', hint: 'تنظیم جدید از این تاریخ اجرا می‌شود؛ سوابق قبلی محفوظ می‌مانند.' }
     ], 'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ثبت مصوبه جدید</button></div></form><div class="nika-footnote">مقادیر و سررسیدها تا ثبت مصوبه بعدی معتبر می‌مانند. یادآوری‌ها: دو روز قبل، روز سررسید، دو روز بعد، هفت روز بعد و سپس روزانه تا تسویه.</div>`));
   }
