@@ -120,6 +120,7 @@ async function usersTab() {
         if (accountType === 'staff' && !canAssignRoles) throw new Error('ساخت حساب مدیریتی و تعیین نقش فقط در اختیار رئیس هیئت‌مدیره است.');
         if (accountType === 'staff' && !(d.roles || []).length) throw new Error('برای حساب مستقل، حداقل یک نقش انتخاب کنید.');
         const body = { unit: d.unit, name: d.name, phone: d.phone, secondaryPhone: d.secondaryPhone, accountType, roles: d.roles || [] };
+        if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران ایجاد می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
         const r = await api('/admin/users', { method: 'POST', body });
         if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
         else toast(accountType === 'staff' ? 'حساب مستقل ساخته شد.' : 'حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.');
@@ -130,11 +131,15 @@ async function usersTab() {
       act(box, '[data-edit]', async b => editUser(users.find(u => u.id === b.dataset.edit), opts));
       act(box, '[data-delete-user]', async b => {
         if (!await ask('غیرفعال‌سازی حساب کاربر', 'حساب این کاربر غیرفعال شود؟ سوابق مالی و مدیریتی او حفظ خواهد شد.', 'غیرفعال‌سازی', true)) return;
-        await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE' }); toast('حساب غیرفعال شد؛ سوابق حفظ شدند'); reload();
+        const body = {};
+        if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران غیرفعال می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+        await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE', body }); toast('حساب غیرفعال شد؛ سوابق حفظ شدند'); reload();
       });
       act(box, '[data-reset]', async b => {
         if (!await ask('بازنشانی رمز', 'رمز به شماره موبایل ثبت‌شده کاربر برمی‌گردد و همه‌ی نشست‌های او بسته می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
-        const r = await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST' });
+        const body = {};
+        if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا رمز این کاربر را به‌جای مسئول اصلی مدیریت کاربران بازنشانی می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+        const r = await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST', body });
         if (r.tempPassword) showSecret('رمز موقت جدید', 'این رمز را به کاربر بدهید؛ فقط همین یک‌بار نمایش داده می‌شود.', r.tempPassword);
         else toast('رمز به شماره موبایل ثبت‌شده کاربر بازنشانی شد.');
       });
@@ -154,6 +159,7 @@ function editUser(u, opts) {
     const body = { name: d.name, phone: d.phone, secondaryPhone: d.secondaryPhone };
     if (baseOptions.length && d.addBaseRoles?.length) body.addBaseRoles = d.addBaseRoles;
     if (opts.length) body.roles = d.roles; if (d.active !== u.active) body.active = d.active;
+    if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این اطلاعات را به‌جای مسئول اصلی مدیریت کاربران تغییر می‌دهید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
     await api(`/admin/users/${u.id}`, { method: 'PATCH', body }); closeModal(); toast('ذخیره شد؛ نقش جدید به همین حساب افزوده شد.'); reload();
   });
 }
