@@ -72,7 +72,7 @@ ${can('*') ? card('پاک‌سازی اطلاعات آزمایشی', html`<p>ت�
         if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
         else toast(accountType === 'staff' ? 'حساب مستقل ساخته شد.' : 'حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.'); reload();
       });
-      $('#uSearch', box).oninput = e => { const q = normDigits(e.target.value).toLowerCase(); $$('#uList .nika-usercard', box).forEach(c => c.style.display = c.dataset.q.includes(q) ? '' : 'none'); };
+      const userSearch = $('#uSearch', box); if (userSearch) userSearch.oninput = e => { const q = normDigits(e.target.value).toLowerCase(); $('#uList .nika-usercard', box).forEach(c => c.style.display = c.dataset.q.includes(q) ? '' : 'none'); };
       act(box, '[data-edit]', async b => editUser(users.find(u => u.id === b.dataset.edit), opts));
       act(box, '[data-delete-user]', async b => {
         if (!await ask('حذف حساب کاربر', 'حساب این کاربر و سوابق وابسته به آن حذف شود؟ این کار برگشت‌پذیر نیست.', 'حذف حساب', true)) return;
@@ -114,7 +114,6 @@ async function unitsTab() {
   const [{ units }, monthly, owner] = await Promise.all([
     api('/admin/units'), api('/finance/balances?fund=monthly'), api('/finance/balances?fund=owner')
   ]);
-  const f = (u = {}) => fields([{ name: 'block', label: 'بلوک', value: u.block || '' }, { name: 'floor', label: 'طبقه', value: u.floor || '' }, { name: 'parking', label: 'پارکینگ', value: u.parking || '' }, { name: 'notes', label: 'توضیحات', type: 'textarea', rows: 2, value: u.notes || '' }], 'nika');
   const byNumber = Object.fromEntries(units.map(u => [String(u.unit_number), u]));
   const monthlyByNumber = Object.fromEntries(monthly.balances.map(x => [String(x.unit_number), x]));
   const ownerByNumber = Object.fromEntries(owner.balances.map(x => [String(x.unit_number), x]));
@@ -151,12 +150,28 @@ async function unitsTab() {
           <div class="nika-unit-total ${state}"><small>مانده کل</small><strong>${overall > 0 ? 'بدهی ' + toman(overall) : overall < 0 ? 'بستانکاری ' + toman(-overall) : '۰ تومان · تسویه'}</strong></div>
           <div class="nika-unit-fin-section"><h4>جزئیات صندوق‌ها</h4>${amountLine('شارژ ماهیانه', Number(x.monthly.balance || 0))}${amountLine('شارژ مالکانه', Number(x.owner.balance || 0))}</div>
           <div class="nika-footnote">مبالغ بر اساس تراکنش‌های تأییدشده محاسبه شده‌اند.</div>
-          ${x.unit ? html`<div class="row-actions"><button type="button" class="nika-secondary sm" id="editUnitInfo">ویرایش مشخصات واحد</button></div>` : html`<div class="nika-footnote">این شماره هنوز در فهرست واحدهای ثبت‌شده وجود ندارد.</div>`}
-        </div>`;
-        const m = openModal('اطلاعات واحد ' + fa(x.number), content), edit = $('#editUnitInfo', m);
-        if (edit) edit.onclick = () => {
-          const u = x.unit, form = openModal('ویرایش مشخصات واحد ' + fa(x.number), html`<form novalidate>${f(u)}<div class="nika-actions"><button class="nika-primary" type="submit">ذخیره</button></div></form>`);
-          onSubmit($('form', form), async d => { await api('/admin/units/' + u.id, { method: 'PATCH', body: d }); closeModal(); closeModal(); toast('مشخصات واحد ذخیره شد'); reload(); });
+          <div class="row-actions"><button type="button" class="nika-secondary sm" id="showUnitTransactions">ریز سوابق مالی واحد</button></div>
+        </div>\`;
+        const m = openModal('اطلاعات واحد ' + fa(x.number), content), historyButton = $('#showUnitTransactions', m);
+        historyButton.onclick = async () => {
+          historyButton.disabled = true; historyButton.textContent = 'در حال دریافت سوابق…';
+          try {
+            const [monthlyHistory, ownerHistory] = await Promise.all([
+              api('/transactions?fund=monthly&scope=all&unit=' + encodeURIComponent(x.number) + '&limit=200'),
+              api('/transactions?fund=owner&scope=all&unit=' + encodeURIComponent(x.number) + '&limit=200')
+            ]);
+            const history = [...monthlyHistory.transactions, ...ownerHistory.transactions].sort((p,q) => String(q.created_at || '').localeCompare(String(p.created_at || '')));
+            const historyBox = document.createElement('div');
+            historyBox.className = 'nika-unit-history';
+            const statusText = { approved: 'تأییدشده', pending: 'در انتظار تأیید', rejected: 'ردشده' };
+            const kindText = { payment: 'پرداخت', charge: 'شارژ', adjustment: 'اعتبار / تخفیف', expense: 'هزینه' };
+            historyBox.innerHTML = history.length ? String(html\`<div class="nika-unit-fin-section"><h4>تمام سوابق مالی (\${fa(history.length)})</h4><div class="nika-unit-history-list">\${history.map(t => html\`<article class="nika-unit-history-item"><strong>\${t.title || kindText[t.kind] || 'تراکنش'} · \${toman(t.amount)}</strong><small>\${kindText[t.kind] || t.kind} · \${FUND_FA[t.fund_id] || t.fund_id} · \${statusText[t.status] || t.status}</small><small>\${t.period ? (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) + ' · ' : ''}\${fdt(t.created_at)}\${t.reference ? ' · پیگیری ' + t.reference : ''}</small>\${t.note ? html\`<p>\${t.note}</p>\` : ''}</article>\` )}</div></div>\` ) : '<div class="nika-footnote">برای این واحد هنوز سابقه مالی ثبت نشده است.</div>';
+            const detail = $('.nika-unit-detail', m);
+            const oldHistory = $('.nika-unit-history', detail); if (oldHistory) oldHistory.remove();
+            detail.appendChild(historyBox);
+            historyButton.textContent = 'به‌روزرسانی سوابق مالی';
+          } catch (e) { toast(e.message); historyButton.textContent = 'تلاش دوباره برای نمایش سوابق'; }
+          finally { historyButton.disabled = false; }
         };
       });
     }
@@ -165,7 +180,8 @@ async function unitsTab() {
 // ====================== مالی ======================
 const fundOpts = [['monthly', FUND_FA.monthly], ['owner', FUND_FA.owner]];
 function financeNumberField(name,label,value){
- return html`<div class="finance-field"><label class="nika-label">${label}</label><input class="nika-input" name="${name}" value="${value??''}" inputmode="numeric" required autocomplete="off"></div>`;
+ const digits=normDigits(value??'').replace(/\D/g,''); const formatted=digits?Number(digits).toLocaleString('en-US'):'';
+ return html`<div class="finance-field"><label class="nika-label">${label}</label><input class="nika-input" name="${name}" value="${formatted}" inputmode="numeric" required autocomplete="off"></div>`;
 }
 function jalaliDateControl(name,label,value){
  const p=String(value||'').split('-').map(Number), t=jToday(), y=p[0]||t.y, m=p[1]||t.m, d=p[2]||t.d;
@@ -176,6 +192,12 @@ function bindJalaliDateControls(form){
  const weekdays=['ش','ی','د','س','چ','پ','ج'];
  const render=w=>{const y=+w.dataset.year,m=+w.dataset.month,first=monthStart(y,m),offset=(first.getUTCDay()+1)%7,count=monthLen(y,m),selected=w.querySelector('[data-jvalue]').value;let cells='';for(let i=0;i<offset;i++)cells+='<i></i>';for(let d=1;d<=count;d++){const key=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;cells+=`<button type="button" data-day="${d}" class="${key===selected?'selected':''}">${fa(d)}</button>`;}w.querySelector('[data-jcalendar]').innerHTML=`<div class="finance-calendar-head"><button type="button" data-prev>›</button><b>${JM[m-1]} ${fa(y)}</b><button type="button" data-next>‹</button></div><div class="finance-calendar-days">${weekdays.map(x=>`<span>${x}</span>`).join('')}${cells}</div>`;};
  form.querySelectorAll('[data-jpicker]').forEach(w=>{const display=w.querySelector('[data-jdisplay]'),hidden=w.querySelector('[data-jvalue]'),cal=w.querySelector('[data-jcalendar]');display.addEventListener('click',()=>{cal.hidden=!cal.hidden;if(!cal.hidden)render(w);});cal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;let y=+w.dataset.year,m=+w.dataset.month;if(b.hasAttribute('data-prev')){if(--m<1){m=12;y--;}}else if(b.hasAttribute('data-next')){if(++m>12){m=1;y++;}}else if(b.dataset.day){const d=+b.dataset.day;hidden.value=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;display.value=`${fa(y)}/${fa(String(m).padStart(2,'0'))}/${fa(String(d).padStart(2,'0'))}`;cal.hidden=true;return;}w.dataset.year=y;w.dataset.month=m;render(w);});});
+}
+function bindGroupedMoneyInputs(root){
+ root.querySelectorAll('input[inputmode="numeric"]').forEach(input=>{
+  const format=()=>{const digits=normDigits(input.value).replace(/\D/g,'');input.value=digits?Number(digits).toLocaleString('en-US'):'';};
+  format(); input.addEventListener('input',format);
+ });
 }
 async function financeTab() {
  const canApprove=canAny(['finance.approve','expenses.approve']);
@@ -197,6 +219,7 @@ async function financeTab() {
  if(can('expenses.create'))sections.push(card('ثبت هزینه‌ی ساختمان',html`<form id="exNew" novalidate>${fields([
   {name:'fund',label:'صندوق',type:'select',value:'monthly',options:fundOpts},{name:'period',label:'دوره',value:curPeriod(),dir:'ltr',required:true},{name:'category',label:'دسته‌بندی',value:'سایر',required:true,placeholder:'آب، برق، نظافت، تعمیرات…'},{name:'title',label:'عنوان هزینه',required:true},{name:'amount',label:'مبلغ (تومان)',inputmode:'numeric',required:true,dir:'ltr'},{name:'reference',label:'شماره سند / فاکتور (اختیاری)',dir:'ltr'}],'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ثبت هزینه</button></div></form><div class="nika-footnote">هزینه پس از تأیید مدیر مالی در داشبورد ساکنان نمایش داده می‌شود. ثبت‌کننده نمی‌تواند هزینه‌ی خود را تأیید کند.</div>`));
  return {html:html`<div class="nika-admin-grid finance-settings-grid">${sections}</div>`,bind(box){
+  bindGroupedMoneyInputs(box);
   const fs=$('#financeSettings',box);if(fs){bindJalaliDateControls(fs);onSubmit(fs,async d=>{const num=v=>parseAmount(v);await api('/finance/reminder-settings',{method:'POST',body:{monthlyAmount:num(d.monthlyAmount),monthlyDueDay:num(d.monthlyDueDay),ownerAmount:num(d.ownerAmount),monthlyEffectiveFrom:normDigits(d.monthlyEffectiveFrom),ownerEffectiveFrom:normDigits(d.ownerEffectiveFrom),ownerDueDate:normDigits(d.ownerDueDate)}});toast('مصوبه مالی جدید ثبت شد؛ سوابق قبلی محفوظ ماند');reload();});}
   act(box,'[data-ok]',async b=>{await api(`/transactions/${b.dataset.ok}/decision`,{method:'POST',body:{status:'approved'}});toast('تأیید شد');reload();});
   act(box,'[data-no]',async b=>{const note=await promptText('رد مورد','دلیل رد را بنویسید (برای کاربر نمایش داده می‌شود)','ثبت رد');if(!note)return;await api(`/transactions/${b.dataset.no}/decision`,{method:'POST',body:{status:'rejected',note}});toast('رد شد');reload();});
