@@ -164,6 +164,9 @@ async function unitsTab() {
 }
 // ====================== مالی ======================
 const fundOpts = [['monthly', FUND_FA.monthly], ['owner', FUND_FA.owner]];
+function financeNumberField(name,label,value){
+ return html`<div class="finance-field"><label class="nika-label">${label}</label><input class="nika-input" name="${name}" value="${value??''}" inputmode="numeric" required autocomplete="off"></div>`;
+}
 function jalaliDateControl(name,label,value){
  const p=String(value||'').split('-').map(Number), t=jToday(), y=p[0]||t.y, m=p[1]||t.m, d=p[2]||t.d;
  const iso=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -183,11 +186,8 @@ async function financeTab() {
   const {settings}=await api('/finance/reminder-settings');
   const t=jToday(),today=`${t.y}-${String(t.m).padStart(2,'0')}-${String(t.d).padStart(2,'0')}`;
   sections.push(card('تنظیمات مالی',html`<form id="financeSettings" novalidate>
-   <section class="finance-setting-block"><h4>شارژ ماهیانه</h4><div class="finance-setting-row">${fields([
-    {name:'monthlyAmount',label:'مبلغ شارژ (تومان)',value:settings?.monthly_amount??'',inputmode:'numeric',required:true,dir:'ltr',money:true},
-    {name:'monthlyDueDay',label:'روز چندم ماه (سررسید)',value:settings?.monthly_due_day??'',inputmode:'numeric',required:true,dir:'ltr'}
-   ],'nika')}</div>${jalaliDateControl('monthlyEffectiveFrom','تاریخ مصوب اجرا',settings?.monthly_effective_from||settings?.effective_from||today)}</section>
-   <section class="finance-setting-block"><h4>شارژ مالکانه</h4><div class="finance-setting-row">${fields([{name:'ownerAmount',label:'مبلغ شارژ (تومان)',value:settings?.owner_amount??'',inputmode:'numeric',required:true,dir:'ltr',money:true}],'nika')}${jalaliDateControl('ownerDueDate','تاریخ دقیق سررسید پرداخت',settings?.owner_due_date||today)}</div>${jalaliDateControl('ownerEffectiveFrom','تاریخ مصوب اجرا',settings?.owner_effective_from||settings?.effective_from||today)}</section>
+   <section class="finance-setting-block"><h4>شارژ ماهیانه</h4><div class="finance-setting-row">${financeNumberField('monthlyAmount','مبلغ شارژ (تومان)',settings?.monthly_amount)}${financeNumberField('monthlyDueDay','روز چندم ماه (سررسید)',settings?.monthly_due_day)}</div>${jalaliDateControl('monthlyEffectiveFrom','تاریخ مصوب اجرا',settings?.monthly_effective_from||settings?.effective_from||today)}</section>
+   <section class="finance-setting-block"><h4>شارژ مالکانه</h4><div class="finance-setting-row">${financeNumberField('ownerAmount','مبلغ شارژ (تومان)',settings?.owner_amount)}${jalaliDateControl('ownerDueDate','تاریخ دقیق سررسید پرداخت',settings?.owner_due_date||today)}</div>${jalaliDateControl('ownerEffectiveFrom','تاریخ مصوب اجرا',settings?.owner_effective_from||settings?.effective_from||today)}</section>
    <div class="nika-actions"><button class="nika-primary" type="submit">ثبت مصوبه جدید</button></div></form><div class="nika-footnote">تاریخ اجرای مصوبه شارژ ماهیانه و مالکانه مستقل است. سررسید شارژ مالکانه برای همان سال تعیین می‌شود و برای سال بعد باید با مصوبه جدید ثبت شود.</div>`));
  }
  if(canApprove)sections.push(card(`در انتظار تأیید (${fa(pending.length)})`,pending.length?html`<div class="nika-users">${pending.map(t=>html`<div class="nika-usercard"><strong>${t.title} · ${toman(t.amount)}</strong><small>${KIND_FA[t.kind]} · ${FUND_FA[t.fund_id]}${t.unit_number?' · واحد '+t.unit_number:''}${t.category?' · '+t.category:''}${t.period?' · '+(t.fund_id==='owner'?fa(t.period):periodLabel(t.period)):''}${t.reference?' · پیگیری '+t.reference:''} · ثبت: ${t.created_name} · ${fdt(t.created_at)}${t.note?' · '+t.note:''}</small><div class="row-actions"><button class="page-btn sm ok" data-ok="${t.id}">تأیید</button><button class="page-btn sm danger" data-no="${t.id}">رد</button></div></div>`)}</div>`:empty('مورد در انتظاری وجود ندارد.')));
