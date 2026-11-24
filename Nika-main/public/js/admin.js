@@ -13,6 +13,7 @@ const TABS = () => [
   ['users', 'کاربران', can('users.read')],
   ['units', 'واحدها', can('units.read')],
   ['finance', 'مالی', canAny(['finance.settings', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'])],
+  ['reports', 'گزارش عملکرد', can('audit.read')],
 ].filter(t => t[2]);
 
 let managerHome = false;
@@ -88,7 +89,7 @@ async function loadTab() {
   $('#managerPageBack').onclick = hideAdmin;
   try {
     const out = await RENDER[tab]();
-    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({users:'کاربران',units:'واحدها',finance:'مالی'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
+    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
     $('#managerPageBack',box).onclick = hideAdmin;
     out.bind && out.bind(box);
   } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack">‹</button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); $('#managerPageBack',box).onclick=hideAdmin; }
@@ -232,6 +233,34 @@ async function unitsTab() {
     }
   };
 }
+// ====================== گزارش عملکرد ======================
+const ACTION_FA = {
+  'user.create':'ایجاد حساب کاربر','user.update':'ویرایش حساب کاربر','user.deactivate':'غیرفعال‌سازی حساب',
+  'user.reset_password':'بازنشانی رمز','payment.create':'ثبت پرداخت','expense.create':'ثبت هزینه',
+  'charge.create':'ثبت شارژ','transaction.decision':'بررسی تراکنش مالی',
+  'manager.override_action':'اقدام خارج از مسئولیت','delegation.enable':'فعال‌سازی جانشین',
+  'delegation.disable':'لغو جانشین','event.create':'ثبت رویداد','event.update':'ویرایش رویداد',
+  'event.delete':'حذف رویداد','request.update':'رسیدگی به درخواست','message.create':'ثبت پیام',
+  'notice.create':'ثبت اطلاعیه'
+};
+async function reportsTab() {
+  const { logs } = await api('/admin/audit?limit=150');
+  const roleName = value => {
+    if (!value) return 'مدیر';
+    const delegated = value.startsWith('جانشین ');
+    const key = delegated ? value.slice(7) : value;
+    return (delegated ? 'جانشین ' : '') + (ROLE_FA[key] || key);
+  };
+  return {
+    html: card('سوابق عملیات مدیریتی', logs.length ? html`<div class="nika-users">${logs.map(log => html`<div class="nika-usercard ${log.is_delegate ? 'nika-override-action' : ''}">
+      <strong>${log.actor || 'کاربر غیرفعال'}</strong>
+      <small>${ACTION_FA[log.action] || log.action} · ${fdt(log.created_at)}</small>
+      <div class="nika-rolechips"><span class="page-chip ${log.is_delegate ? 'amber' : ''}">${roleName(log.actor_role || (log.actor_roles || '').split(',')[0])}</span>${log.is_delegate ? html`<span class="page-chip amber">خارج از مسئولیت اصلی</span>` : ''}</div>
+      ${log.reason ? html`<p class="nika-footnote">دلیل: ${log.reason}</p>` : ''}
+    </div>` )}</div>` : empty('سابقه‌ای برای نمایش وجود ندارد.')),
+  };
+}
+
 // ====================== مالی ======================
 const fundOpts = [['monthly', FUND_FA.monthly], ['owner', FUND_FA.owner]];
 function financeNumberField(name,label,value){
@@ -377,4 +406,4 @@ async function auditTab() {
   return { html: card('گزارش ممیزی (۱۵۰ رویداد اخیر)', html`<table class="nika-table"><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>جزئیات</th></tr>${logs.map(l => html`<tr><td>${fdt(l.created_at)}</td><td>${l.actor || '—'}</td><td dir="ltr" style="text-align:left">${l.action}</td><td dir="ltr" style="text-align:left;font-size:9px;overflow-wrap:anywhere">${l.details && l.details !== '{}' ? l.details : ''}</td></tr>`)}</table>`) };
 }
 
-const RENDER = { users: usersTab, units: unitsTab, finance: financeTab };
+const RENDER = { users: usersTab, units: unitsTab, finance: financeTab, reports: reportsTab };
