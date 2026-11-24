@@ -15,7 +15,7 @@ function validateExtras(actor, extras) {
 }
 const extrasOnly = roles => roles.filter(r => EXTRA_ROLES.includes(r));
 
-R('GET', '/api/admin/users', { perm: 'users.manage' }, async c => {
+R('GET', '/api/admin/users', { perm: 'users.read' }, async c => {
   const q = (c.url.searchParams.get('q') || '').trim().slice(0, 50), like = `%${q}%`;
   const r = await c.db.prepare(
     `SELECT u.id,u.name,u.phone,u.secondary_phone,u.account_type,u.active,u.must_change_password,u.created_at,n.unit_number unit,
@@ -100,6 +100,7 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
     for (const role of additions) stmts.push(c.db.prepare('INSERT OR IGNORE INTO user_roles(user_id,role) VALUES(?,?)').bind(t.id, role));
   }
   if ('roles' in x) {
+    if (!can(c.user, 'roles.assign')) throw err(403, 'ROLE_ASSIGN_FORBIDDEN', 'تغییر نقش‌های مدیریتی فقط در اختیار رئیس هیئت‌مدیره است');
     const extras = validateExtras(c.user, x.roles);
     if (t.account_type === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'حساب مدیر/کارکنان باید حداقل یک نقش داشته باشد');
     if (t.roles.includes('chair') && !extras.includes('chair') && !await otherActiveChairs(c.db, t.id)) throw err(400, 'LAST_CHAIR', 'حداقل یک رئیس فعال باید باقی بماند');
@@ -182,7 +183,7 @@ R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
   return reply({ ok: true, preservedUser: c.user.id });
 });
 // ---------- واحدها ----------
-R('GET', '/api/admin/units', { perm: 'units.manage' }, async c => {
+R('GET', '/api/admin/units', { perm: 'units.read' }, async c => {
   const r = await c.db.prepare(
     `SELECT n.id,n.unit_number,n.block,n.floor,n.parking,n.notes,(SELECT COUNT(*) FROM users u WHERE u.unit_id=n.id AND u.active=1) accounts
      FROM units n ORDER BY CAST(n.unit_number AS INTEGER),n.unit_number`).all();
