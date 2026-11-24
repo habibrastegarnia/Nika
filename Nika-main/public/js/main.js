@@ -46,7 +46,29 @@ function setupNav() {
   const hasAdminWorkspace = isManager() && adminAvailable();
   const workspaceToggle = $('#workspaceToggle');
   workspaceToggle.classList.toggle('nika-hide', !hasAdminWorkspace);
-  workspaceToggle.onclick = () => showAdmin();
+  workspaceToggle.onclick = () => {
+    if ($('#nikaAdmin').classList.contains('nika-hide')) showAdmin();
+    else hideAdmin();
+  };
+  // میانبرهای مدیریتی فقط بر اساس مجوز واقعی کاربر نمایش داده می‌شوند.
+  const shortcutHost = $('.categories');
+  $('.category[data-admin-tab]', shortcutHost).forEach(el => el.remove());
+  const adminShortcuts = [
+    ['users', 'کاربران', can('users.manage'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>'],
+    ['units', 'واحدها', can('units.manage'), '<path d="M4 27V5h24v22"/><path d="M9 10h4v4H9zM19 10h4v4h-4zM9 19h4v4H9zM19 19h4v4h-4z"/>'],
+    ['finance', 'تنظیمات مالی', can('*') || can('system.settings'), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>']
+  ];
+  for (const [key, label, allowed, path] of adminShortcuts) {
+    if (!allowed) continue;
+    const b = document.createElement('button');
+    b.className = 'category'; b.dataset.adminTab = key;
+    b.innerHTML = '<span class="cat-icon"><svg viewBox="0 0 32 32">' + path + '</svg></span><span>' + label + '</span>';
+    b.onclick = () => showAdmin(key);
+    shortcutHost.appendChild(b);
+  }
+  // پنل اطلاع‌رسانی میانی برای نقش‌های مدیریتی نمایش داده نمی‌شود.
+  $('#noticeHead')?.classList.toggle('nika-hide', isManager());
+  $('#noticeCard')?.classList.toggle('nika-hide', isManager());
   // فضای مدیریت همیشه از همان کلید بالای داشبورد باز می‌شود؛
   // منوی پایین صفحه فقط برای ناوبری اصلی باقی می‌ماند.
   $('#admNavBtn')?.remove();
@@ -55,13 +77,15 @@ function setupNav() {
 function initNav() {
   $$('.nav-item').forEach(b => { if (b.id === 'admNavBtn') return; b.onclick = () => {
     const n = b.dataset.nav;
+    if (!$('#nikaAdmin').classList.contains('nika-hide')) hideAdmin();
     if (n === 'خانه') { showHome(); P.loadHome(); }
     else if (n === 'حساب من') open(P.profilePage, { root: true });
     else if (n === 'مالی') open(() => P.financePage(), { root: true });
     else if (n === 'پیام‌ها') open(() => P.messagesPage(), { root: true });
   }; });
   $('#headerLogout').onclick = logout;
-  $$('.category').forEach(b => b.onclick = () => {
+  $('.category[data-menu]').forEach(b => b.onclick = () => {
+    if (!$('#nikaAdmin').classList.contains('nika-hide')) hideAdmin();
     const m = b.dataset.menu;
     open({ rules: P.rulesPage, requests: P.requestsPage, calendar: () => P.calendarPage(), resolutions: P.resolutionsPage }[m], { root: true });
   });
@@ -71,7 +95,7 @@ function initNav() {
   $('#finMonth').onchange = e => P.loadDashboard('fin', e.target.value).catch(x => toast(x.message));
   document.addEventListener('nika:logout', logout);
   document.addEventListener('nika:admin', e => showAdmin(e.detail));
-  $('#adminBack').onclick = hideAdmin; $('#adminExit').onclick = logout;
+
 }
 function initCarousel() {
   const track = $('#track'), dots = $$('.slide-dot'); let i = 0, x0 = null;
