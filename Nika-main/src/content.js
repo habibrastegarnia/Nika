@@ -87,7 +87,7 @@ R('POST', '/api/requests/:id/publish', { perm: 'notices.manage' }, async c => {
 // ---------- پیام‌ها (بدون گیرنده = پیام به مدیریت) ----------
 R('GET', '/api/messages', { perm: 'messages.use' }, async c => {
   const box = c.url.searchParams.get('box') === 'sent' ? 'sent' : 'inbox', mgr = can(c.user, 'messages.manage') ? 1 : 0;
-  const cols = 'm.id,m.title,m.body,m.created_at,m.read_at,m.sender_id,m.recipient_id,su.name sender_name,sn.unit_number sender_unit,ru.name recipient_name';
+  const cols = 'm.id,m.title,m.body,m.created_at,m.read_at,m.sender_id,m.recipient_id,m.message_type,m.tone,m.text_direction,su.name sender_name,sn.unit_number sender_unit,ru.name recipient_name';
   const from = 'FROM messages m JOIN users su ON su.id=m.sender_id LEFT JOIN units sn ON sn.id=su.unit_id LEFT JOIN users ru ON ru.id=m.recipient_id';
   const r = box === 'sent'
     ? await c.db.prepare(`SELECT ${cols} ${from} WHERE m.sender_id=? ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`).bind(c.user.id).all()
