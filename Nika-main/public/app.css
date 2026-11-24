@@ -431,3 +431,13 @@ html[data-theme="light"] .nika-admin-inline .nika-adminnav{background:rgba(247,2
 @media(max-width:720px){.nika-admin-inline .nika-admin-shell{padding:0 12px 24px}}
 
 .phone{overflow-y:auto}
+
+
+/* Manager shortcuts and pages use the same dashboard viewport as resident pages */
+.manager-page-content{direction:rtl;text-align:right;padding:0 12px 18px}
+.manager-page-content .nika-admin-grid{grid-template-columns:1fr!important}
+.manager-page-content .nika-admincard{width:100%;box-sizing:border-box}
+.manager-finance-page{display:grid;gap:12px;direction:rtl}
+.manager-finance-page .nika-admincard{margin:0}
+.manager-finance-page .nika-admin-grid{display:block!important}
+#pageView .page-head{margin-bottom:12px}
