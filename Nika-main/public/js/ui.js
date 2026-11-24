@@ -1,5 +1,5 @@
 // عناصر مشترک رابط: اعلان، پنجره، مسیریابی صفحه‌ها، ساخت فرم
-import { html, esc, raw, $, $, normDigits, JM, fa, jToday, monthStart, monthLen } from './util.js';
+import { html, esc, raw, $, $$, normDigits, JM, fa, jToday, monthStart, monthLen } from './util.js';
 
 // ---------- اعلان و پنجره ----------
 let toastTimer;
@@ -144,7 +144,7 @@ export function fields(list, cls = 'page') {
       const sep=f.dateSeparator || '-', y=String(p.y).padStart(4,'0'), m=String(p.m).padStart(2,'0'), d=String(p.d).padStart(2,'0');
       ctl=html`<div class="jalali-date-field"><input class="${inp}" type="text" readonly data-jalali-date data-jalali-separator="${sep}" value="${fa(p.y)}/${fa(p.m).padStart(2,'۰')}/${fa(p.d).padStart(2,'۰')}" placeholder="انتخاب تاریخ" aria-label="${f.label}" autocomplete="off"><input type="hidden" name="${f.name}" data-jalali-value value="${y}${sep}${m}${sep}${d}"${req}></div>`;
     }
-    if (f.type === 'select') ctl = html`<select class="${sel}" name="${f.name}"${req}>${f.options.map(([v, l]) => html`<option value="${v}" ${String(f.value) === String(v) ? raw('selected') : ''}>${l}</option>`)}</select>`;
+    else if (f.type === 'select') ctl = html`<select class="${sel}" name="${f.name}"${req}>${f.options.map(([v, l]) => html`<option value="${v}" ${String(f.value) === String(v) ? raw('selected') : ''}>${l}</option>`)}</select>`;
     else if (f.type === 'textarea') ctl = html`<textarea class="${ta}" name="${f.name}" rows="${f.rows || 4}"${req}${ph}>${f.value ?? ''}</textarea>`;
     else if (f.type === 'checks') ctl = html`<div class="nika-rolelist">${f.options.map(([v, l]) => html`<label class="nika-roleoption"><input type="checkbox" name="${f.name}[]" value="${v}" ${(f.value || []).includes(v) ? raw('checked') : ''}>${l}</label>`)}</div>`;
     else if (f.type === 'checkbox') return html`<label class="compose-check"><input type="checkbox" name="${f.name}" ${f.value ? raw('checked') : ''}> <span>${f.label}</span></label>`;
