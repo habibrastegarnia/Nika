@@ -33,14 +33,15 @@ async function handle(request, env, url) {
 
     // اگر انجام‌دهنده مسئول اصلی این مجوز نباشد، ثبت دلیل پیش از عملیات الزامی است.
     const ownerRole = mutating && perm ? PERMISSION_OWNER[perm] : null;
-    if (ownerRole && !c.user.roles.includes(ownerRole)) {
+    const ownerRoles = Array.isArray(ownerRole) ? ownerRole : (ownerRole ? [ownerRole] : []);
+    if (ownerRoles.length && !ownerRoles.some(role => c.user.roles.includes(role))) {
       let body = {};
       try { body = await request.clone().json(); } catch {}
       const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
       if (!reason) throw err(400, 'OVERRIDE_REASON_REQUIRED', 'برای انجام این عملیات خارج از مسئولیت خود، ثبت دلیل الزامی است');
       if (reason.length > 500) throw err(400, 'INVALID_REASON', 'شرح دلیل حداکثر ۵۰۰ نویسه باشد');
       c.overrideReason = reason;
-      c.overrideRole = ownerRole;
+      c.overrideRole = ownerRoles.join(',');
       c.overridePermission = perm;
     }
   }
