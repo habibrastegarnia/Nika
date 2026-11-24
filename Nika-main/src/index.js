@@ -47,7 +47,8 @@ async function handle(request, env, url) {
   }
   const response = await route.handler(c);
   if (c.overrideReason) {
-    const actorRole = c.user.roles[0] || c.user.delegatedRoles?.[0] || 'manager';
+    const delegatedOwner = ownerRoles.find(role => c.user.delegatedRoles?.includes(role));
+    const actorRole = delegatedOwner ? `جانشین ${delegatedOwner}` : (c.user.roles[0] || 'manager');
     await audit(c.db, c.user.id, 'manager.override_action', 'permission', url.pathname, {
       permission: c.overridePermission, responsibleRole: c.overrideRole
     }, { actorRole, isDelegate: true, reason: c.overrideReason });
