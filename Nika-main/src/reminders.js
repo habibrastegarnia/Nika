@@ -27,40 +27,46 @@ async function send(db,sender,recipient,title,body,tone,key){
  .bind(crypto.randomUUID(),sender,recipient,title,body,tone,key).run();
 }
 R('GET','/api/finance/reminder-settings',{perm:'*'},async c=>{
- const exists=await c.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='finance_settings'").first();
- if(!exists)return reply({settings:null});
- const settings=await c.db.prepare('SELECT monthly_amount,monthly_due_day,owner_amount,owner_due_month,owner_due_day,effective_from,created_at FROM finance_settings ORDER BY effective_from DESC,created_at DESC LIMIT 1').first();
- return reply({settings:settings||null});
+ const monthly=await c.db.prepare('SELECT monthly_amount,monthly_due_day,monthly_effective_from FROM finance_settings WHERE monthly_effective_from IS NOT NULL ORDER BY monthly_effective_from DESC,created_at DESC LIMIT 1').first();
+ const owner=await c.db.prepare('SELECT owner_amount,owner_due_date,owner_effective_from FROM finance_settings WHERE owner_effective_from IS NOT NULL ORDER BY owner_effective_from DESC,created_at DESC LIMIT 1').first();
+ return reply({settings:{...(monthly||{}),...(owner||{})}});
 });
 R('POST','/api/finance/reminder-settings',{perm:'*'},async c=>{
  const x=await readJson(c.request);
- const vals=[int(x.monthlyAmount,{min:0,field:'مبلغ شارژ ماهیانه'}),int(x.monthlyDueDay,{min:1,max:31,field:'روز سررسید ماهیانه'}),int(x.ownerAmount,{min:0,field:'مبلغ شارژ مالکانه'}),int(x.ownerDueMonth,{min:1,max:12,field:'ماه سررسید مالکانه'}),int(x.ownerDueDay,{min:1,max:31,field:'روز سررسید مالکانه'}),jdate(x.effectiveFrom,'-')];
+ const monthlyAmount=int(x.monthlyAmount,{min:0,field:'مبلغ شارژ ماهیانه'});
+ const monthlyDueDay=int(x.monthlyDueDay,{min:1,max:31,field:'روز سررسید ماهیانه'});
+ const ownerAmount=int(x.ownerAmount,{min:0,field:'مبلغ شارژ مالکانه'});
+ const monthlyEffectiveFrom=jdate(x.monthlyEffectiveFrom,'-');
+ const ownerEffectiveFrom=jdate(x.ownerEffectiveFrom,'-');
+ const ownerDueDate=jdate(x.ownerDueDate,'-');
  const id=crypto.randomUUID();
- await c.db.prepare('INSERT INTO finance_settings(id,monthly_amount,monthly_due_day,owner_amount,owner_due_month,owner_due_day,effective_from,created_by) VALUES(?,?,?,?,?,?,?,?)').bind(id,...vals,c.user.id).run();
- await audit(c.db,c.user.id,'finance.settings.create','finance_settings',id,{effectiveFrom:vals[5]});
+ await c.db.prepare('INSERT INTO finance_settings(id,monthly_amount,monthly_due_day,owner_amount,owner_due_date,monthly_effective_from,owner_effective_from,effective_from,created_by) VALUES(?,?,?,?,?,?,?,?,?)')
+  .bind(id,monthlyAmount,monthlyDueDay,ownerAmount,ownerDueDate,monthlyEffectiveFrom,ownerEffectiveFrom,monthlyEffectiveFrom,c.user.id).run();
+ await audit(c.db,c.user.id,'finance.settings.create','finance_settings',id,{monthlyEffectiveFrom,ownerEffectiveFrom,ownerDueDate});
  return reply({ok:true,id},201);
 });
 export async function runReminders(env,now=new Date()){
  const today=pparts(now), period=String(today.y)+'-'+String(today.m).padStart(2,'0'), todayJ=period+'-'+String(today.d).padStart(2,'0');
- const settings=await env.DB.prepare('SELECT * FROM finance_settings WHERE effective_from<=? ORDER BY effective_from DESC,created_at DESC LIMIT 1').bind(todayJ).first();
- if(!settings)return {sent:0,reason:'settings_missing'};
+ const monthlySettings=await env.DB.prepare('SELECT * FROM finance_settings WHERE monthly_effective_from<=? ORDER BY monthly_effective_from DESC,created_at DESC LIMIT 1').bind(todayJ).first();
+ const ownerSettings=await env.DB.prepare('SELECT * FROM finance_settings WHERE owner_effective_from<=? ORDER BY owner_effective_from DESC,created_at DESC LIMIT 1').bind(todayJ).first();
+ if(!monthlySettings&&!ownerSettings)return {sent:0,reason:'settings_missing'};
  const sender=await env.DB.prepare("SELECT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role='chair' AND u.active=1 LIMIT 1").first()
   || await env.DB.prepare("SELECT id FROM users WHERE account_type='staff' AND active=1 LIMIT 1").first();
  if(!sender)return {sent:0,reason:'sender_missing'};
  let sent=0;
  // شارژ ماهیانه‌ی مصوب به‌صورت خودکار برای دوره جاری ایجاد می‌شود؛ سوابق قبلی دست‌نخورده می‌مانند.
- if(settings.monthly_amount>0){
+ if(monthlySettings?.monthly_amount>0){
   const units=await env.DB.prepare('SELECT id FROM units').all();
   for(const u of units.results){
    const exists=await env.DB.prepare("SELECT id FROM transactions WHERE unit_id=? AND fund_id='monthly' AND kind='charge' AND period=? AND status='approved' LIMIT 1").bind(u.id,period).first();
    if(!exists)await env.DB.prepare("INSERT INTO transactions(id,unit_id,fund_id,kind,amount,title,period,status,created_by,approved_by,approved_at) VALUES(?,?,'monthly','charge',?,?,?,'approved',?,?,CURRENT_TIMESTAMP)")
-    .bind(crypto.randomUUID(),u.id,settings.monthly_amount,'شارژ ماهیانه '+period,period,sender.id,sender.id).run();
+    .bind(crypto.randomUUID(),u.id,monthlySettings.monthly_amount,'شارژ ماهیانه '+period,period,sender.id,sender.id).run();
   }
  }
  // یادآوری هر دوره‌ی دارای مانده بررسی می‌شود تا پیام روزانه بعد از هفته اول در ماه‌های بعد هم ادامه یابد.
  const rows=await env.DB.prepare("SELECT t.unit_id,n.unit_number,t.period,SUM(CASE WHEN t.kind='charge' THEN t.amount ELSE 0 END) charged,SUM(CASE WHEN t.kind IN ('payment','adjustment') THEN t.amount ELSE 0 END) paid FROM transactions t JOIN units n ON n.id=t.unit_id WHERE t.fund_id='monthly' AND t.status='approved' AND t.period IS NOT NULL GROUP BY t.unit_id,t.period HAVING charged>paid").all();
  for(const r of rows.results){
-  const periodSettings=await env.DB.prepare('SELECT monthly_due_day FROM finance_settings WHERE effective_from<=? ORDER BY effective_from DESC,created_at DESC LIMIT 1').bind(String(r.period)+'-01').first();
+  const periodSettings=await env.DB.prepare('SELECT monthly_due_day FROM finance_settings WHERE monthly_effective_from<=? ORDER BY monthly_effective_from DESC,created_at DESC LIMIT 1').bind(String(r.period)+'-01').first();
   if(!periodSettings)continue;
   const parts=String(r.period).split('-').map(Number), maxDay=parts[1]<=6?31:parts[1]<=11?30:29, dueDay=Math.min(periodSettings.monthly_due_day,maxDay);
   const due=jalaliDate(parts[0],parts[1],dueDay), days=due?diff(now,due):null;
@@ -81,23 +87,25 @@ export async function runReminders(env,now=new Date()){
   }
  }
  // شارژ مالکانه سالیانه نیز فقط در حساب مالک ایجاد و پیگیری می‌شود.
- if(settings.owner_amount>0){
-  const owners=await env.DB.prepare("SELECT u.id,u.unit_id,n.unit_number FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' JOIN units n ON n.id=u.unit_id WHERE u.active=1").all();
-  for(const o of owners.results){
-   const exists=await env.DB.prepare("SELECT id FROM transactions WHERE unit_id=? AND fund_id='owner' AND kind='charge' AND period=? AND status='approved' LIMIT 1").bind(o.unit_id,String(today.y)).first();
-   if(!exists)await env.DB.prepare("INSERT INTO transactions(id,unit_id,fund_id,kind,amount,title,period,status,created_by,approved_by,approved_at) VALUES(?,?,'owner','charge',?,?,?,'approved',?,?,CURRENT_TIMESTAMP)")
-    .bind(crypto.randomUUID(),o.unit_id,settings.owner_amount,'شارژ مالکانه سال '+today.y,String(today.y),sender.id,sender.id).run();
-  }
-  const odue=jalaliDate(today.y,settings.owner_due_month,Math.min(settings.owner_due_day,settings.owner_due_month<=6?31:settings.owner_due_month<=11?30:29));
-  const odays=odue?diff(now,odue):null, ostage=odays===-2?'before':odays===0?'due':odays===2?'late2':odays>=7?'late7':null;
-  if(ostage){
-   const ownersDue=await env.DB.prepare("SELECT u.id,u.unit_id,n.unit_number,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind='charge' AND status='approved' AND period=?),0) charged,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind IN ('payment','adjustment') AND status='approved'),0) paid FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' JOIN units n ON n.id=u.unit_id WHERE u.active=1").bind(String(today.y)).all();
-   for(const o of ownersDue.results){
-    const balance=o.charged-o.paid;if(balance<=0)continue;
-    const copy=templates[ostage];
-    const title=ostage==='late7'?'تذکر درباره بدهی شارژ مالکانه':copy[0].replace('شارژ ماهیانه','شارژ مالکانه');
-    const body='مالک محترم واحد '+o.unit_number+'،\n\n'+(ostage==='late7'?'با وجود گذشت هفت روز یا بیشتر از موعد پرداخت شارژ مالکانه، مبلغ '+amount(balance)+' تومان همچنان تسویه نشده است.\n\nپرداخت به‌موقع شارژ مالکانه بخشی از مسئولیت مشترک در حفظ و نگهداری ساختمان و تأمین منابع مورد نیاز آن است. تأخیر در پرداخت می‌تواند برنامه‌ریزی و اجرای امور مصوب ساختمان را با مشکل روبه‌رو کند.\n\nانتظار می‌رود با احساس مسئولیت نسبت به مجموعه و سایر ساکنان، در اسرع وقت بدهی خود را تسویه فرمایید.':copy[2].replace('شارژ ماهیانه','شارژ مالکانه').replace('AMOUNT',amount(balance)))+'\n\nمدیریت ساختمان نیکا';
-    await send(env.DB,sender.id,o.id,title,body,copy[1],'owner:'+o.unit_id+':'+today.y+':'+(ostage==='late7'?'daily:'+keyDate(now):ostage));sent++;
+ if(ownerSettings?.owner_amount>0 && ownerSettings.owner_due_date){
+  const dueParts=String(ownerSettings.owner_due_date).split('-').map(Number);
+  const dueYear=dueParts[0], due=jalaliDate(dueParts[0],dueParts[1],dueParts[2]);
+  if(due && dueYear===today.y){
+   const owners=await env.DB.prepare("SELECT u.id,u.unit_id,n.unit_number FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' JOIN units n ON n.id=u.unit_id WHERE u.active=1").all();
+   for(const o of owners.results){
+    const exists=await env.DB.prepare("SELECT id FROM transactions WHERE unit_id=? AND fund_id='owner' AND kind='charge' AND period=? AND status='approved' LIMIT 1").bind(o.unit_id,String(today.y)).first();
+    if(!exists)await env.DB.prepare("INSERT INTO transactions(id,unit_id,fund_id,kind,amount,title,period,status,created_by,approved_by,approved_at) VALUES(?,?,'owner','charge',?,?,?,'approved',?,?,CURRENT_TIMESTAMP)")
+     .bind(crypto.randomUUID(),o.unit_id,ownerSettings.owner_amount,'شارژ مالکانه سال '+today.y,String(today.y),sender.id,sender.id).run();
+   }
+   const odays=diff(now,due),ostage=odays===-2?'before':odays===0?'due':odays===2?'late2':odays>=7?'late7':null;
+   if(ostage){
+    const ownersDue=await env.DB.prepare("SELECT u.id,u.unit_id,n.unit_number,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind='charge' AND status='approved' AND period=?),0) charged,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind IN ('payment','adjustment') AND status='approved'),0) paid FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' JOIN units n ON n.id=u.unit_id WHERE u.active=1").bind(String(today.y)).all();
+    for(const o of ownersDue.results){
+     const balance=o.charged-o.paid;if(balance<=0)continue;
+     const copy=templates[ostage],title=ostage==='late7'?'تذکر درباره بدهی شارژ مالکانه':copy[0].replace('شارژ ماهیانه','شارژ مالکانه');
+     const body='مالک محترم واحد '+o.unit_number+'،\\n\\n'+(ostage==='late7'?'با وجود گذشت هفت روز یا بیشتر از موعد پرداخت شارژ مالکانه، مبلغ '+amount(balance)+' تومان همچنان تسویه نشده است.\\n\\nپرداخت به‌موقع شارژ مالکانه بخشی از مسئولیت مشترک در حفظ و نگهداری ساختمان و تأمین منابع مورد نیاز آن است. تأخیر در پرداخت می‌تواند برنامه‌ریزی و اجرای امور مصوب ساختمان را با مشکل روبه‌رو کند.\\n\\nانتظار می‌رود با احساس مسئولیت نسبت به مجموعه و سایر ساکنان، در اسرع وقت بدهی خود را تسویه فرمایید.':copy[2].replace(/شارژ ماهیانه/g,'شارژ مالکانه').replace('AMOUNT',amount(balance)))+'\\n\\nمدیریت ساختمان نیکا';
+     await send(env.DB,sender.id,o.id,title,body,copy[1],'owner:'+o.unit_id+':'+today.y+':'+(ostage==='late7'?'daily:'+keyDate(now):ostage));sent++;
+    }
    }
   }
  }
