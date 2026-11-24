@@ -367,7 +367,9 @@ async function expenseRequestsTab() {
     if (!selected.length) throw new Error('تصویر حداقل یک سند پشتیبان را انتخاب کنید');
     if (selected.length > 4) throw new Error('حداکثر چهار تصویر قابل ارسال است');
     const files = await Promise.all(selected.map(toDocumentImage));
-    const result = await api('/expense-requests', { method: 'POST', body: { ...d, files } });
+    const body = { ...d, files };
+    if (!S.user.roles.includes('executive')) { const reason = await promptText('دلیل انجام خارج از مسئولیت', 'چرا این درخواست را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+    const result = await api('/expense-requests', { method: 'POST', body });
     toast(`درخواست ${result.referenceNo} ثبت و برای مدیر مالی ارسال شد`); reload();
    });
    act(box, '[data-request-open]', async b => showExpenseRequestDetails(b.dataset.requestOpen));
