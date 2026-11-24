@@ -30,8 +30,6 @@
 <label class="nika-label" for="fpNew2">تکرار رمز جدید</label><input class="nika-input" id="fpNew2" type="password" autocomplete="new-password" dir="ltr">
 <div class="nika-footnote">رمز نباید فقط عدد باشد و نباید شامل شماره موبایل شما باشد.</div><p class="nika-error" id="forceError" role="alert"></p>
 <div class="nika-actions"><button class="nika-primary" type="submit">ذخیره و ادامه</button><button class="nika-secondary" type="button" id="forceLogout">انصراف و خروج</button></div></form></div></div></section>
-<section id="nikaAdmin" class="nika-hide"><div class="nika-admin-shell"><header class="nika-admin-head"><div><h1>مدیریت ساختمان · نیکا</h1><p id="adminWho" style="font-size:11px;color:#aab8d0;margin-top:5px"></p></div><div class="nika-admin-actions"><img class="nika-admin-avatar nika-hide" id="adminAvatar" src="assets/avatar.jpg" alt="تصویر نمایه"><button class="nika-secondary sm" id="adminBack">بازگشت به برنامه</button><button class="nika-secondary sm" id="adminExit">خروج</button></div></header>
-<nav class="nika-adminnav" id="adminNav" aria-label="بخش‌های مدیریت"></nav><div id="nikaAdminContent"></div></div></section>
 <main class="phone">
  <header class="header">
   <img class="avatar" id="hdrAvatar" src="assets/avatar.jpg" alt="آواتار کاربر">
@@ -70,7 +68,7 @@
   <button class="category" data-menu="calendar"><span class="cat-icon"><svg viewBox="0 0 32 32"><rect x="5" y="7" width="22" height="21" rx="3"/><path d="M10 4v6M22 4v6M5 13h22M10 18h4M18 18h4M10 23h4"/></svg></span><span>تقویم</span></button>
  </section>
 
- <div class="notice-head"><h2>قابل توجه</h2><button id="noticeAll">مشاهده همه</button></div>
+ <div class="notice-head" id="noticeHead"><h2>قابل توجه</h2><button id="noticeAll">مشاهده همه</button></div>
  <section class="panel notice" id="noticeCard" role="button" tabindex="0">
   <div class="notice-meta"><span id="ntDate"></span><span class="notice-new" id="ntNew" style="display:none">جدید</span></div>
   <h3 class="notice-title" id="ntTitle">—</h3>
@@ -79,6 +77,12 @@
  </section>
 
  <section class="page-view" id="pageView" aria-live="polite"></section>
+ <section id="nikaAdmin" class="nika-admin-inline nika-hide" aria-label="امکانات مدیریت">
+  <div class="nika-admin-shell">
+   <nav class="nika-adminnav" id="adminNav" aria-label="بخش‌های مدیریت"></nav>
+   <div id="nikaAdminContent"></div>
+  </div>
+ </section>
  <nav class="bottom-nav" aria-label="ناوبری اصلی">
   <button class="nav-item active" data-nav="خانه"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v10h-6v-6H9v6H3z"/></svg><span>خانه</span></button>
   <button class="nav-item" data-nav="حساب من"><svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/></svg><span>حساب من</span></button>
