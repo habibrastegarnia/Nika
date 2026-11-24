@@ -76,7 +76,7 @@ export async function runReminders(env,now=new Date()){
    const owner=await env.DB.prepare("SELECT u.id FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' WHERE u.unit_id=? AND u.active=1 LIMIT 1").bind(r.unit_id).first();
    if(owner){
     const ownerBody='مالک محترم واحد '+r.unit_number+'،\n\nبه اطلاع می‌رسانیم شارژ ماهیانه واحد شما به مبلغ '+amount(balance)+' تومان که پرداخت آن بر عهده ساکن واحد است، با گذشت هفت روز از موعد سررسید همچنان تسویه نشده است.\n\nتأمین هزینه‌های جاری و اداره مناسب ساختمان به مشارکت منظم تمامی واحدها وابسته است. استمرار این وضعیت می‌تواند بر انجام امور مشترک و ارائه خدمات به سایر ساکنان نیز تأثیر بگذارد.\n\nخواهشمندیم در صورت امکان، موضوع را با ساکن واحد پیگیری فرمایید و در تقویت فرهنگ مسئولیت‌پذیری و همکاری جمعی ساختمان همراه مدیریت باشید.\n\nتوجه: بدهی یادشده همچنان در حساب ساکن ثبت است و به حساب مالک منتقل نشده است.\n\nمدیریت ساختمان نیکا';
-    await send(env.DB,sender.id,owner.id,'اطلاع درباره تأخیر در پرداخت شارژ واحد شما',ownerBody,'info','owner-notice:'+r.unit_id+':'+r.period+':'+keyDate(now));sent++;
+    await send(env.DB,sender.id,owner.id,'اطلاع درباره تأخیر در پرداخت شارژ واحد شما',ownerBody,'info','owner-notice:'+r.unit_id+':'+r.period);sent++;
    }
   }
  }
