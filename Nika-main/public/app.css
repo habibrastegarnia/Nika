@@ -393,3 +393,8 @@ html[data-theme="light"] .workspace-toggle{background:linear-gradient(145deg,#ff
 .finance-calendar-days button.selected{background:#657bb2;color:white;box-shadow:0 0 0 1px #aebef0 inset}
 .finance-calendar-days i{min-height:32px}
 @media(max-width:390px){.finance-setting-row{grid-template-columns:1fr;gap:0}}
+
+/* Finance settings form fields */
+.finance-field{min-width:0;direction:rtl;text-align:right}
+.finance-field .nika-label{margin:0 0 6px}
+.finance-field .nika-input{width:100%}
