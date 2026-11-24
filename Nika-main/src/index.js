@@ -1,7 +1,7 @@
 // نقطه‌ی ورود Worker: مسیریابی، احراز هویت، CSRF و کنترل دسترسی
 import { match } from './router.js';
-import { ApiError, err, reply } from './lib.js';
-import { can, canAny } from './perms.js';
+import { ApiError, err, reply, audit } from './lib.js';
+import { can, canAny, PERMISSION_OWNER } from './perms.js';
 import { authenticate } from './auth.js';
 import './admin.js';
 import './finance.js';
@@ -30,8 +30,28 @@ async function handle(request, env, url) {
     if (c.user.must_change_password && !ALLOWED_WHILE_FORCED.includes(url.pathname)) throw err(403, 'PASSWORD_CHANGE_REQUIRED', 'ابتدا رمز عبور خود را تغییر دهید');
     const { perm, any } = route.opts;
     if ((perm && !can(c.user, perm)) || (any && !canAny(c.user, any))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
+
+    // اگر انجام‌دهنده مسئول اصلی این مجوز نباشد، ثبت دلیل پیش از عملیات الزامی است.
+    const ownerRole = mutating && perm ? PERMISSION_OWNER[perm] : null;
+    if (ownerRole && !c.user.roles.includes(ownerRole)) {
+      let body = {};
+      try { body = await request.clone().json(); } catch {}
+      const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+      if (!reason) throw err(400, 'OVERRIDE_REASON_REQUIRED', 'برای انجام این عملیات خارج از مسئولیت خود، ثبت دلیل الزامی است');
+      if (reason.length > 500) throw err(400, 'INVALID_REASON', 'شرح دلیل حداکثر ۵۰۰ نویسه باشد');
+      c.overrideReason = reason;
+      c.overrideRole = ownerRole;
+      c.overridePermission = perm;
+    }
   }
-  return route.handler(c);
+  const response = await route.handler(c);
+  if (c.overrideReason) {
+    const actorRole = c.user.roles[0] || c.user.delegatedRoles?.[0] || 'manager';
+    await audit(c.db, c.user.id, 'manager.override_action', 'permission', url.pathname, {
+      permission: c.overridePermission, responsibleRole: c.overrideRole
+    }, { actorRole, isDelegate: true, reason: c.overrideReason });
+  }
+  return response;
 }
 
 export default {
