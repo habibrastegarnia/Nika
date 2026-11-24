@@ -27,6 +27,8 @@ async function send(db,sender,recipient,title,body,tone,key){
  .bind(crypto.randomUUID(),sender,recipient,title,body,tone,key).run();
 }
 R('GET','/api/finance/reminder-settings',{perm:'*'},async c=>{
+ const exists=await c.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='finance_settings'").first();
+ if(!exists)return reply({settings:null});
  const settings=await c.db.prepare('SELECT monthly_amount,monthly_due_day,owner_amount,owner_due_month,owner_due_day,effective_from,created_at FROM finance_settings ORDER BY effective_from DESC,created_at DESC LIMIT 1').first();
  return reply({settings:settings||null});
 });
