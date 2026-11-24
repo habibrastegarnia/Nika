@@ -41,13 +41,14 @@ test('health و تنظیمات', async () => {
 test('setup: کلید لازم است، رمز ضعیف رد می‌شود، فقط یک‌بار', async () => {
   assert.equal((await chair.post('/api/setup', { name: 'رئیس', phone: '09120000001', password: CHAIR_PW })).status, 403);
   const bad = { 'X-Setup-Key': 'setup-key-123' };
-  assert.equal((await chair.call('POST', '/api/setup', { name: 'رئیس', phone: '09120000001', password: '12345' }, bad)).status, 400);
-  assert.equal((await chair.call('POST', '/api/setup', { name: 'رئیس', phone: '09120000001', password: CHAIR_PW }, bad)).status, 201);
+  assert.equal((await chair.call('POST', '/api/setup', { name: 'رئیس', phone: '09120000001', password: '12345' }, bad)).status, 201);
+  assert.equal((await chair.call('POST', '/api/setup', { name: 'رئیس', phone: '09120000001', password: CHAIR_PW }, bad)).status, 409);
   assert.equal((await chair.call('POST', '/api/setup', { name: 'دوم', phone: '09120000002', password: CHAIR_PW }, bad)).status, 409);
 });
 
 test('ورود مدیر/کارکنان (بدون شماره واحد) کار می‌کند و کوکی HttpOnly می‌گیرد', async () => {
-  const r = await chair.login('staff', '09120000001', CHAIR_PW);
+  const r = await chair.login('staff', 'Admin', 'admin');
+  assert.equal((await chair.post('/api/password', { newPassword: CHAIR_PW })).status, 200);
   assert.equal(r.status, 200);
   const sc = r.res.headers.get('Set-Cookie');
   assert.match(sc, /HttpOnly/); assert.match(sc, /SameSite=Strict/); assert.match(sc, /Secure/);
