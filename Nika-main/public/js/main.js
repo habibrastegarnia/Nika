@@ -4,8 +4,9 @@ import { S, can, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
 import * as P from './pages.js?v=4';
-import { showAdmin, hideAdmin, adminAvailable } from './admin.js?v=6';
+import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=7';
 
+let managerMode = false;
 const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList.toggle('nika-hide', s !== id); $('.phone').classList.toggle('nika-hide', id !== '#app'); $('#nikaAdmin').classList.add('nika-hide'); };
 
 // ---------- ورود ----------
@@ -32,7 +33,7 @@ function forcePassword() { show('#nikaForce'); }
 async function enter(user) {
   S.user = user;
   if (user.must_change_password) return forcePassword();
-  show('#app'); resetRouter(); showHome(); setupNav();
+  managerMode = false; show('#app'); resetRouter(); showHome(); setupNav();
   await P.loadHome(); P.refreshSummary();
 }
 async function logout() {
@@ -46,17 +47,18 @@ function setupNav() {
   const hasAdminWorkspace = isManager() && adminAvailable();
   const workspaceToggle = $('#workspaceToggle');
   workspaceToggle.classList.toggle('nika-hide', !hasAdminWorkspace);
+  workspaceToggle.classList.remove('is-admin');
   workspaceToggle.onclick = () => {
-    if ($('#nikaAdmin').classList.contains('nika-hide')) showAdmin();
-    else hideAdmin();
+    managerMode = !managerMode;
+    if (managerMode) showAdmin();
+    else showResidentMode();
   };
-  // میانبرهای مدیریتی فقط بر اساس مجوز واقعی کاربر نمایش داده می‌شوند.
   const shortcutHost = $('.categories');
   $$('.category[data-admin-tab]', shortcutHost).forEach(el => el.remove());
   const adminShortcuts = [
     ['users', 'کاربران', can('users.manage'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>'],
     ['units', 'واحدها', can('units.manage'), '<path d="M4 27V5h24v22"/><path d="M9 10h4v4H9zM19 10h4v4h-4zM9 19h4v4H9zM19 19h4v4h-4z"/>'],
-    ['finance', 'تنظیمات مالی', can('*') || can('system.settings'), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>']
+    ['finance', 'مالی', canAny(['system.settings', 'finance.approve', 'expenses.approve', 'expenses.create']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>']
   ];
   for (const [key, label, allowed, path] of adminShortcuts) {
     if (!allowed) continue;
@@ -66,18 +68,13 @@ function setupNav() {
     b.onclick = () => showAdmin(key);
     shortcutHost.appendChild(b);
   }
-  // پنل اطلاع‌رسانی میانی برای نقش‌های مدیریتی نمایش داده نمی‌شود.
-  $('#noticeHead')?.classList.toggle('nika-hide', isManager());
-  $('#noticeCard')?.classList.toggle('nika-hide', isManager());
-  // فضای مدیریت همیشه از همان کلید بالای داشبورد باز می‌شود؛
-  // منوی پایین صفحه فقط برای ناوبری اصلی باقی می‌ماند.
   $('#admNavBtn')?.remove();
   nav.style.gridTemplateColumns = '';
 }
 function initNav() {
   $$('.nav-item').forEach(b => { if (b.id === 'admNavBtn') return; b.onclick = () => {
     const n = b.dataset.nav;
-    if (!$('#nikaAdmin').classList.contains('nika-hide')) hideAdmin();
+    if (!$('#nikaAdmin').classList.contains('nika-hide') || !$('.phone > .page-view').classList.contains('nika-dashboard-hidden')) hideAdmin();
     if (n === 'خانه') { showHome(); P.loadHome(); }
     else if (n === 'حساب من') open(P.profilePage, { root: true });
     else if (n === 'مالی') open(() => P.financePage(), { root: true });
@@ -85,7 +82,7 @@ function initNav() {
   }; });
   $('#headerLogout').onclick = logout;
   $('.category[data-menu]').forEach(b => b.onclick = () => {
-    if (!$('#nikaAdmin').classList.contains('nika-hide')) hideAdmin();
+    if (!$('#nikaAdmin').classList.contains('nika-hide') || !$('.phone > .page-view').classList.contains('nika-dashboard-hidden')) hideAdmin();
     const m = b.dataset.menu;
     open({ rules: P.rulesPage, requests: P.requestsPage, calendar: () => P.calendarPage(), resolutions: P.resolutionsPage }[m], { root: true });
   });
