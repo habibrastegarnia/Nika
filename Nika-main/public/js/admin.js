@@ -134,6 +134,17 @@ async function financeTab() {
     canAny(['finance.reports', 'finance.approve']) ? api(`/finance/balances?fund=${fund}`) : null]);
   const pending = pend.filter(t => t.kind === 'payment' ? can('finance.approve') : can('expenses.approve'));
   const sections = [];
+  if (can('*')) {
+    const { settings } = await api('/finance/reminder-settings');
+    sections.push(card('تنظیمات پایدار شارژ و سررسید', html`<form id="financeSettings" novalidate>${fields([
+      { name: 'monthlyAmount', label: 'مبلغ شارژ ماهیانه هر واحد (تومان)', value: settings?.monthly_amount ?? '', inputmode: 'numeric', required: true, dir: 'ltr' },
+      { name: 'monthlyDueDay', label: 'روز سررسید شارژ ماهیانه', value: settings?.monthly_due_day ?? '5', inputmode: 'numeric', required: true, dir: 'ltr' },
+      { name: 'ownerAmount', label: 'مبلغ شارژ مالکانه سالیانه هر واحد (تومان)', value: settings?.owner_amount ?? '', inputmode: 'numeric', required: true, dir: 'ltr' },
+      { name: 'ownerDueMonth', label: 'ماه سررسید شارژ مالکانه (۱ تا ۱۲ شمسی)', value: settings?.owner_due_month ?? '1', inputmode: 'numeric', required: true, dir: 'ltr' },
+      { name: 'ownerDueDay', label: 'روز سررسید شارژ مالکانه', value: settings?.owner_due_day ?? '1', inputmode: 'numeric', required: true, dir: 'ltr' },
+      { name: 'effectiveFrom', label: 'تاریخ اجرای مصوبه (شمسی)', value: settings?.effective_from ?? (curPeriod() + '-01'), required: true, dir: 'ltr', hint: 'تنظیم جدید از این تاریخ اجرا می‌شود؛ سوابق قبلی محفوظ می‌مانند.' }
+    ], 'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ثبت مصوبه جدید</button></div></form><div class="nika-footnote">مقادیر و سررسیدها تا ثبت مصوبه بعدی معتبر می‌مانند. یادآوری‌ها: دو روز قبل، روز سررسید، دو روز بعد، هفت روز بعد و سپس روزانه تا تسویه.</div>`));
+  }
   if (canApprove) sections.push(card(`در انتظار تأیید (${fa(pending.length)})`, pending.length ? html`<div class="nika-users">${pending.map(t => html`<div class="nika-usercard"><strong>${t.title} · ${toman(t.amount)}</strong><small>${KIND_FA[t.kind]} · ${FUND_FA[t.fund_id]}${t.unit_number ? ' · واحد ' + t.unit_number : ''}${t.category ? ' · ' + t.category : ''}${t.period ? ' · ' + (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) : ''}${t.reference ? ' · پیگیری ' + t.reference : ''} · ثبت: ${t.created_name} · ${fdt(t.created_at)}${t.note ? ' · ' + t.note : ''}</small><div class="row-actions"><button class="page-btn sm ok" data-ok="${t.id}">تأیید</button><button class="page-btn sm danger" data-no="${t.id}">رد</button></div></div>`)}</div>` : empty('مورد در انتظاری وجود ندارد.')));
   if (can('finance.charge')) sections.push(card('تعریف شارژ / اعتبار', html`<form id="chNew" novalidate>${fields([
     { name: 'fund', label: 'صندوق', type: 'select', value: 'monthly', options: fundOpts },
@@ -153,6 +164,16 @@ async function financeTab() {
   return {
     html: html`<div class="nika-admin-grid">${sections}</div>`,
     bind(box) {
+      const fs = $('#financeSettings', box);
+      if (fs) onSubmit(fs, async d => {
+        const num = v => parseAmount(v);
+        await api('/finance/reminder-settings', { method: 'POST', body: {
+          monthlyAmount: num(d.monthlyAmount), monthlyDueDay: num(d.monthlyDueDay),
+          ownerAmount: num(d.ownerAmount), ownerDueMonth: num(d.ownerDueMonth),
+          ownerDueDay: num(d.ownerDueDay), effectiveFrom: normDigits(d.effectiveFrom)
+        }});
+        toast('مصوبه مالی جدید ثبت شد؛ تنظیمات قبلی محفوظ ماند'); reload();
+      });
       act(box, '[data-ok]', async b => { await api(`/transactions/${b.dataset.ok}/decision`, { method: 'POST', body: { status: 'approved' } }); toast('تأیید شد'); reload(); });
       act(box, '[data-no]', async b => { const note = await promptText('رد مورد', 'دلیل رد را بنویسید (برای کاربر نمایش داده می‌شود)', 'ثبت رد'); if (!note) return; await api(`/transactions/${b.dataset.no}/decision`, { method: 'POST', body: { status: 'rejected', note } }); toast('رد شد'); reload(); });
       act(box, '[data-fund]', async b => { sub.fund = b.dataset.fund; reload(); });
