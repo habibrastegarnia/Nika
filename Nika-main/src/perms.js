@@ -49,6 +49,27 @@ export function delegatedPerms(roles) {
   return [...new Set(roles.flatMap(role => DELEGATE_PERMS[role] || []))];
 }
 
+// مسئول اصلی هر عملیات برای الزام ثبت دلیل در زمان اقدام خارج از مسئولیت
+export const PERMISSION_OWNER = {
+  'users.manage': 'executive',
+  'users.delete': 'executive',
+  'finance.approve': 'finance',
+  'expenses.approve': 'finance',
+  'expenses.finalize': 'chair',
+  'expenses.create': 'executive',
+  'events.manage': 'executive',
+  'requests.manage': 'executive',
+  'messages.manage': 'executive',
+  'notices.manage': 'executive',
+  'units.manage': 'chair',
+  'finance.charge': 'chair',
+  'finance.settings': 'chair',
+  'roles.assign': 'chair',
+  'rules.manage': 'chair',
+  'resolutions.manage': 'chair',
+  'documents.manage': 'chair'
+};
+
 export function userPerms(roles) {
   const s = new Set(BASE);
   // مدیر سامانه‌ای که نقش ساکن/مالک ندارد، مجوزهای عمومی ساختمان را نمی‌گیرد.
