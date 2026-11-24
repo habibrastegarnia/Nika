@@ -15,7 +15,7 @@ const fundPeriod = (fund, value, required = true) => fund === 'owner'
   : period(value, required);
 const canReadFund = (u, f) => can(u, `finance.${f}.read`);
 const canSeeAggregates = (u, f) => canReadFund(u, f) || canAny(u, ['reports.read', 'finance.reports']);
-const privileged = u => canAny(u, ['finance.approve', 'finance.reports', 'expenses.approve']);
+const privileged = u => canAny(u, ['finance.approve', 'finance.transactions.read', 'expenses.approve']);
 
 const COLS = `t.id,t.fund_id,t.kind,t.amount,t.title,t.period,t.status,t.reference,t.category,t.note,t.created_at,t.approved_at,t.created_by,
               n.unit_number,cu.name created_name,au.name approved_name`;
