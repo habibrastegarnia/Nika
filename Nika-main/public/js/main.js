@@ -65,7 +65,8 @@ function setupNav() {
   const adminShortcuts = [
     ['users', 'کاربران', can('users.read'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>'],
     ['units', 'واحدها', can('units.read'), '<path d="M4 27V5h24v22"/><path d="M9 10h4v4H9zM19 10h4v4h-4zM9 19h4v4H9zM19 19h4v4h-4z"/>'],
-    ['finance', 'مالی', canAny(['finance.settings', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>']
+    ['finance', 'مالی', canAny(['finance.settings', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>'],
+    ['reports', 'گزارش عملکرد', can('audit.read'), '<path d="M5 27V5M5 27h23M10 21v-6M16 21V9M22 21v-9"/>']
   ];
   for (const [key, label, allowed, path] of adminShortcuts) {
     if (!allowed) continue;
@@ -77,13 +78,13 @@ function setupNav() {
   }
   const roles = [...(S.user?.roles || []), ...(S.user?.delegatedRoles || [])];
   const order = roles.includes('chair')
-    ? ['finance', 'users', 'units', 'calendar', 'resolutions', 'rules']
+    ? ['finance', 'users', 'units', 'reports', 'calendar', 'resolutions', 'rules']
     : roles.includes('finance')
       ? ['finance', 'users', 'units', 'calendar', 'resolutions', 'rules']
       : roles.includes('executive')
-        ? ['finance', 'users', 'units', 'calendar', 'rules', 'resolutions']
+        ? ['finance', 'users', 'units', 'calendar', 'reports', 'rules', 'resolutions']
         : roles.includes('board')
-          ? ['finance', 'units', 'calendar', 'resolutions', 'rules']
+          ? ['finance', 'units', 'reports', 'calendar', 'resolutions', 'rules']
           : roles.includes('system_admin')
             ? ['users']
             : ['rules', 'requests', 'calendar', 'resolutions'];
