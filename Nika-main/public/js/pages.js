@@ -273,9 +273,30 @@ export function editProfilePage() {
   };
   const del = $('#avDel', v); if (del) del.onclick = async () => { S.user = (await api('/avatar', { method: 'DELETE' })).user; fillHeader(); toast('حذف شد'); open(profilePage, { replace: true }); };
 }
-export function settingsPage() {
+export async function settingsPage() {
   const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const managerRoles = ['chair', 'finance', 'board', 'executive'];
+  const canDelegate = S.user.roles.some(r => managerRoles.includes(r));
+  let delegationData = { roles: [], available: [], delegations: [] };
+  if (canDelegate) delegationData = await api('/delegations');
+  const roleLabels = { chair: 'رئیس هیئت‌مدیره', finance: 'مدیر مالی', board: 'عضو هیئت‌مدیره', executive: 'مدیر اجرایی' };
+  const currentFor = role => delegationData.delegations.find(d => d.delegator_role === role);
+  const delegationCard = canDelegate ? html`<section class="page-card"><h3>جانشین مسئولیت‌ها</h3><p class="nika-footnote">برای هر مسئولیت فقط خودِ مسئول اصلی می‌تواند جانشین تعیین کند. با غیرفعال‌کردن گزینه، دسترسی جانشین فوراً قطع می‌شود.</p>
+    ${delegationData.roles.map(role => {
+      const d = currentFor(role), enabled = !!d?.enabled;
+      return html`<div class="delegation-setting" data-delegation-role="${role}">
+        <div class="row" style="align-items:center;justify-content:space-between"><strong>جانشین ${roleLabels[role]}</strong><label class="compose-check"><input type="checkbox" data-delegation-toggle="${role}" ${enabled ? raw('checked') : ''}> فعال‌سازی جانشین</label></div>
+        <select class="page-select" data-delegation-select="${role}" ${enabled ? '' : raw('disabled')}>
+          <option value="">انتخاب از میان مدیران ساختمان</option>
+          ${delegationData.available.map(u => html`<option value="${u.id}" ${d?.delegate_user_id === u.id ? raw('selected') : ''}>${u.name} · ${u.roles.map(r => roleLabels[r] || ROLE_FA[r]).join('، ')}</option>`)}
+        </select>
+        <button class="page-btn secondary full" type="button" data-delegation-save="${role}">ذخیره جانشین</button>
+      </div>`;
+    })}
+    ${delegationData.available.length ? '' : html`<p class="nika-footnote">در حال حاضر مدیر فعال دیگری برای انتخاب به‌عنوان جانشین وجود ندارد.</p>`}
+  </section>` : '';
   const v = route('حساب من', 'تنظیمات و امنیت', '', html`<section class="page-card theme-setting"><div class="theme-setting-copy"><h3>حالت نمایش</h3><p>انتخاب بین نمای شب و روز</p></div><div class="theme-switch-wrap"><span class="theme-current" id="themeCurrent">${currentTheme === 'light' ? 'روز' : 'شب'}</span><button class="theme-switch" type="button" id="themeToggle" role="switch" aria-checked="${currentTheme === 'light'}" aria-label="تغییر بین حالت شب و روز"><span class="theme-switch-sun">☀</span><span class="theme-switch-moon">☾</span><span class="theme-switch-thumb"></span></button></div></section>
+  ${delegationCard}
   <form class="page-card page-form" novalidate><h3>تغییر رمز عبور</h3>${fields([
     { name: 'currentPassword', label: 'رمز فعلی', type: 'password', required: true, dir: 'ltr', autocomplete: 'current-password' },
     { name: 'newPassword', label: 'رمز جدید (حداقل ۱۰ کاراکتر، نه فقط عدد)', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' },
@@ -292,5 +313,24 @@ export function settingsPage() {
   onSubmit($('form', v), async (d, f) => {
     if (d.newPassword !== d.again) throw new Error('تکرار رمز با رمز جدید یکسان نیست');
     await api('/password', { method: 'POST', body: { currentPassword: d.currentPassword, newPassword: d.newPassword } }); f.reset(); toast('رمز عبور تغییر کرد');
+  });
+  $$('[data-delegation-toggle]', v).forEach(check => {
+    check.onchange = () => {
+      const select = $(`[data-delegation-select="${check.dataset.delegationToggle}"]`, v);
+      select.disabled = !check.checked;
+    };
+  });
+  $$('[data-delegation-save]', v).forEach(button => button.onclick = async () => {
+    const role = button.dataset.delegationSave;
+    const enabled = $(`[data-delegation-toggle="${role}"]`, v).checked;
+    const delegateId = $(`[data-delegation-select="${role}"]`, v).value;
+    if (enabled && !delegateId) { toast('ابتدا جانشین را انتخاب کنید'); return; }
+    button.disabled = true;
+    try {
+      await api(`/delegations/${role}`, { method: 'PUT', body: { enabled, delegateId: enabled ? delegateId : undefined } });
+      toast(enabled ? 'جانشین فعال شد' : 'دسترسی جانشین قطع شد');
+      open(settingsPage, { replace: true });
+    } catch (e) { toast(e.message); }
+    finally { button.disabled = false; }
   });
 }
