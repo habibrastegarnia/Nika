@@ -181,7 +181,7 @@ export async function messagesPage(box = 'inbox') {
   $('#msgNew', v).onclick = () => open(() => messageComposePage());
   $$('[data-i]', v).forEach(r => r.onclick = async () => {
     const m = messages[r.dataset.i];
-    const el = openModal(m.title, html`<p class="page-kicker">${box === 'sent' ? 'به: ' + (m.recipient_name || 'مدیریت') : 'از: ' + m.sender_name} · ${fdt(m.created_at)}</p><p dir="rtl" style="white-space:pre-wrap;text-align:right;direction:rtl">${m.body}</p>${box === 'inbox' && m.sender_id !== S.user.id && !can('messages.manage') ? html`<div class="row-actions"><button class="page-btn sm" data-reply>پاسخ</button></div>` : ''}`);
+    const el = openModal(m.title, html`<p class="page-kicker">${box === 'sent' ? 'به: ' + (m.recipient_name || 'مدیریت') : 'از: ' + m.sender_name} · ${fdt(m.created_at)}</p><p dir="rtl" class="nika-message-body tone-\${m.tone}" style="white-space:pre-wrap;text-align:right;direction:rtl">${m.body}</p>${box === 'inbox' && m.sender_id !== S.user.id && !can('messages.manage') ? html`<div class="row-actions"><button class="page-btn sm" data-reply>پاسخ</button></div>` : ''}`);
     const rp = $('[data-reply]', el); if (rp) rp.onclick = () => { closeModal(); open(() => messageComposePage('Re: ' + m.title)); };
     if (box === 'inbox' && !m.read_at) { api(`/messages/${m.id}/read`, { method: 'POST' }).then(refreshSummary).catch(() => {}); r.classList.remove('unread'); m.read_at = 1; }
   });
