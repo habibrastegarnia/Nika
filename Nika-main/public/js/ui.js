@@ -97,7 +97,7 @@ export function fields(list, cls = 'page') {
     else if (f.type === 'textarea') ctl = html`<textarea class="${ta}" name="${f.name}" rows="${f.rows || 4}"${req}${ph}>${f.value ?? ''}</textarea>`;
     else if (f.type === 'checks') ctl = html`<div class="nika-rolelist">${f.options.map(([v, l]) => html`<label class="nika-roleoption"><input type="checkbox" name="${f.name}[]" value="${v}" ${(f.value || []).includes(v) ? raw('checked') : ''}>${l}</label>`)}</div>`;
     else if (f.type === 'checkbox') return html`<label class="compose-check"><input type="checkbox" name="${f.name}" ${f.value ? raw('checked') : ''}> <span>${f.label}</span></label>`;
-    else ctl = html`<input class="${inp}" name="${f.name}" type="${f.type || 'text'}" value="${f.value ?? ''}"${req}${ph}${dir} ${f.inputmode ? raw(`inputmode="${f.inputmode}"`) : ''} ${f.autocomplete ? raw(`autocomplete="${f.autocomplete}"`) : raw('autocomplete="off"')}>`;
+    else ctl = html`<input class="${inp}" name="${f.name}" type="${f.type || 'text'}" value="${f.value ?? ''}"${req}${ph}${dir} ${f.money ? raw(' data-money="true"') : ''} ${f.inputmode ? raw(`inputmode="${f.inputmode}"`) : ''} ${f.autocomplete ? raw(`autocomplete="${f.autocomplete}"`) : raw('autocomplete="off"')}>`;
     return html`<label class="${lab}">${f.label}</label>${ctl}${f.hint ? html`<div class="nika-footnote" style="margin-top:4px">${f.hint}</div>` : ''}`;
   });
 }
@@ -114,7 +114,7 @@ export function readForm(form) {
 }
 // ثبت فرم با نمایش خطا زیر فرم و جلوگیری از ارسال دوباره
 export function onSubmit(form, fn) {
-  $$('input[name="amount"]', form).forEach(input => { formatMoneyInput(input); input.addEventListener('input', () => formatMoneyInput(input)); });
+  $('input[name="amount"], input[data-money="true"]', form).forEach(input => { formatMoneyInput(input); input.addEventListener('input', () => formatMoneyInput(input)); });
   form.addEventListener('submit', async e => {
     e.preventDefault();
     let box = form.querySelector('.form-error');
