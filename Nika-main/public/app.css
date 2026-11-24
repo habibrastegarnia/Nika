@@ -311,3 +311,7 @@ html[data-theme="light"] .workspace-toggle{background:linear-gradient(145deg,#ff
 .nika-message-body.tone-amber{background:#fff0d8;color:#743b08;border-right:3px solid #d18a24}
 .nika-message-body.tone-danger{background:#fce9e9;color:#8d1717;border-right:3px solid #d94b52}
 .nika-message-body *{text-align:right;direction:rtl}
+
+/* فرم ایجاد حساب: انتخاب واحد و وضعیت مالک/ساکن در یک ردیف */
+.nika-user-unit-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;margin-bottom:4px}.nika-user-unit-select{min-width:0}.nika-user-unit-checks{display:flex;align-items:center;gap:10px;padding-bottom:2px}.nika-user-unit-checks .compose-check{white-space:nowrap;margin:0;font-size:11px}.nika-user-unit-checks input{accent-color:#83a0e8}
+@media(max-width:420px){.nika-user-unit-row{grid-template-columns:minmax(0,1fr) auto;gap:7px}.nika-user-unit-checks{gap:7px}.nika-user-unit-checks .compose-check{font-size:10px}}

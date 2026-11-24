@@ -52,6 +52,6 @@ export const TX_STATUS = { pending: ['در انتظار تأیید', 'amber'], a
 export const REQ_STATUS = { new: ['جدید', 'blue'], in_progress: ['در حال رسیدگی', 'amber'], resolved: ['انجام‌شده', 'green'], rejected: ['ردشده', 'red'] };
 export const REQ_KIND = { request: 'درخواست', idea: 'پیشنهاد', issue: 'گزارش خرابی' };
 export const REQ_CATEGORIES = ['عمومی', 'تأسیسات و تعمیرات', 'نظافت', 'امنیت', 'مالی', 'سایر'];
-export const ROLE_FA = { owner: 'مالک', resident: 'ساکن', executive: 'مدیر اجرایی', finance: 'مدیر مالی', board: 'هیأت‌مدیره', chair: 'رئیس', building_admin: 'مدیر ساختمان' };
+export const ROLE_FA = { owner: 'مالک', resident: 'ساکن', chair: 'رئیس هیأت‌مدیره', finance: 'مدیر مالی', board: 'عضو هیأت‌مدیره', executive: 'مدیر اجرایی', system_admin: 'مدیر سامانه', caretaker: 'سرایدار' };
 export const ACCOUNT_FA = { owner: 'مالک', resident: 'ساکن', staff: 'مدیر / کارکنان', both: 'مالک و ساکن' };
 export const chip = ([label, color]) => html`<span class="page-chip ${color}">${label}</span>`;

@@ -18,7 +18,7 @@ const extrasOnly = roles => roles.filter(r => EXTRA_ROLES.includes(r));
 R('GET', '/api/admin/users', { perm: 'users.manage' }, async c => {
   const q = (c.url.searchParams.get('q') || '').trim().slice(0, 50), like = `%${q}%`;
   const r = await c.db.prepare(
-    `SELECT u.id,u.name,u.phone,u.email,u.account_type,u.active,u.must_change_password,u.created_at,n.unit_number unit,
+    `SELECT u.id,u.name,u.phone,u.secondary_phone,u.account_type,u.active,u.must_change_password,u.created_at,n.unit_number unit,
             (SELECT GROUP_CONCAT(role) FROM user_roles WHERE user_id=u.id) roles
      FROM users u LEFT JOIN units n ON n.id=u.unit_id
      WHERE (?='' OR u.name LIKE ? OR u.phone LIKE ? OR n.unit_number LIKE ?)
@@ -34,7 +34,7 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   const accountType = x.accountType;
   if (!['owner', 'resident', 'both', 'staff'].includes(accountType)) throw err(400, 'INVALID_INPUT', 'نوع حساب نامعتبر است');
   const name = str(x.name, { max: 100, field: 'نام' }), phone = phoneOrFail(x.phone);
-  const email = optStr(x.email, { max: 120, field: 'ایمیل' });
+  const secondaryPhone = x.secondaryPhone ? phoneOrFail(x.secondaryPhone) : null;
   const extras = validateExtras(c.user, x.roles ?? []);
   if (accountType === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'برای حساب مدیر/کارکنان حداقل یک نقش انتخاب کنید');
   const storedType = accountType === 'both' ? 'owner' : accountType;
@@ -55,7 +55,7 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   }
   const uid = crypto.randomUUID(), initialPassword = accountType === 'staff' ? tempPassword() : phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
-    c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,email,password_hash,password_salt,must_change_password) VALUES(?,?,?,?,?,?,?,?,1)').bind(uid, unitId, storedType, name, phone, email, ph, salt),
+    c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,secondary_phone,password_hash,password_salt,must_change_password) VALUES(?,?,?,?,?,?,?,?,1)').bind(uid, unitId, storedType, name, phone, secondaryPhone, ph, salt),
     ...roles.map(r => c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, r))
   ]);
   await audit(c.db, c.user.id, 'user.create', 'user', uid, { accountType, unit: x.unit || null, roles });
@@ -78,7 +78,7 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
   const self = t.id === c.user.id;
   if (self && ('roles' in x || 'active' in x)) throw err(400, 'SELF_CHANGE', 'نقش‌ها یا وضعیت حساب خودتان را نمی‌توانید تغییر دهید');
   if ('name' in x) { sets.push('name=?'); vals.push(str(x.name, { max: 100, field: 'نام' })); }
-  if ('email' in x) { sets.push('email=?'); vals.push(optStr(x.email, { max: 120, field: 'ایمیل' })); }
+  if ('secondaryPhone' in x) { const p = x.secondaryPhone ? phoneOrFail(x.secondaryPhone) : null; sets.push('secondary_phone=?'); vals.push(p); }
   if ('phone' in x) {
     const phone = phoneOrFail(x.phone);
     const u = await c.db.prepare('SELECT unit_id,account_type FROM users WHERE id=?').bind(t.id).first();
@@ -132,11 +132,12 @@ R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async
 
 // حذف حساب کاربر؛ فقط رئیس هیئت‌مدیره اجازه دارد.
 R('DELETE', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
-  if (!can(c.user, '*')) throw err(403, 'FORBIDDEN', 'فقط رئیس هیئت‌مدیره می‌تواند حساب کاربران را حذف کند');
   const t = await c.db.prepare('SELECT id FROM users WHERE id=?').bind(c.params.id).first();
   if (!t) throw err(404, 'NOT_FOUND', 'کاربر پیدا نشد');
   if (t.id === c.user.id) throw err(400, 'SELF_DELETE', 'حسابی که با آن وارد شده‌اید قابل حذف نیست');
   const roles = await rolesOf(c.db, t.id);
+  if (!can(c.user, '*') && !(c.user.roles || []).includes('system_admin')) throw err(403, 'FORBIDDEN', 'اجازه حذف حساب کاربران را ندارید');
+  if (roles.includes('chair') && !can(c.user, '*')) throw err(403, 'FORBIDDEN', 'مدیر سامانه اجازه حذف حساب رئیس هیئت‌مدیره را ندارد');
   if (roles.includes('chair') && !await otherActiveChairs(c.db, t.id)) throw err(400, 'LAST_CHAIR', 'آخرین رئیس هیئت‌مدیره را نمی‌توان حذف کرد');
   await c.db.batch([
     c.db.prepare('DELETE FROM transactions WHERE created_by=? OR approved_by=? OR user_id=?').bind(t.id, t.id, t.id),
