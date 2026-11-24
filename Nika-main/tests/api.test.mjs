@@ -67,7 +67,7 @@ test('بدون کوکی/CSRF: درخواست رد می‌شود', async () => {
   assert.equal(badOrigin.status, 403);
 });
 
-test('ساخت کاربران توسط رئیس: رمز موقت تصادفی', async () => {
+test('ساخت کاربران: رمز موقت کارکنان و رمز اولیه شماره موبایل برای مالک/ساکن', async () => {
   let r = await chair.post('/api/admin/users', { name: 'مدیر ساختمان', accountType: 'staff', phone: '09120000010', roles: ['executive'], reason: 'آزمون مجوز مدیریت کاربران' });
   assert.equal(r.status, 201); assert.ok(r.data.tempPassword.length >= 12); ids.adminTemp = r.data.tempPassword; ids.adminId = r.data.id;
   r = await chair.post('/api/admin/users', { name: 'مدیر مالی', accountType: 'staff', phone: '09120000011', roles: ['finance'], reason: 'آزمون مجوز مدیریت کاربران' });
@@ -76,7 +76,7 @@ test('ساخت کاربران توسط رئیس: رمز موقت تصادفی', 
   ids.execTemp = r.data.tempPassword;
   for (const [unit, phone, type] of [['12', '09121111111', 'resident'], ['12', '09122222222', 'owner'], ['13', '09123333333', 'resident']]) {
     r = await chair.post('/api/admin/users', { name: `کاربر ${unit}-${type}`, accountType: type, unit: unit === '12' ? '۱۲' : unit, phone: phone.replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]), roles: [], reason: 'آزمون مجوز مدیریت کاربران' });
-    assert.equal(r.status, 201, JSON.stringify(r.data)); ids[`${unit}-${type}`] = r.data.tempPassword;
+    assert.equal(r.status, 201, JSON.stringify(r.data)); ids[`${unit}-${type}`] = phone;
   }
   assert.equal((await chair.post('/api/admin/users', { name: 'تکراری', accountType: 'resident', unit: '12', phone: '09121111111', roles: [], reason: 'آزمون مجوز مدیریت کاربران' })).status, 409);
   assert.equal((await chair.post('/api/admin/users', { name: 'بد', accountType: 'staff', phone: '123', roles: ['finance'], reason: 'آزمون مجوز مدیریت کاربران' })).status, 400);
@@ -84,12 +84,12 @@ test('ساخت کاربران توسط رئیس: رمز موقت تصادفی', 
 
 test('تغییر رمز اجباری: تا قبل از تغییر همه‌ی مسیرها بسته است', async () => {
   assert.equal((await res1.login('resident', '09121111111', ids['12-resident'], '12')).status, 200);
-  assert.equal((await res1.login('resident', '09121111111', '09121111111', '12')).status, 401, 'شماره موبایل دیگر رمز نیست');
   const blocked = await res1.get('/api/notices'); assert.equal(blocked.status, 403); assert.equal(blocked.data.error, 'PASSWORD_CHANGE_REQUIRED');
   assert.equal((await res1.get('/api/me')).data.user.must_change_password, true);
   assert.equal((await res1.post('/api/password', { newPassword: '09121111111' })).status, 400);
   assert.equal((await res1.post('/api/password', { newPassword: '1234567890123' })).status, 400);
   assert.equal((await res1.post('/api/password', { newPassword: 'Resident-Pass-22' })).status, 200);
+  const oldLogin = new Client(); assert.equal((await oldLogin.login('resident', '09121111111', '09121111111', '12')).status, 401, 'رمز اولیه پس از تغییر دیگر معتبر نیست');
   assert.equal((await res1.get('/api/notices')).status, 200);
   assert.equal((await res1.get('/api/me')).data.user.must_change_password, false);
 });
