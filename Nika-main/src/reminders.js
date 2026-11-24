@@ -58,7 +58,9 @@ export async function runReminders(env,now=new Date()){
  // یادآوری هر دوره‌ی دارای مانده بررسی می‌شود تا پیام روزانه بعد از هفته اول در ماه‌های بعد هم ادامه یابد.
  const rows=await env.DB.prepare("SELECT t.unit_id,n.unit_number,t.period,SUM(CASE WHEN t.kind='charge' THEN t.amount ELSE 0 END) charged,SUM(CASE WHEN t.kind IN ('payment','adjustment') THEN t.amount ELSE 0 END) paid FROM transactions t JOIN units n ON n.id=t.unit_id WHERE t.fund_id='monthly' AND t.status='approved' AND t.period IS NOT NULL GROUP BY t.unit_id,t.period HAVING charged>paid").all();
  for(const r of rows.results){
-  const parts=String(r.period).split('-').map(Number), maxDay=parts[1]<=6?31:parts[1]<=11?30:29, dueDay=Math.min(settings.monthly_due_day,maxDay);
+  const periodSettings=await env.DB.prepare('SELECT monthly_due_day FROM finance_settings WHERE effective_from<=? ORDER BY effective_from DESC,created_at DESC LIMIT 1').bind(String(r.period)+'-01').first();
+  if(!periodSettings)continue;
+  const parts=String(r.period).split('-').map(Number), maxDay=parts[1]<=6?31:parts[1]<=11?30:29, dueDay=Math.min(periodSettings.monthly_due_day,maxDay);
   const due=jalaliDate(parts[0],parts[1],dueDay), days=due?diff(now,due):null;
   const stage=days===-2?'before':days===0?'due':days===2?'late2':days>=7?'late7':null;
   if(!stage)continue;
@@ -91,7 +93,7 @@ export async function runReminders(env,now=new Date()){
    for(const o of ownersDue.results){
     const balance=o.charged-o.paid;if(balance<=0)continue;
     const copy=templates[ostage];
-    const title=ostage==='late7'?'تذکر درباره بدهی شارژ مالکانه':copy[0];
+    const title=ostage==='late7'?'تذکر درباره بدهی شارژ مالکانه':copy[0].replace('شارژ ماهیانه','شارژ مالکانه');
     const body='مالک محترم واحد '+o.unit_number+'،\n\n'+(ostage==='late7'?'با وجود گذشت هفت روز یا بیشتر از موعد پرداخت شارژ مالکانه، مبلغ '+amount(balance)+' تومان همچنان تسویه نشده است.\n\nپرداخت به‌موقع شارژ مالکانه بخشی از مسئولیت مشترک در حفظ و نگهداری ساختمان و تأمین منابع مورد نیاز آن است. تأخیر در پرداخت می‌تواند برنامه‌ریزی و اجرای امور مصوب ساختمان را با مشکل روبه‌رو کند.\n\nانتظار می‌رود با احساس مسئولیت نسبت به مجموعه و سایر ساکنان، در اسرع وقت بدهی خود را تسویه فرمایید.':copy[2].replace('شارژ ماهیانه','شارژ مالکانه').replace('AMOUNT',amount(balance)))+'\n\nمدیریت ساختمان نیکا';
     await send(env.DB,sender.id,o.id,title,body,copy[1],'owner:'+o.unit_id+':'+today.y+':'+(ostage==='late7'?'daily:'+keyDate(now):ostage));sent++;
    }
