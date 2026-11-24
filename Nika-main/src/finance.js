@@ -116,6 +116,19 @@ R('GET', '/api/finance/my', async c => {
   return reply({ ...r, balance: r.charged - r.settled });
 });
 
+// موجودی نقدی صندوق‌ها برای مدیران دارای دسترسی گزارش مالی
+R('GET', '/api/finance/funds', { any: ['finance.reports', 'finance.approve', 'expenses.approve'] }, async c => {
+  const r = await c.db.prepare(
+    `SELECT f.id fund_id,f.title,
+            COALESCE(SUM(CASE WHEN t.kind='payment' AND t.status='approved' THEN t.amount
+                              WHEN t.kind='expense' AND t.status='approved' THEN -t.amount ELSE 0 END),0) balance,
+            COALESCE(SUM(CASE WHEN t.kind='payment' AND t.status='approved' THEN t.amount ELSE 0 END),0) incoming,
+            COALESCE(SUM(CASE WHEN t.kind='expense' AND t.status='approved' THEN t.amount ELSE 0 END),0) outgoing
+     FROM funds f LEFT JOIN transactions t ON t.fund_id=f.id
+     GROUP BY f.id,f.title ORDER BY f.id`).all();
+  return reply({ funds: r.results });
+});
+
 // مانده‌ی همه‌ی واحدها
 R('GET', '/api/finance/balances', { any: ['finance.reports', 'finance.approve', 'units.manage'] }, async c => {
   const fund = fundOf(c.url.searchParams.get('fund'));
