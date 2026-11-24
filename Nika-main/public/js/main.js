@@ -65,7 +65,7 @@ function setupNav() {
   const adminShortcuts = [
     ['users', 'کاربران', can('users.manage'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>'],
     ['units', 'واحدها', can('units.manage'), '<path d="M4 27V5h24v22"/><path d="M9 10h4v4H9zM19 10h4v4h-4zM9 19h4v4H9zM19 19h4v4h-4z"/>'],
-    ['finance', 'مالی', canAny(['system.settings', 'finance.approve', 'expenses.approve', 'expenses.create']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>']
+    ['finance', 'تنظیمات مالی', canAny(['system.settings', 'finance.approve', 'expenses.approve', 'expenses.create']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>']
   ];
   for (const [key, label, allowed, path] of adminShortcuts) {
     if (!allowed) continue;
@@ -88,7 +88,7 @@ function initNav() {
     else if (n === 'پیام‌ها') open(() => P.messagesPage(), { root: true });
   }; });
   $('#headerLogout').onclick = logout;
-  $('.category[data-menu]').forEach(b => b.onclick = () => {
+  $( '.category[data-menu]').forEach(b => b.onclick = () => {
     if (managerMode) hideAdmin();
     const m = b.dataset.menu;
     open({ rules: P.rulesPage, requests: P.requestsPage, calendar: () => P.calendarPage(), resolutions: P.resolutionsPage }[m], { root: true });
