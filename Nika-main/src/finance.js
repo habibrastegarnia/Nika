@@ -77,7 +77,7 @@ R('POST', '/api/finance/charges', { perm: 'finance.charge' }, async c => {
 });
 
 R('POST', '/api/transactions/:id/decision', async c => {
-  const x = await readJson(c.request), t = await c.db.prepare('SELECT id,kind,status,created_by FROM transactions WHERE id=?').bind(c.params.id).first();
+  const x = await readJson(c.request), t = await c.db.prepare('SELECT id,kind,status,created_by,amount,fund_id FROM transactions WHERE id=?').bind(c.params.id).first();
   if (!t) throw err(404, 'NOT_FOUND', 'تراکنش پیدا نشد');
   if (t.kind === 'expense') throw err(410, 'USE_EXPENSE_REQUESTS', 'هزینه‌ها باید از مسیر درخواست پرداخت و تأیید نهایی رئیس ثبت شوند');
   if (t.status !== 'pending' || t.kind !== 'payment') throw err(409, 'NOT_PENDING', 'این مورد در انتظار تأیید نیست');
@@ -86,13 +86,14 @@ R('POST', '/api/transactions/:id/decision', async c => {
   if (t.created_by === c.user.id && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند مورد ثبت‌شده‌ی خودش را تأیید یا رد کند');
   if (!['approved', 'rejected'].includes(x.status)) throw err(400, 'INVALID_STATUS', 'وضعیت نامعتبر است');
   const note = x.status === 'rejected' ? str(x.note, { max: 300, field: 'دلیل رد', multiline: true }) : optStr(x.note, { max: 300, field: 'توضیحات', multiline: true });
-  const results = await c.db.batch([
+  const statements = [
     c.db.prepare("UPDATE transactions SET status=?,approved_by=?,approved_at=CURRENT_TIMESTAMP,note=COALESCE(?,note) WHERE id=? AND status='pending' AND kind='payment'")
-      .bind(x.status, c.user.id, note, t.id),
-    c.db.prepare(`UPDATE funds SET cash_balance=cash_balance+(SELECT amount FROM transactions WHERE id=? AND status='approved' AND approved_by=? AND changes()=1)
-                   WHERE id=(SELECT fund_id FROM transactions WHERE id=? AND status='approved' AND approved_by=? AND changes()=1)`)
-      .bind(t.id, c.user.id, t.id, c.user.id)
-  ]);
+      .bind(x.status, c.user.id, note, t.id)
+  ];
+  if (x.status === 'approved') statements.push(
+    c.db.prepare('UPDATE funds SET cash_balance=cash_balance+? WHERE id=? AND changes()=1').bind(t.amount, t.fund_id)
+  );
+  const results = await c.db.batch(statements);
   if (!results[0]?.meta?.changes) throw err(409, 'NOT_PENDING', 'این مورد در انتظار تأیید نیست');
   const actorRole = c.user.roles.includes('finance') ? 'finance' : (c.user.delegatedRoles?.includes('finance') ? 'جانشین finance' : (c.user.roles[0] || 'manager'));
   await audit(c.db, c.user.id, 'transaction.decision', 'transaction', t.id, { status: x.status }, overrideReason ? { actorRole, isDelegate: true, reason: overrideReason } : {});
