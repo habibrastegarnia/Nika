@@ -56,18 +56,22 @@ async function usersTab() {
   const { users, assignable } = await api('/admin/users'), opts = EXTRA_OPTS.filter(([r]) => assignable.includes(r));
   return {
     html: html`<div class="nika-admin-grid">${card('حساب جدید', html`<form id="uNew" novalidate>${fields([
-      { name: 'accountType', label: 'نوع حساب', type: 'select', value: 'resident', options: [...Object.entries(ACCOUNT_FA).filter(([k]) => !['owner', 'resident', 'both'].includes(k)), ['both', 'مالک و ساکن (یک حساب واحد)'], ...Object.entries(ACCOUNT_FA).filter(([k]) => k === 'owner' || k === 'resident')] },
+      { name: 'unit', label: 'انتخاب واحد', type: 'select', value: '101', options: UNIT_OPTIONS },
       { name: 'name', label: 'نام و نام خانوادگی', required: true },
-      { name: 'unit', label: 'شماره واحد (برای مالک/ساکن)', type: 'select', value: '101', options: UNIT_OPTIONS },
+      { name: 'owner', label: 'مالک واحد', type: 'checkbox', value: false },
+      { name: 'resident', label: 'ساکن واحد', type: 'checkbox', value: false },
       { name: 'phone', label: 'شماره موبایل', required: true, inputmode: 'tel', dir: 'ltr' },
       { name: 'email', label: 'ایمیل (اختیاری)', dir: 'ltr' },
-      ...(opts.length ? [{ name: 'roles', label: 'نقش‌های اضافه' + (opts.length ? '' : ''), type: 'checks', options: opts, value: [] }] : [])], 'nika')}
-      <div class="nika-footnote">نام کاربری مالک و ساکن شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است؛ در اولین ورود باید رمز تغییر کند. اگر یک نفر مالک و ساکن هر دو باشد، گزینه «مالک و ساکن (یک حساب واحد)» را انتخاب کنید؛ در غیر این صورت برای هر شخص یک حساب جداگانه بسازید و شماره موبایل‌هایشان متفاوت باشد. برای اینکه یک شخص هم مالک/ساکن باشد و هم مدیر، حساب او را ابتدا از نوع مالک یا ساکن بسازید و سپس نقش مدیریتی را به همان حساب اضافه کنید. حساب مستقل مدیر/کارکنان واحد ندارد و نقش مالک/ساکن به آن افزوده نمی‌شود.</div>
+      ...(opts.length ? [{ name: 'roles', label: 'نقش‌های مدیریتی اضافه', type: 'checks', options: opts, value: [] }] : [])], 'nika')}
+      <div class="nika-footnote">برای هر حساب، حداقل یکی از دو نقش «مالک واحد» یا «ساکن واحد» را انتخاب کنید؛ با انتخاب هر دو، یک حساب مشترک مالک و ساکن ساخته می‌شود. نقش‌های مدیریتی را جداگانه از بخش نقش‌های مدیریتی اضافه کنید. نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است؛ در اولین ورود تغییر رمز الزامی است.</div>
       <div class="nika-actions"><button class="nika-primary" type="submit">ساخت حساب</button></div></form>`)}
     ${card(`حساب‌ها (${fa(users.length)})`, html`<input class="nika-input" id="uSearch" placeholder="جستجوی نام، موبایل یا واحد" style="margin-bottom:10px"><div class="nika-users" id="uList">${users.map(u => userCard(u))}</div>`)}${can('*') ? card('پاک‌سازی اطلاعات آزمایشی', html`<p>تمام تراکنش‌ها، درخواست‌ها، پیام‌ها، اطلاعیه‌ها، محتوا، واحدها و حساب‌های دیگر حذف می‌شوند. حساب رئیس فعلی و دسترسی او باقی می‌ماند.</p><div class="nika-actions"><button class="nika-secondary sm danger" id="wipeTestData">پاک‌سازی کامل اطلاعات و کاربران</button></div>`) : ''}</div>`,
     bind(box) {
       onSubmit($('#uNew', box), async d => {
-        const r = await api('/admin/users', { method: 'POST', body: d });
+        if (!d.owner && !d.resident) throw new Error('حداقل یکی از گزینه‌های مالک واحد یا ساکن واحد را انتخاب کنید.');
+        const accountType = d.owner && d.resident ? 'both' : (d.owner ? 'owner' : 'resident');
+        const body = { unit: d.unit, name: d.name, phone: d.phone, email: d.email, accountType, roles: d.roles || [] };
+        const r = await api('/admin/users', { method: 'POST', body });
         if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
         else toast('حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.'); reload();
       });
