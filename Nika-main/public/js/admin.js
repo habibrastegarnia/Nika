@@ -28,7 +28,7 @@ function updateWorkspaceToggle(manager) {
   toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
 }
 function showManagerShortcuts(show) {
-  $('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
+  $( '.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
   $('.category[data-menu="requests"]')?.classList.toggle('nika-hide', show);
   $('#noticeHead')?.classList.toggle('nika-hide', show);
   $('#noticeCard')?.classList.toggle('nika-hide', show);
@@ -114,7 +114,7 @@ async function usersTab() {
         if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
         else toast(accountType === 'staff' ? 'حساب مستقل ساخته شد.' : 'حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.'); reload();
       });
-      const userSearch = $('#uSearch', box); if (userSearch) userSearch.oninput = e => { const q = normDigits(e.target.value).toLowerCase(); $('#uList .nika-usercard', box).forEach(c => c.style.display = c.dataset.q.includes(q) ? '' : 'none'); };
+      const userSearch = $('#uSearch', box); if (userSearch) userSearch.oninput = e => { const q = normDigits(e.target.value).toLowerCase(); $( '#uList .nika-usercard', box).forEach(c => c.style.display = c.dataset.q.includes(q) ? '' : 'none'); };
       act(box, '[data-edit]', async b => editUser(users.find(u => u.id === b.dataset.edit), opts));
       act(box, '[data-delete-user]', async b => {
         if (!await ask('حذف حساب کاربر', 'حساب این کاربر و سوابق وابسته به آن حذف شود؟ این کار برگشت‌پذیر نیست.', 'حذف حساب', true)) return;
