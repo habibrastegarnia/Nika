@@ -6,6 +6,7 @@ import { authenticate } from './auth.js';
 import './admin.js';
 import './finance.js';
 import './content.js';
+import { runReminders } from './reminders.js';
 
 const ALLOWED_WHILE_FORCED = ['/api/me', '/api/password', '/api/logout'];
 
@@ -33,6 +34,9 @@ async function handle(request, env, url) {
 }
 
 export default {
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(runReminders(env).catch(e => console.error('finance reminders failed', e)));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
