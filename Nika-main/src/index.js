@@ -52,7 +52,7 @@ async function handle(request, env, url) {
     const actorRole = delegatedOwner ? `جانشین ${delegatedOwner}` : (c.user.roles[0] || 'manager');
     await audit(c.db, c.user.id, 'manager.override_action', 'permission', url.pathname, {
       permission: c.overridePermission, responsibleRole: c.overrideRole
-    }, { actorRole, isDelegate: true, reason: c.overrideReason });
+    }, { actorRole, isDelegate: !!delegatedOwner, reason: c.overrideReason });
   }
   return response;
 }
