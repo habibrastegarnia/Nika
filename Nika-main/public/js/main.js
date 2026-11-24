@@ -89,7 +89,7 @@ function initNav() {
   }; });
   $('#headerLogout').onclick = logout;
   $$('.category[data-menu]').forEach(b => b.onclick = () => {
-    if (managerMode) hideAdmin();
+    if (managerMode) { hideAdmin(); $('#pageView').classList.remove('nika-dashboard-hidden'); }
     const m = b.dataset.menu;
     open({ rules: P.rulesPage, requests: P.requestsPage, calendar: () => P.calendarPage(), resolutions: P.resolutionsPage }[m], { root: true });
   });
