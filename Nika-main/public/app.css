@@ -460,3 +460,8 @@ html[data-theme="light"] .nika-admin-inline .nika-adminnav{background:rgba(247,2
 html[data-theme="light"] .jalali-calendar-head strong{color:#27364e}
 html[data-theme="light"] .jalali-calendar-head button,html[data-theme="light"] .jalali-calendar-grid button{background:#edf1f7;color:#425574}
 html[data-theme="light"] .jalali-calendar-grid button.selected{background:#657bb2;color:#fff}
+
+
+/* تقویم شمسی باید به‌صورت پنجره مستقل در مرکز صفحه باز شود، نه زیر فیلد یا چسبیده به پایین */
+.modal-backdrop.jalali-calendar-open{align-items:center!important}
+.modal-backdrop.jalali-calendar-open .modal{width:min(100%,410px);max-height:85svh}
