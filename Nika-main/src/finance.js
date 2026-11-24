@@ -7,7 +7,7 @@ import { can, canAny } from './perms.js';
 const fundOf = v => { if (!FUNDS.includes(v)) throw err(400, 'FUND_REQUIRED', 'صندوق نامعتبر است'); return v; };
 const ownerYear = v => {
   const y = String(v ?? '').replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).trim();
-  if (!/^1[34]\\d{2}$/.test(y)) throw err(400, 'INVALID_PERIOD', 'سال شارژ مالکانه باید به شکل ۱۴۰۵ باشد');
+  if (!/^1[34]\d{2}$/.test(y)) throw err(400, 'INVALID_PERIOD', 'سال شارژ مالکانه باید به شکل ۱۴۰۵ باشد');
   return y;
 };
 const fundPeriod = (fund, value, required = true) => fund === 'owner'
