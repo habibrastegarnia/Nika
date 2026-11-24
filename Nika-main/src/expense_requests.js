@@ -169,7 +169,7 @@ R('GET', '/api/expense-requests/:id/files/:fileId', async c => {
      FROM expense_request_files ef JOIN expense_requests er ON er.id=ef.request_id
      WHERE er.id=? AND ef.id=?`).bind(c.params.id, c.params.fileId).first();
   if (!row) throw err(404, 'NOT_FOUND', 'تصویر سند پیدا نشد');
-  if (!canSeeRequest(c.user, row)) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
+  if (!await canSeeRequest(c.db, c.user, row)) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
   if (!c.env.FILES) throw err(503, 'FILE_STORAGE_NOT_CONFIGURED', 'فضای ذخیره‌سازی اسناد پیکربندی نشده است');
   const object = await c.env.FILES.get(row.object_key);
   if (!object) throw err(404, 'FILE_NOT_FOUND', 'فایل سند پیدا نشد');
