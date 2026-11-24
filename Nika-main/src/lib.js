@@ -142,9 +142,12 @@ export function tempPassword() {
   return s + '7a';
 }
 
-export async function audit(db, actor, action, type, entity, details = {}) {
-  await db.prepare('INSERT INTO audit_logs(id,actor_id,action,entity_type,entity_id,details) VALUES(?,?,?,?,?,?)')
-    .bind(crypto.randomUUID(), actor || null, action, type, entity || null, JSON.stringify(details)).run();
+export async function audit(db, actor, action, type, entity, details = {}, meta = {}) {
+  await db.prepare('INSERT INTO audit_logs(id,actor_id,action,entity_type,entity_id,details,actor_role,is_delegate,reason) VALUES(?,?,?,?,?,?,?,?,?)')
+    .bind(
+      crypto.randomUUID(), actor || null, action, type, entity || null, JSON.stringify(details),
+      meta.actorRole || null, meta.isDelegate ? 1 : 0, meta.reason || null
+    ).run();
 }
 export const FUNDS = ['owner', 'monthly'];
 export const FUND_TITLE = { owner: 'صندوق مالکانه', monthly: 'صندوق شارژ ماهیانه' };
