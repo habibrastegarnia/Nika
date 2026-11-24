@@ -228,7 +228,7 @@ function financeNumberField(name,label,value){
 function jalaliDateControl(name,label,value){
  const p=String(value||'').split(/[-/]/).map(Number), t=jToday(), y=p[0]||t.y, m=p[1]||t.m, d=p[2]||t.d;
  const date=[y,String(m).padStart(2,'0'),String(d).padStart(2,'0')];
- return html\`<div class="finance-date-field jalali-date-field" data-jpicker><label class="nika-label">${label}</label><input class="nika-input" type="text" readonly data-jdisplay data-jalali-date data-jalali-separator="-" value="${fa(y)}/${fa(date[1])}/${fa(date[2])}" aria-label="${label}"><input type="hidden" name="${name}" data-jvalue value="${date.join('-')}"></div>\`;
+ return html`<div class="finance-date-field jalali-date-field" data-jpicker><label class="nika-label">${label}</label><input class="nika-input" type="text" readonly data-jdisplay data-jalali-date data-jalali-separator="-" value="${fa(y)}/${fa(m).padStart(2,'۰')}/${fa(d).padStart(2,'۰')}" aria-label="${label}"><input type="hidden" name="${name}" data-jvalue value="${date.join('-')}"></div>`;
 }
 function bindGroupedMoneyInputs(root){
  root.querySelectorAll('input[inputmode="numeric"]').forEach(input=>{
