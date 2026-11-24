@@ -1,7 +1,7 @@
 // احراز هویت، نشست، پروفایل، رمز عبور، آواتار و خلاصه‌ی نشان‌ها
 import { R } from './router.js';
 import { err, reply, readJson, str, optStr, phoneOrFail, normPhone, unitOrNull, passwordProblem, hashPassword, newSalt, safeEqual, signToken, verifyToken, audit } from './lib.js';
-import { userPerms, can } from './perms.js';
+import { userPerms, delegatedPerms, can } from './perms.js';
 
 const SESSION_TTL = 60 * 60 * 24 * 7;
 const COOKIE = 'nika_session';
@@ -18,14 +18,26 @@ export async function loadUser(db, id) {
             n.unit_number,n.block,n.floor,n.parking,n.notes unit_notes
      FROM users u LEFT JOIN units n ON n.id=u.unit_id WHERE u.id=? AND u.active=1`).bind(id).first();
   if (!u) return null;
-  const rr = await db.prepare('SELECT role FROM user_roles WHERE user_id=?').bind(id).all();
-  const roles = rr.results.map(r => r.role);
+  const rr = await db.prepare(
+    `SELECT role,0 delegated FROM user_roles WHERE user_id=?
+     UNION ALL
+     SELECT d.delegator_role role,1 delegated
+     FROM manager_delegations d
+     JOIN users owner ON owner.id=d.delegator_user_id AND owner.active=1
+     JOIN user_roles owner_role ON owner_role.user_id=owner.id AND owner_role.role=d.delegator_role
+     WHERE d.delegate_user_id=? AND d.enabled=1
+       AND EXISTS (SELECT 1 FROM user_roles dr WHERE dr.user_id=d.delegate_user_id
+                   AND dr.role IN ('chair','finance','board','executive'))`).bind(id,id).all();
+  const roles = rr.results.filter(r => !r.delegated).map(r => r.role);
+  const delegatedRoles = rr.results.filter(r => r.delegated).map(r => r.role);
+  const ownPerms = userPerms(roles), delegated = delegatedPerms(delegatedRoles);
   return {
     id: u.id, unit_id: u.unit_id, unit_number: u.unit_number || null,
     unit: u.unit_number ? { number: u.unit_number, block: u.block, floor: u.floor, parking: u.parking, notes: u.unit_notes } : null,
     account_type: u.account_type, name: u.name, phone: u.phone, email: u.email,
     must_change_password: !!u.must_change_password, has_avatar: !!u.has_avatar, avatar_v: u.updated_at,
-    roles, perms: userPerms(roles)
+    roles, delegatedRoles, ownPerms, delegatedPerms: delegated,
+    perms: [...new Set([...ownPerms, ...delegated])]
   };
 }
 
