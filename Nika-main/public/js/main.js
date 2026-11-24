@@ -50,8 +50,15 @@ function setupNav() {
   workspaceToggle.classList.remove('is-admin');
   workspaceToggle.onclick = () => {
     managerMode = !managerMode;
-    if (managerMode) { showHome(); showAdmin(); }
-    else { showResidentMode(); showHome(); }
+    if (managerMode) {
+      showHome();
+      $('#pageView').classList.add('nika-dashboard-hidden');
+      showAdmin();
+    } else {
+      showResidentMode();
+      $('#pageView').classList.remove('nika-dashboard-hidden');
+      showHome();
+    }
   };
   const shortcutHost = $('.categories');
   $$('.category[data-admin-tab]', shortcutHost).forEach(el => el.remove());
@@ -74,7 +81,7 @@ function setupNav() {
 function initNav() {
   $$('.nav-item').forEach(b => { if (b.id === 'admNavBtn') return; b.onclick = () => {
     const n = b.dataset.nav;
-    if (!$('#nikaAdmin').classList.contains('nika-hide') || !$('.phone > .page-view').classList.contains('nika-dashboard-hidden')) hideAdmin();
+    if (managerMode) hideAdmin();
     if (n === 'خانه') { showHome(); P.loadHome(); }
     else if (n === 'حساب من') open(P.profilePage, { root: true });
     else if (n === 'مالی') open(() => P.financePage(), { root: true });
@@ -82,7 +89,7 @@ function initNav() {
   }; });
   $('#headerLogout').onclick = logout;
   $('.category[data-menu]').forEach(b => b.onclick = () => {
-    if (!$('#nikaAdmin').classList.contains('nika-hide') || !$('.phone > .page-view').classList.contains('nika-dashboard-hidden')) hideAdmin();
+    if (managerMode) hideAdmin();
     const m = b.dataset.menu;
     open({ rules: P.rulesPage, requests: P.requestsPage, calendar: () => P.calendarPage(), resolutions: P.resolutionsPage }[m], { root: true });
   });
