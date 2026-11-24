@@ -24,13 +24,13 @@ const FROM = `FROM transactions t LEFT JOIN units n ON n.id=t.unit_id LEFT JOIN 
 R('GET', '/api/transactions', async c => {
   const q = c.url.searchParams, fund = fundOf(q.get('fund')), u = c.user;
   const all = q.get('scope') === 'all';
-  if (all && !privileged(u) && !(q.get('unit') && can(u, 'units.manage'))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
+  if (all && !privileged(u) && !(q.get('unit') && can(u, 'units.read'))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
   if (!all && !(canReadFund(u, fund) || can(u, 'expenses.create'))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
   const where = ['t.fund_id=?'], vals = [fund];
   if (!all) { where.push('(t.unit_id=? OR t.created_by=?)'); vals.push(u.unit_id ?? null, u.id); }
   const unitNumber = q.get('unit');
   if (unitNumber) {
-    if (!all || !(privileged(u) || can(u, 'units.manage'))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
+    if (!all || !(privileged(u) || can(u, 'units.read'))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
     where.push('n.unit_number=?'); vals.push(String(unitNumber));
   }
   for (const [k, col] of [['status', 't.status'], ['kind', 't.kind']]) {
