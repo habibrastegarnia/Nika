@@ -24,7 +24,7 @@ class Client {
   patch(p, b = {}) { return this.call('PATCH', p, b); }
   put(p, b = {}) { return this.call('PUT', p, b); }
   del(p) { return this.call('DELETE', p); }
-  async login(type, phone, password, unit) { return this.post('/api/login', { accountType: type, unit, phone, password }); }
+  async login(type, phone, password, unit) { return this.post('/api/login', { identifier: unit || phone, password }); }
 }
 
 const chair = new Client('chair'), admin = new Client('admin'), fin = new Client('finance'), res1 = new Client('res1'), res2 = new Client('res2'), own = new Client('owner'), exec = new Client('exec');
@@ -211,7 +211,7 @@ test('درخواست پرداخت: ثبت، تأیید دومرحله‌ای، �
   assert.equal(detail.data.history.length, 2);
   const file = await chair.get(detail.data.files[0].url);
   assert.equal(file.status, 200); assert.equal(file.res.headers.get('Content-Type'), 'image/png');
-  assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'approved' })).data.error, 'SELF_APPROVAL');
+  assert.equal((await exec.post(`/api/expense-requests/${first}/chair-decision`, { status: 'approved' })).status, 403);
   assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'revision', reason: 'نیاز به فاکتور خواناتر' })).data.status, 'revision_chair');
   const mine = await exec.get('/api/expense-requests?scope=mine');
   assert.equal(mine.data.requests[0].status, 'revision_chair');
@@ -262,7 +262,7 @@ test('اطلاعیه، درخواست، پیام و اتصال بین آن‌ه�
   assert.equal((await res1.get('/api/summary')).data.unreadMessages, 1);
   await res1.post(`/api/messages/${msgs[0].id}/read`); assert.equal((await res1.get('/api/summary')).data.unreadMessages, 0);
   assert.equal((await exec.post(`/api/requests/${rid}/publish`)).status, 403);
-  assert.equal((await admin.post(`/api/requests/${rid}/publish`)).status, 201);
+  assert.equal((await chair.post(`/api/requests/${rid}/publish`)).status, 201);
   assert.equal((await admin.post(`/api/requests/${rid}/publish`)).status, 409);
   assert.ok((await res2.get('/api/notices')).data.notices.some(n => n.title === 'لامپ سوخته'));
 
@@ -275,7 +275,7 @@ test('اطلاعیه، درخواست، پیام و اتصال بین آن‌ه�
   assert.equal((await chair.post('/api/messages', { title: 'پاسخ', body: 'تا ۵ام', recipientId: sender })).status, 201);
   assert.equal((await res1.get('/api/messages')).data.messages[0].title, 'پاسخ');
   assert.equal((await res1.get('/api/messages?box=sent')).data.messages[0].title, 'سؤال');
-  assert.equal((await admin.del(`/api/notices/${(await chair.get('/api/notices')).data.notices[0].id}`)).status, 200);
+  assert.equal((await chair.del(`/api/notices/${(await chair.get('/api/notices')).data.notices[0].id}`)).status, 200);
 });
 
 test('محتوای ساختمان: قوانین، مصوبات، رویدادها، اسناد', async () => {
