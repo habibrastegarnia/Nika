@@ -96,36 +96,37 @@ const EXTRA_OPTS = ['chair', 'finance', 'board', 'executive', 'system_admin', 'c
 const UNIT_OPTIONS = Array.from({ length: 8 }, (_, floor) => Array.from({ length: 4 }, (_, n) => { const unit = `${floor + 1}0${n + 1}`; return [unit, unit]; })).flat();
 async function usersTab() {
   const { users, assignable } = await api('/admin/users'), opts = EXTRA_OPTS.filter(([r]) => assignable.includes(r));
-  return {
-    html: html`<div class="nika-admin-grid">${card('حساب جدید', html`<form id="uNew" novalidate><div class="nika-user-unit-row"><div class="nika-user-unit-select">${fields([{ name: 'unit', label: 'انتخاب واحد', type: 'select', value: '101', options: UNIT_OPTIONS }], 'nika')}</div><div class="nika-user-unit-checks">${fields([{ name: 'owner', label: 'مالک', type: 'checkbox', value: false }, { name: 'resident', label: 'ساکن', type: 'checkbox', value: false }], 'nika')}</div></div>${fields([
+  const canManageUsers = can('users.manage');
+  const canAssignRoles = can('roles.assign');
+  const createCard = canManageUsers ? card('حساب جدید', html`<form id="uNew" novalidate><div class="nika-user-unit-row"><div class="nika-user-unit-select">${fields([{ name: 'unit', label: 'انتخاب واحد', type: 'select', value: '101', options: UNIT_OPTIONS }], 'nika')}</div><div class="nika-user-unit-checks">${fields([{ name: 'owner', label: 'مالک', type: 'checkbox', value: false }, { name: 'resident', label: 'ساکن', type: 'checkbox', value: false }], 'nika')}</div></div>${fields([
       { name: 'name', label: 'نام و نام خانوادگی', required: true },
       { name: 'phone', label: 'شماره تلفن همراه', required: true, inputmode: 'tel', dir: 'ltr' },
       { name: 'secondaryPhone', label: 'شماره تماس پشتیبان', inputmode: 'tel', dir: 'ltr', hint: 'اختیاری؛ برای تماس اضطراری یا مواقع عدم دسترسی به شماره اصلی.' },
       ...(opts.length ? [{ name: 'roles', label: 'نقش‌های انتخابی', type: 'checks', options: opts, value: [] }] : [])], 'nika')}
-      <div class="nika-footnote">برای حساب مالک یا ساکن، گزینه مربوط را انتخاب کنید. حساب‌های مدیریتی و سرایدار می‌توانند بدون اتصال به واحد ساخته شوند. برای حساب‌های متصل به واحد، نام کاربری شماره واحد و رمز اولیه شماره موبایل است؛ برای حساب مستقل، رمز موقت صادر می‌شود.</div>
-      <div class="nika-actions"><button class="nika-primary" type="submit">ساخت حساب</button></div></form>`)}
-</div>`,
+      <div class="nika-footnote">برای حساب مالک یا ساکن، گزینه مربوط را انتخاب کنید. تعیین نقش‌های مدیریتی فقط در اختیار رئیس هیئت‌مدیره است.</div>
+      <div class="nika-actions"><button class="nika-primary" type="submit">ساخت حساب</button></div></form>`) : '';
+  return {
+    html: html`<div class="nika-admin-grid">${createCard}
+      ${card('فهرست کاربران', html`<input class="nika-input" id="uSearch" placeholder="جست‌وجوی نام، شماره یا واحد"><div class="nika-users" id="uList">${users.length ? users.map(userCard) : empty('کاربری ثبت نشده است.')}</div>`)}</div>`,
     bind(box) {
-      onSubmit($('#uNew', box), async d => {
+      const form = $('#uNew', box);
+      if (form) onSubmit(form, async d => {
         const accountType = d.owner && d.resident ? 'both' : (d.owner ? 'owner' : (d.resident ? 'resident' : 'staff'));
+        if (accountType === 'staff' && !canAssignRoles) throw new Error('ساخت حساب مدیریتی و تعیین نقش فقط در اختیار رئیس هیئت‌مدیره است.');
         if (accountType === 'staff' && !(d.roles || []).length) throw new Error('برای حساب مستقل، حداقل یک نقش انتخاب کنید.');
         const body = { unit: d.unit, name: d.name, phone: d.phone, secondaryPhone: d.secondaryPhone, accountType, roles: d.roles || [] };
         const r = await api('/admin/users', { method: 'POST', body });
         if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
-        else toast(accountType === 'staff' ? 'حساب مستقل ساخته شد.' : 'حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.'); reload();
+        else toast(accountType === 'staff' ? 'حساب مستقل ساخته شد.' : 'حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.');
+        reload();
       });
-      const userSearch = $('#uSearch', box); if (userSearch) userSearch.oninput = e => { const q = normDigits(e.target.value).toLowerCase(); $$('#uList .nika-usercard', box).forEach(c => c.style.display = c.dataset.q.includes(q) ? '' : 'none'); };
+      const userSearch = $('#uSearch', box);
+      if (userSearch) userSearch.oninput = e => { const q = normDigits(e.target.value).toLowerCase(); $$('#uList .nika-usercard', box).forEach(c => c.style.display = c.dataset.q.includes(q) ? '' : 'none'); };
       act(box, '[data-edit]', async b => editUser(users.find(u => u.id === b.dataset.edit), opts));
       act(box, '[data-delete-user]', async b => {
         if (!await ask('حذف حساب کاربر', 'حساب این کاربر و سوابق وابسته به آن حذف شود؟ این کار برگشت‌پذیر نیست.', 'حذف حساب', true)) return;
         await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE' }); toast('حساب و سوابق وابسته حذف شد'); reload();
       });
-      const wipe = $('#wipeTestData', box); if (wipe) wipe.onclick = async () => {
-        if (!await ask('پاک‌سازی کامل', 'همه اطلاعات آزمایشی و همه کاربران به‌جز حساب رئیس فعلی حذف می‌شوند. ادامه می‌دهید؟', 'ادامه', true)) return;
-        const phrase = await promptText('تأیید نهایی', 'برای تأیید، عبارت «پاک‌سازی نیکا» را دقیقاً وارد کنید.', 'پاک‌سازی');
-        if (phrase !== 'پاک‌سازی نیکا') { if (phrase) toast('عبارت تأیید صحیح نبود'); return; }
-        await api('/admin/reset-test-data', { method: 'POST' }); toast('اطلاعات آزمایشی و کاربران دیگر پاک شدند'); reload();
-      };
       act(box, '[data-reset]', async b => {
         if (!await ask('بازنشانی رمز', 'رمز به شماره موبایل ثبت‌شده کاربر برمی‌گردد و همه‌ی نشست‌های او بسته می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
         const r = await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST' });
@@ -135,7 +136,8 @@ async function usersTab() {
     }
   };
 }
-const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.secondary_phone ? ' · تماس پشتیبان: ' + u.secondary_phone : ''}</small><div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div><div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button><button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button>${(can('*') || S.user.roles.includes('system_admin')) && u.id !== S.user.id ? html`<button class="nika-secondary sm danger" data-delete-user="${u.id}">حذف حساب</button>` : ''}</div></div>`;
+const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.secondary_phone ? ' · تماس پشتیبان: ' + u.secondary_phone : ''}</small><div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div>${can('users.manage') ? html`<div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button><button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button>${(can('*') || S.user.roles.includes('system_admin')) && u.id !== S.user.id ? html`<button class="nika-secondary sm danger" data-delete-user="${u.id}">حذف حساب</button>` : ''}</div>` : ''}</div>`;
+
 function editUser(u, opts) {
   const baseOptions = u.account_type === 'staff' ? [] : [['owner', 'مالک'], ['resident', 'ساکن']].filter(([r]) => !u.roles.includes(r));
   const m = openModal('ویرایش حساب', html`<form class="nika-form" novalidate>${fields([
