@@ -408,3 +408,14 @@ html[data-theme="light"] .workspace-toggle{background:linear-gradient(145deg,#ff
 .nika-unit-history-item strong{font-size:11px;color:#edf2fc;line-height:1.8}
 .nika-unit-history-item small{font-size:9px;color:#aebbd4;line-height:1.8}
 .nika-unit-history-item p{margin:3px 0 0;font-size:10px;color:#c3cde0;white-space:pre-wrap;line-height:1.9}
+
+
+/* Finance settings: centered green legends and aligned owner due date */
+.finance-setting-block{position:relative;padding-top:19px}
+.finance-setting-block>h4{position:absolute;top:-9px;left:50%;transform:translateX(-50%);z-index:1;margin:0;padding:0 12px;background:#29364a;color:#55c99a;font-size:12px;line-height:18px;white-space:nowrap;text-align:center}
+.finance-owner-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;align-items:end}
+.finance-owner-row .finance-date-field{min-width:0;margin-top:0}
+.finance-owner-row .finance-field{min-width:0}
+html[data-theme="light"] .finance-setting-block{background:#fff;border-color:#dfe7e3}
+html[data-theme="light"] .finance-setting-block>h4{background:#fff;color:#258b69}
+@media(max-width:390px){.finance-owner-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:8px}}
