@@ -145,10 +145,8 @@ async function unitsTab() {
         <div class="nika-building-ground"><span>ورودی ساختمان نیکا</span></div>
       </section>
       <div class="nika-building-counts"><div><i class="debt"></i><strong>${fa(debtCount)}</strong><small>بدهکار</small></div><div><i class="settled"></i><strong>${fa(settledCount)}</strong><small>تسویه</small></div><div><i class="credit"></i><strong>${fa(creditCount)}</strong><small>بستانکار</small></div></div>
-      ${card('ثبت مشخصات واحد جدید', html`<form id="unNew" novalidate>${fields([{ name: 'unitNumber', label: 'شماره واحد', required: true, inputmode: 'numeric' }], 'nika')}${f()}<div class="nika-actions"><button class="nika-primary" type="submit">افزودن واحد</button></div></form><div class="nika-footnote">با ساخت حساب برای یک شماره واحد جدید نیز واحد خودکار ساخته می‌شود؛ این بخش برای ثبت مشخصات است.</div>`)}
     </div>`,
     bind(box) {
-      onSubmit($('#unNew', box), async d => { await api('/admin/units', { method: 'POST', body: d }); toast('واحد افزوده شد'); reload(); });
       act(box, '[data-unit-detail]', async b => {
         const x = allUnits.find(item => item.number === b.dataset.unitDetail), overall = x.balance, state = statusOf(overall);
         const amountLine = (label, value) => html`<div class="nika-unit-fin-row"><span>${label}</span><strong class="${value > 0 ? 'debt-text' : value < 0 ? 'credit-text' : 'settled-text'}">${value > 0 ? 'بدهی ' + toman(value) : value < 0 ? 'بستانکاری ' + toman(-value) : 'تسویه · ۰ تومان'}</strong></div>`;
