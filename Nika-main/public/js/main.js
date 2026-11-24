@@ -75,6 +75,22 @@ function setupNav() {
     b.onclick = () => showAdmin(key);
     shortcutHost.appendChild(b);
   }
+  const roles = S.user?.roles || [];
+  const order = roles.includes('chair')
+    ? ['finance', 'users', 'units', 'calendar', 'resolutions', 'rules']
+    : roles.includes('finance')
+      ? ['finance', 'users', 'units', 'calendar', 'resolutions', 'rules']
+      : roles.includes('executive')
+        ? ['finance', 'users', 'units', 'calendar', 'rules', 'resolutions']
+        : roles.includes('board')
+          ? ['finance', 'units', 'calendar', 'resolutions', 'rules']
+          : roles.includes('system_admin')
+            ? ['users']
+            : ['rules', 'requests', 'calendar', 'resolutions'];
+  const shortcutByKey = new Map();
+  $('.category[data-admin-tab]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.adminTab, b));
+  $('.category[data-menu]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.menu, b));
+  order.forEach(key => { const b = shortcutByKey.get(key); if (b) shortcutHost.appendChild(b); });
   $('#admNavBtn')?.remove();
   nav.style.gridTemplateColumns = '';
 }
