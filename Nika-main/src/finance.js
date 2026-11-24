@@ -56,10 +56,11 @@ R('POST', '/api/transactions', async c => {
   } else if (x.kind === 'expense') {
     if (!can(u, 'expenses.create')) throw err(403, 'FORBIDDEN', 'اجازه‌ی ثبت هزینه را ندارید');
     const amount = int(x.amount, { field: 'مبلغ' });
+    const overrideReason = c.user.roles.includes('executive') ? null : str(x.reason, { max: 500, field: 'دلیل انجام خارج از مسئولیت', multiline: true });
     await c.db.prepare("INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,category,note,created_by) VALUES(?,NULL,?,?, 'expense',?,?,?,'pending',?,?,?,?)")
       .bind(id, u.id, fund, amount, str(x.title, { max: 120, field: 'عنوان' }), period(x.period), optStr(x.reference, { max: 40, field: 'شماره سند' }),
         str(x.category ?? 'سایر', { max: 40, field: 'دسته‌بندی' }), optStr(x.note, { max: 300, field: 'توضیحات', multiline: true }), u.id).run();
-    await audit(c.db, u.id, 'expense.create', 'transaction', id, { fund, amount });
+    await audit(c.db, u.id, 'expense.create', 'transaction', id, { fund, amount }, overrideReason ? { actorRole: u.roles[0] || 'manager', isDelegate: true, reason: overrideReason } : {});
   } else throw err(400, 'INVALID_INPUT', 'نوع تراکنش نامعتبر است');
   return reply({ ok: true, id }, 201);
 });
@@ -86,12 +87,13 @@ R('POST', '/api/transactions/:id/decision', async c => {
   if (!t) throw err(404, 'NOT_FOUND', 'تراکنش پیدا نشد');
   if (t.status !== 'pending' || !['payment', 'expense'].includes(t.kind)) throw err(409, 'NOT_PENDING', 'این مورد در انتظار تأیید نیست');
   if (!can(c.user, t.kind === 'payment' ? 'finance.approve' : 'expenses.approve')) throw err(403, 'FORBIDDEN', 'اجازه‌ی تأیید این مورد را ندارید');
+  const overrideReason = c.user.roles.includes('finance') ? null : str(x.reason, { max: 500, field: 'دلیل انجام خارج از مسئولیت', multiline: true });
   if (t.created_by === c.user.id && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند مورد ثبت‌شده‌ی خودش را تأیید یا رد کند');
   if (!['approved', 'rejected'].includes(x.status)) throw err(400, 'INVALID_STATUS', 'وضعیت نامعتبر است');
   const note = x.status === 'rejected' ? str(x.note, { max: 300, field: 'دلیل رد', multiline: true }) : optStr(x.note, { max: 300, field: 'توضیحات', multiline: true });
   const r = await c.db.prepare("UPDATE transactions SET status=?,approved_by=?,approved_at=CURRENT_TIMESTAMP,note=COALESCE(?,note) WHERE id=? AND status='pending'").bind(x.status, c.user.id, note, t.id).run();
   if (!r.meta.changes) throw err(409, 'NOT_PENDING', 'این مورد در انتظار تأیید نیست');
-  await audit(c.db, c.user.id, 'transaction.decision', 'transaction', t.id, { status: x.status });
+  await audit(c.db, c.user.id, 'transaction.decision', 'transaction', t.id, { status: x.status }, overrideReason ? { actorRole: c.user.roles[0] || 'manager', isDelegate: true, reason: overrideReason } : {});
   return reply({ ok: true });
 });
 
