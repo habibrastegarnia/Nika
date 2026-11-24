@@ -37,7 +37,7 @@ async function enter(user) {
 }
 async function logout() {
   try { await api('/logout', { method: 'POST' }); } catch {}
-  S.user = null; resetRouter(); show('#nikaGate'); $('#nikaPhone').focus();
+  S.user = null; resetRouter(); show('#nikaGate'); $('#nikaIdentifier')?.focus();
 }
 
 // ---------- ناوبری ----------
