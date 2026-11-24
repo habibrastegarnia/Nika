@@ -50,8 +50,8 @@ function setupNav() {
   workspaceToggle.classList.remove('is-admin');
   workspaceToggle.onclick = () => {
     managerMode = !managerMode;
-    if (managerMode) showAdmin();
-    else showResidentMode();
+    if (managerMode) { showHome(); showAdmin(); }
+    else { showResidentMode(); showHome(); }
   };
   const shortcutHost = $('.categories');
   $$('.category[data-admin-tab]', shortcutHost).forEach(el => el.remove());
