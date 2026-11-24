@@ -28,7 +28,7 @@ function updateWorkspaceToggle(manager) {
   toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
 }
 function showManagerShortcuts(show) {
-  const roles = S.user?.roles || [];
+  const roles = [...(S.user?.roles || []), ...(S.user?.delegatedRoles || [])];
   const technicalOnly = roles.includes('system_admin') && !roles.some(r => ['chair', 'finance', 'board', 'executive'].includes(r));
   $('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
   $('.category[data-menu]').forEach(el => {
