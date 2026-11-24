@@ -28,6 +28,11 @@ R('GET', '/api/transactions', async c => {
   if (!all && !(canReadFund(u, fund) || can(u, 'expenses.create'))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
   const where = ['t.fund_id=?'], vals = [fund];
   if (!all) { where.push('(t.unit_id=? OR t.created_by=?)'); vals.push(u.unit_id ?? null, u.id); }
+  const unitNumber = q.get('unit');
+  if (unitNumber) {
+    if (!all || !privileged(u)) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
+    where.push('n.unit_number=?'); vals.push(String(unitNumber));
+  }
   for (const [k, col] of [['status', 't.status'], ['kind', 't.kind']]) {
     const v = q.get(k); if (v) { where.push(`${col}=?`); vals.push(v); }
   }
