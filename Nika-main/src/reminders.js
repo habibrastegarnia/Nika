@@ -31,7 +31,7 @@ R('GET','/api/finance/reminder-settings',{perm:'finance.settings'},async c=>{
  const owner=await c.db.prepare('SELECT owner_amount,owner_due_date,owner_effective_from FROM finance_settings WHERE owner_effective_from IS NOT NULL ORDER BY owner_effective_from DESC,created_at DESC LIMIT 1').first();
  return reply({settings:{...(monthly||{}),...(owner||{})}});
 });
-R('POST','/api/finance/reminder-settings',{perm:'*'},async c=>{
+R('POST','/api/finance/reminder-settings',{perm:'finance.settings'},async c=>{
  const x=await readJson(c.request);
  const monthlyAmount=int(x.monthlyAmount,{min:0,field:'مبلغ شارژ ماهیانه'});
  const monthlyDueDay=int(x.monthlyDueDay,{min:1,max:31,field:'روز سررسید ماهیانه'});
