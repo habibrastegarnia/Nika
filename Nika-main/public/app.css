@@ -441,3 +441,22 @@ html[data-theme="light"] .nika-admin-inline .nika-adminnav{background:rgba(247,2
 .manager-finance-page .nika-admincard{margin:0}
 .manager-finance-page .nika-admin-grid{display:block!important}
 #pageView .page-head{margin-bottom:12px}
+
+
+/* Shared Jalali date picker: centered overlay card, never an inline dropdown */
+.jalali-date-field{position:relative;min-width:0}
+.jalali-date-field [data-jalali-date],.jalali-date-field [data-jdisplay]{cursor:pointer}
+.jalali-date-field [data-jalali-date]:focus,.jalali-date-field [data-jdisplay]:focus{border-color:#8197e8;outline:none}
+.jalali-picker{padding:5px 0}
+.jalali-calendar-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}
+.jalali-calendar-head strong{font-size:14px;color:#f2f5fc}
+.jalali-calendar-head button,.jalali-calendar-grid button{border:0;background:#2b3a52;color:#edf2fc;border-radius:10px;min-height:38px;cursor:pointer;font:inherit}
+.jalali-calendar-head button{width:38px;font-size:18px}
+.jalali-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;text-align:center}
+.jalali-calendar-grid span{font-size:11px;color:#9eacc5;padding:7px 0}
+.jalali-calendar-grid button{font-size:12px;padding:7px 0}
+.jalali-calendar-grid button.selected{background:#657bb2;color:white;box-shadow:0 0 0 1px #aebef0 inset}
+.jalali-calendar-grid i{min-height:38px}
+html[data-theme="light"] .jalali-calendar-head strong{color:#27364e}
+html[data-theme="light"] .jalali-calendar-head button,html[data-theme="light"] .jalali-calendar-grid button{background:#edf1f7;color:#425574}
+html[data-theme="light"] .jalali-calendar-grid button.selected{background:#657bb2;color:#fff}
