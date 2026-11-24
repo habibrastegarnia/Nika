@@ -16,8 +16,19 @@ const statusLabel = {
   finalized: 'تأیید نهایی و قطعی‌شده',
   cancelled: 'منتفی‌شده توسط مدیر اجرایی'
 };
-const canSeeRequest = (user, row) =>
-  row.created_by === user.id || can(user, 'expenses.approve') || can(user, 'expenses.finalize');
+async function isExecutiveDelegate(db, user, ownerId) {
+  if (!user.delegatedRoles?.includes('executive')) return false;
+  return !!(await db.prepare(
+    "SELECT 1 ok FROM manager_delegations WHERE delegator_user_id=? AND delegate_user_id=? AND delegator_role='executive' AND enabled=1"
+  ).bind(ownerId, user.id).first());
+}
+async function canSeeRequest(db, user, row) {
+  return row.created_by === user.id || can(user, 'expenses.approve') ||
+    can(user, 'expenses.finalize') || await isExecutiveDelegate(db, user, row.created_by);
+}
+async function canManageRequest(db, user, row) {
+  return row.created_by === user.id || await isExecutiveDelegate(db, user, row.created_by);
+}
 
 function actorMeta(user, ownerRole, reason) {
   const delegated = user.delegatedRoles?.includes(ownerRole);
@@ -109,7 +120,10 @@ R('GET', '/api/expense-requests', async c => {
   let where = '', values = [];
   if (scope === 'mine') {
     if (!can(c.user, 'expenses.create')) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
-    where = 'er.created_by=?'; values = [c.user.id];
+    if (c.user.delegatedRoles?.includes('executive')) {
+      where = "er.created_by=? OR er.created_by IN (SELECT delegator_user_id FROM manager_delegations WHERE delegate_user_id=? AND delegator_role='executive' AND enabled=1)";
+      values = [c.user.id, c.user.id];
+    } else { where = 'er.created_by=?'; values = [c.user.id]; }
   } else if (scope === 'review') {
     if (!can(c.user, 'expenses.approve')) throw err(403, 'FORBIDDEN', 'دسترسی بررسی مالی ندارید');
     where = "er.status='pending_finance'";
@@ -135,7 +149,7 @@ R('GET', '/api/expense-requests/:id', async c => {
      FROM expense_requests er JOIN funds f ON f.id=er.fund_id JOIN users u ON u.id=er.created_by
      WHERE er.id=?`).bind(c.params.id).first();
   if (!row) throw err(404, 'NOT_FOUND', 'درخواست پیدا نشد');
-  if (!canSeeRequest(c.user, row)) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
+  if (!await canSeeRequest(c.db, c.user, row)) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
   const [versions, history, files] = await Promise.all([
     c.db.prepare('SELECT version_no,snapshot,changed_by,reason,created_at FROM expense_request_versions WHERE request_id=? ORDER BY version_no DESC').bind(row.id).all(),
     c.db.prepare('SELECT h.stage,h.action,h.reason,h.created_at,u.name actor FROM expense_request_history h LEFT JOIN users u ON u.id=h.actor_id WHERE h.request_id=? ORDER BY h.created_at DESC').bind(row.id).all(),
@@ -171,7 +185,7 @@ R('PATCH', '/api/expense-requests/:id', { perm: 'expenses.create' }, async c => 
   const x = await readJson(c.request, 2500000);
   const row = await c.db.prepare('SELECT * FROM expense_requests WHERE id=?').bind(c.params.id).first();
   if (!row) throw err(404, 'NOT_FOUND', 'درخواست پیدا نشد');
-  if (row.created_by !== c.user.id) throw err(403, 'FORBIDDEN', 'فقط ثبت‌کننده می‌تواند درخواست را اصلاح کند');
+  if (!await canManageRequest(c.db, c.user, row)) throw err(403, 'FORBIDDEN', 'فقط ثبت‌کننده یا جانشین فعال مدیر اجرایی می‌تواند درخواست را اصلاح کند');
   if (!['revision_finance', 'revision_chair'].includes(row.status)) throw err(409, 'NOT_EDITABLE', 'این درخواست در وضعیت قابل اصلاح نیست');
 
   const fund = fundOf(x.fund ?? row.fund_id), amount = int(x.amount ?? row.amount, { field: 'مبلغ درخواست' });
@@ -210,7 +224,7 @@ R('POST', '/api/expense-requests/:id/cancel', { perm: 'expenses.create' }, async
   const x = await readJson(c.request);
   const row = await c.db.prepare('SELECT id,created_by,status,reference_no FROM expense_requests WHERE id=?').bind(c.params.id).first();
   if (!row) throw err(404, 'NOT_FOUND', 'درخواست پیدا نشد');
-  if (row.created_by !== c.user.id) throw err(403, 'FORBIDDEN', 'فقط ثبت‌کننده می‌تواند درخواست را منتفی کند');
+  if (!await canManageRequest(c.db, c.user, row)) throw err(403, 'FORBIDDEN', 'فقط ثبت‌کننده یا جانشین فعال مدیر اجرایی می‌تواند درخواست را منتفی کند');
   if (!['revision_finance', 'revision_chair'].includes(row.status)) throw err(409, 'NOT_CANCELLABLE', 'فقط درخواست نیازمند اصلاح قابل منتفی‌کردن است');
   const reason = optStr(x.reason, { max: 500, multiline: true, field: 'دلیل منتفی‌کردن' });
   const results = await c.db.batch([
