@@ -222,6 +222,8 @@ R('GET', '/api/summary', async c => {
   if (can(u, 'finance.approve')) kinds.push('payment');
   if (can(u, 'expenses.approve')) kinds.push('expense');
   if (kinds.length) out.pendingApprovals = (await c.db.prepare(`SELECT COUNT(*) n FROM transactions WHERE status='pending' AND kind IN (${kinds.map(() => '?').join(',')})`).bind(...kinds).first()).n;
+  if (can(u, 'expenses.approve')) out.pendingApprovals += (await c.db.prepare("SELECT COUNT(*) n FROM expense_requests WHERE status='pending_finance'").first()).n;
+  if (can(u, 'expenses.finalize')) out.pendingApprovals += (await c.db.prepare("SELECT COUNT(*) n FROM expense_requests WHERE status='pending_chair'").first()).n;
   if (can(u, 'requests.manage')) out.newRequests = (await c.db.prepare("SELECT COUNT(*) n FROM requests WHERE status='new'").first()).n;
   return reply(out);
 });
