@@ -232,10 +232,12 @@ R('POST', '/api/expense-requests/:id/finance-decision', { perm: 'expenses.approv
   if (row.created_by === c.user.id && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند درخواست خودش را بررسی کند');
   const reason = x.status === 'revision' ? str(x.reason, { max: 500, multiline: true, field: 'دلیل نیاز به اصلاح' }) : optStr(x.reason, { max: 500, multiline: true });
   const next = x.status === 'approved' ? 'pending_chair' : 'revision_finance';
-  const r = await c.db.prepare('UPDATE expense_requests SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=\'pending_finance\'').bind(next, row.id).run();
-  if (!r.meta.changes) throw err(409, 'NOT_PENDING', 'وضعیت درخواست تغییر کرده است');
-  await c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) VALUES(?,?,?,?,?,?)')
-    .bind(crypto.randomUUID(), row.id, c.user.id, 'finance', x.status === 'approved' ? 'approved' : 'revision', reason).run();
+  const results = await c.db.batch([
+    c.db.prepare("UPDATE expense_requests SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_finance'").bind(next, row.id),
+    c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) SELECT ?,?,?,?,?,? WHERE changes()=1')
+      .bind(crypto.randomUUID(), row.id, c.user.id, 'finance', x.status === 'approved' ? 'approved' : 'revision', reason)
+  ]);
+  if (!results[0]?.meta?.changes) throw err(409, 'NOT_PENDING', 'وضعیت درخواست تغییر کرده است');
   await audit(c.db, c.user.id, 'expense_request.finance_decision', 'expense_request', row.id,
     { referenceNo: row.reference_no, status: next }, c.overrideReason ? actorMeta(c.user, 'finance', c.overrideReason) : { actorRole: 'finance', reason });
   return reply({ ok: true, status: next });
@@ -251,10 +253,12 @@ R('POST', '/api/expense-requests/:id/chair-decision', { perm: 'expenses.finalize
 
   if (x.status === 'revision') {
     const reason = str(x.reason, { max: 500, multiline: true, field: 'دلیل نیاز به اصلاح' });
-    const r = await c.db.prepare("UPDATE expense_requests SET status='revision_chair',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_chair'").bind(row.id).run();
-    if (!r.meta.changes) throw err(409, 'NOT_PENDING', 'وضعیت درخواست تغییر کرده است');
-    await c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) VALUES(?,?,?,?,?,?)')
-      .bind(crypto.randomUUID(), row.id, c.user.id, 'chair', 'revision', reason).run();
+    const results = await c.db.batch([
+      c.db.prepare("UPDATE expense_requests SET status='revision_chair',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_chair'").bind(row.id),
+      c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) SELECT ?,?,?,?,?,? WHERE changes()=1')
+        .bind(crypto.randomUUID(), row.id, c.user.id, 'chair', 'revision', reason)
+    ]);
+    if (!results[0]?.meta?.changes) throw err(409, 'NOT_PENDING', 'وضعیت درخواست تغییر کرده است');
     await audit(c.db, c.user.id, 'expense_request.chair_revision', 'expense_request', row.id,
       { referenceNo: row.reference_no }, c.overrideReason ? actorMeta(c.user, 'chair', c.overrideReason) : { actorRole: 'chair', reason });
     return reply({ ok: true, status: 'revision_chair' });
