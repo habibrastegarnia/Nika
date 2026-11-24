@@ -133,9 +133,6 @@ async function unitsTab() {
     const right = row.filter(x => ['1','2'].includes(x.number.slice(-1)));
     return html`<div class="nika-building-floor" aria-label="طبقه ${fa(floor)}">${unitTile(left[1])}${unitTile(left[0])}<div class="nika-building-core"><span>${fa(floor)}</span><i></i></div>${unitTile(right[0])}${unitTile(right[1])}</div>`;
   });
-  const debtCount = allUnits.filter(x => statusOf(x.balance) === 'debt').length;
-  const creditCount = allUnits.filter(x => statusOf(x.balance) === 'credit').length;
-  const settledCount = allUnits.length - debtCount - creditCount;
   return {
     html: html`<div class="nika-units-page" dir="rtl">
       <section class="nika-building-panel">
@@ -144,7 +141,6 @@ async function unitsTab() {
         <div class="nika-building-roof"></div><div class="nika-building-floors">${floors}</div>
         <div class="nika-building-ground"><span>ورودی ساختمان نیکا</span></div>
       </section>
-      <div class="nika-building-counts"><div><i class="debt"></i><strong>${fa(debtCount)}</strong><small>بدهکار</small></div><div><i class="settled"></i><strong>${fa(settledCount)}</strong><small>تسویه</small></div><div><i class="credit"></i><strong>${fa(creditCount)}</strong><small>بستانکار</small></div></div>
     </div>`,
     bind(box) {
       act(box, '[data-unit-detail]', async b => {
