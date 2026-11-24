@@ -310,7 +310,7 @@ test('واحدها و بازنشانی رمز و غیرفعال‌سازی', asy
   assert.equal((await res2.get('/api/notices')).data.error, 'PASSWORD_CHANGE_REQUIRED');
   assert.equal((await admin.patch(`/api/admin/users/${id13}`, { active: false })).status, 200);
   assert.equal((await res2.get('/api/me')).status, 401);
-  assert.equal((await res2.login('resident', '09123333333', r.data.tempPassword, '13')).status, 401);
+  assert.equal((await res2.login('resident', '', ids['13-resident'], '13')).status, 401);
 });
 
 test('تغییر رمز: رمز فعلی لازم است و نشست‌های دیگر باطل می‌شوند', async () => {
