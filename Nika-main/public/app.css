@@ -321,3 +321,55 @@ html[data-theme="light"] .workspace-toggle{background:linear-gradient(145deg,#ff
 .nika-user-unit-checks{flex-direction:column;align-items:flex-start;justify-content:center;gap:6px;padding-bottom:2px}
 .nika-user-unit-checks .compose-check{width:100%;margin:0;white-space:nowrap}
 @media(max-width:420px){.nika-user-unit-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.nika-user-unit-checks{align-items:flex-start;gap:5px}}
+
+
+/* Interactive 8-floor building facade in the units manager */
+.nika-units-page{display:grid;gap:12px;direction:rtl}
+.nika-building-panel{padding:12px 9px 0;border:1px solid #ffffff18;border-radius:20px;background:linear-gradient(160deg,#344158,#253247);overflow:hidden;box-shadow:0 12px 30px #080e1b35}
+.nika-building-heading{display:flex;flex-direction:column;gap:3px;text-align:right;margin:2px 4px 10px}
+.nika-building-heading strong{font-size:14px;color:#f2f5fb}
+.nika-building-heading span{font-size:10px;color:#aebbd2;line-height:1.8}
+.nika-building-legend{display:flex;justify-content:center;gap:13px;flex-wrap:wrap;margin:0 0 12px;font-size:9px;color:#d4deed}
+.nika-building-legend span{display:inline-flex;align-items:center;gap:5px}
+.nika-building-legend i,.nika-building-counts i{display:inline-block;width:10px;height:10px;border-radius:4px}
+.nika-building-legend i.debt,.nika-building-counts i.debt{background:#ee777c}
+.nika-building-legend i.settled,.nika-building-counts i.settled{background:#9dc7ec}
+.nika-building-legend i.credit,.nika-building-counts i.credit{background:#80d69b}
+.nika-building-roof{height:9px;margin:0 7px;background:linear-gradient(90deg,#dba98d,#f4c7aa,#dca98d);border:1px solid #754f3f;border-bottom:0;border-radius:3px 3px 0 0}
+.nika-building-floors{padding:5px 6px 0;background:linear-gradient(90deg,#eab99e,#f3c7ac 49%,#eab99e);border-left:1px solid #7d5948;border-right:1px solid #7d5948}
+.nika-building-floor{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) 32px repeat(2,minmax(0,1fr));gap:4px;direction:ltr;align-items:stretch;padding:5px 2px;border-bottom:2px solid #a8765d;min-height:54px}
+.nika-building-unit{position:relative;display:grid;place-items:center;min-width:0;min-height:43px;padding:4px 1px;border-radius:8px;border:1px solid #ffffffa8;color:#14243a;font:800 11px Vazirmatn,Tahoma,sans-serif;cursor:pointer;box-shadow:0 2px 5px #573d302c,inset 0 1px 2px #ffffffd9;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);transition:transform .15s ease,filter .15s ease}
+.nika-building-unit:before{content:"";position:absolute;inset:1px 1px 48% 1px;border-radius:7px 7px 3px 3px;background:linear-gradient(115deg,#ffffffa8,#ffffff08);pointer-events:none}
+.nika-building-unit span{position:relative;z-index:1;white-space:nowrap}
+.nika-building-unit.debt{background:linear-gradient(145deg,#ffb6b0d9,#e76f79d9);border-color:#ffcbc4}
+.nika-building-unit.settled{background:linear-gradient(145deg,#e1f1ffd9,#a9c9ead9);border-color:#d6eaff}
+.nika-building-unit.credit{background:linear-gradient(145deg,#c7f4cbd9,#75d68bd9);border-color:#d5ffda}
+.nika-building-unit:active{transform:scale(.96);filter:brightness(1.08)}
+.nika-building-core{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:linear-gradient(90deg,#f8e8d6,#fff4e6,#f8e8d6);border-left:1px solid #c79d7d;border-right:1px solid #c79d7d;color:#8b6652}
+.nika-building-core span{font-size:9px;font-weight:700}
+.nika-building-core i{display:block;width:9px;height:20px;border:1px solid #9c897a;background:linear-gradient(90deg,#dce8f2,#fff);box-shadow:inset 0 0 0 2px #fff}
+.nika-building-ground{height:52px;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,#f6e8d7,#fff3e5 49%,#f6e8d7);border:1px solid #98715d;border-top:0;color:#8b6652;font-size:10px;position:relative}
+.nika-building-ground:before{content:"";position:absolute;bottom:0;width:48px;height:34px;background:linear-gradient(90deg,#9a6549,#c58c67,#80543d);border:3px solid #f1d4b7;border-bottom:0;border-radius:5px 5px 0 0;box-shadow:inset 0 0 0 2px #684632}
+.nika-building-ground span{position:absolute;bottom:5px;z-index:1;color:#fff;font-size:8px;text-shadow:0 1px 3px #38251d}
+.nika-building-counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.nika-building-counts>div{display:grid;grid-template-columns:12px 1fr;grid-template-rows:auto auto;align-items:center;column-gap:5px;padding:9px;border-radius:13px;background:#273449;border:1px solid #ffffff12}
+.nika-building-counts i{grid-row:1/3}
+.nika-building-counts strong{font-size:14px;line-height:1.4}
+.nika-building-counts small{font-size:9px;color:#aebbd4}
+.nika-unit-detail{direction:rtl;text-align:right}
+.nika-unit-detail-status{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:#273449;font-size:11px}
+.nika-unit-detail-status strong{font-size:12px}
+.nika-unit-detail-status.debt strong,.nika-unit-total.debt strong,.nika-unit-fin-row .debt-text{color:#ff9da4}
+.nika-unit-detail-status.credit strong,.nika-unit-total.credit strong,.nika-unit-fin-row .credit-text{color:#83e2a0}
+.nika-unit-detail-status.settled strong,.nika-unit-total.settled strong,.nika-unit-fin-row .settled-text{color:#a9cfee}
+.nika-unit-total{display:grid;gap:5px;margin:10px 0;padding:13px;border:1px solid #ffffff14;border-radius:13px;background:linear-gradient(145deg,#303f57,#253247)}
+.nika-unit-total small{font-size:10px;color:#aebbd4}
+.nika-unit-total strong{font-size:18px;line-height:1.6}
+.nika-unit-fin-section{padding:10px 12px;border:1px solid #ffffff12;border-radius:13px;background:#273449}
+.nika-unit-fin-section h4{font-size:11px;margin:0 0 8px;color:#e4ebf7}
+.nika-unit-fin-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid #ffffff10;font-size:10px}
+.nika-unit-fin-row:first-of-type{border-top:0}
+.nika-unit-fin-row span{color:#b9c6dc;flex:0 0 auto}
+.nika-unit-fin-row strong{font-size:10px;text-align:left;direction:rtl;overflow-wrap:anywhere}
+@media(max-width:380px){.nika-building-floor{grid-template-columns:repeat(2,minmax(0,1fr)) 26px repeat(2,minmax(0,1fr));gap:3px;padding-inline:1px}.nika-building-unit{font-size:10px;min-height:40px}.nika-building-counts>div{padding:7px}.nika-building-counts strong{font-size:12px}}
+@media(min-width:760px){.nika-building-panel{max-width:560px;margin-inline:auto;width:100%}.nika-building-counts{max-width:560px;margin-inline:auto;width:100%}}
