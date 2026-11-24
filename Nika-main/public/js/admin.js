@@ -12,7 +12,9 @@ let tab = 'users', sub = {};
 const TABS = () => [
   ['users', 'کاربران', can('users.manage')],
   ['units', 'واحدها', can('units.manage')],
-  ['finance', 'تنظیمات مالی', canAny(['finance.charge', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'])],
+  ['finance', 'تنظیمات مالی', can('*') || can('system.settings')],
+  ['finance-approvals', 'تأییدهای مالی', canAny(['finance.approve', 'expenses.approve'])],
+  ['expenses', 'ثبت هزینه', can('expenses.create')],
   ['requests', 'درخواست‌ها', can('requests.manage')],
   ['messages', 'پیام‌ها', can('messages.manage')],
   ['notices', 'اطلاعیه‌ها', can('notices.manage')],
@@ -200,32 +202,38 @@ function bindGroupedMoneyInputs(root){
  });
 }
 async function financeTab() {
- const canApprove=canAny(['finance.approve','expenses.approve']);
- const pend=canApprove?await api('/transactions?fund=monthly&scope=all&status=pending').then(a=>api('/transactions?fund=owner&scope=all&status=pending').then(b=>[...a.transactions,...b.transactions])):[];
- const pending=pend.filter(t=>t.kind==='payment'?can('finance.approve'):can('expenses.approve'));
- const sections=[];
- if(can('*')||can('system.settings')){
-  const {settings}=await api('/finance/reminder-settings');
-  const t=jToday(),today=`${t.y}-${String(t.m).padStart(2,'0')}-${String(t.d).padStart(2,'0')}`;
-  sections.push(card('تنظیمات مالی',html`<form id="financeSettings" novalidate>
+ if(!(can('*')||can('system.settings'))) return {html:empty('دسترسی به تنظیمات مالی ندارید.')};
+ const {settings}=await api('/finance/reminder-settings');
+ const t=jToday(),today=`${t.y}-${String(t.m).padStart(2,'0')}-${String(t.d).padStart(2,'0')}`;
+ return {
+  html:html`<div class="nika-admin-grid finance-settings-grid">${card('تنظیمات مالی',html`<form id="financeSettings" novalidate>
    <section class="finance-setting-block"><h4>شارژ ماهیانه</h4><div class="finance-setting-row">${financeNumberField('monthlyAmount','مبلغ شارژ (تومان)',settings?.monthly_amount)}${financeNumberField('monthlyDueDay','روز چندم ماه (سررسید)',settings?.monthly_due_day)}</div>${jalaliDateControl('monthlyEffectiveFrom','تاریخ مصوب اجرا',settings?.monthly_effective_from||settings?.effective_from||today)}</section>
    <section class="finance-setting-block"><h4>شارژ مالکانه</h4><div class="finance-setting-row finance-owner-row">${financeNumberField('ownerAmount','مبلغ شارژ (تومان)',settings?.owner_amount)}${jalaliDateControl('ownerDueDate','تاریخ سررسید پرداخت',settings?.owner_due_date||today)}</div>${jalaliDateControl('ownerEffectiveFrom','تاریخ مصوب اجرا',settings?.owner_effective_from||settings?.effective_from||today)}</section>
-   <div class="nika-actions"><button class="nika-primary" type="submit">ثبت مصوبه جدید</button></div></form><div class="nika-footnote">تاریخ اجرای مصوبه شارژ ماهیانه و مالکانه مستقل است. سررسید شارژ مالکانه برای همان سال تعیین می‌شود و برای سال بعد باید با مصوبه جدید ثبت شود.</div>`));
- }
- if(canApprove)sections.push(card(`در انتظار تأیید (${fa(pending.length)})`,pending.length?html`<div class="nika-users">${pending.map(t=>html`<div class="nika-usercard"><strong>${t.title} · ${toman(t.amount)}</strong><small>${KIND_FA[t.kind]} · ${FUND_FA[t.fund_id]}${t.unit_number?' · واحد '+t.unit_number:''}${t.category?' · '+t.category:''}${t.period?' · '+(t.fund_id==='owner'?fa(t.period):periodLabel(t.period)):''}${t.reference?' · پیگیری '+t.reference:''} · ثبت: ${t.created_name} · ${fdt(t.created_at)}${t.note?' · '+t.note:''}</small><div class="row-actions"><button class="page-btn sm ok" data-ok="${t.id}">تأیید</button><button class="page-btn sm danger" data-no="${t.id}">رد</button></div></div>`)}</div>`:empty('مورد در انتظاری وجود ندارد.')));
- if(can('finance.charge'))sections.push(card('تعریف شارژ / اعتبار',html`<form id="chNew" novalidate>${fields([
-  {name:'fund',label:'صندوق',type:'select',value:'monthly',options:fundOpts},{name:'kind',label:'نوع',type:'select',value:'charge',options:[['charge','شارژ (افزایش بدهی)'],['adjustment','اعتبار / تخفیف (کاهش بدهی)']]},
-  {name:'period',label:'سال / دوره',value:curPeriod(),dir:'ltr',required:true,hint:'شارژ مالکانه: ۱۴۰۵ · شارژ ماهیانه: ۱۴۰۵-۰۹'},{name:'title',label:'عنوان',placeholder:'مثلاً شارژ آذر',required:true},{name:'amount',label:'مبلغ برای هر واحد (تومان)',inputmode:'numeric',required:true,dir:'ltr'},{name:'units',label:'فقط این واحدها (اختیاری، با ویرگول جدا کنید)',placeholder:'خالی = همه‌ی واحدها'}],'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ثبت برای واحدها</button></div></form><div class="nika-footnote">اگر شارژی با همین عنوان و دوره قبلاً برای واحدی ثبت شده باشد، دوباره ثبت نمی‌شود.</div>`));
- if(can('expenses.create'))sections.push(card('ثبت هزینه‌ی ساختمان',html`<form id="exNew" novalidate>${fields([
-  {name:'fund',label:'صندوق',type:'select',value:'monthly',options:fundOpts},{name:'period',label:'دوره',value:curPeriod(),dir:'ltr',required:true},{name:'category',label:'دسته‌بندی',value:'سایر',required:true,placeholder:'آب، برق، نظافت، تعمیرات…'},{name:'title',label:'عنوان هزینه',required:true},{name:'amount',label:'مبلغ (تومان)',inputmode:'numeric',required:true,dir:'ltr'},{name:'reference',label:'شماره سند / فاکتور (اختیاری)',dir:'ltr'}],'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ثبت هزینه</button></div></form><div class="nika-footnote">هزینه پس از تأیید مدیر مالی در داشبورد ساکنان نمایش داده می‌شود. ثبت‌کننده نمی‌تواند هزینه‌ی خود را تأیید کند.</div>`));
- return {html:html`<div class="nika-admin-grid finance-settings-grid">${sections}</div>`,bind(box){
-  bindGroupedMoneyInputs(box);
-  const fs=$('#financeSettings',box);if(fs){bindJalaliDateControls(fs);onSubmit(fs,async d=>{const num=v=>parseAmount(v);await api('/finance/reminder-settings',{method:'POST',body:{monthlyAmount:num(d.monthlyAmount),monthlyDueDay:num(d.monthlyDueDay),ownerAmount:num(d.ownerAmount),monthlyEffectiveFrom:normDigits(d.monthlyEffectiveFrom),ownerEffectiveFrom:normDigits(d.ownerEffectiveFrom),ownerDueDate:normDigits(d.ownerDueDate)}});toast('مصوبه مالی جدید ثبت شد؛ سوابق قبلی محفوظ ماند');reload();});}
-  act(box,'[data-ok]',async b=>{await api(`/transactions/${b.dataset.ok}/decision`,{method:'POST',body:{status:'approved'}});toast('تأیید شد');reload();});
-  act(box,'[data-no]',async b=>{const note=await promptText('رد مورد','دلیل رد را بنویسید (برای کاربر نمایش داده می‌شود)','ثبت رد');if(!note)return;await api(`/transactions/${b.dataset.no}/decision`,{method:'POST',body:{status:'rejected',note}});toast('رد شد');reload();});
-  const ch=$('#chNew',box);if(ch){const fi=ch.elements.fund,pi=ch.elements.period;fi.addEventListener('change',()=>{pi.value=fi.value==='owner'?curPeriod().slice(0,4):curPeriod();});onSubmit(ch,async d=>{const amount=parseAmount(d.amount);if(!amount)throw new Error('مبلغ را به‌صورت عدد وارد کنید');const unitNumbers=d.units.split(/[,،\s]+/).map(s=>normDigits(s).trim()).filter(Boolean);const out=await api('/finance/charges',{method:'POST',body:{fund:d.fund,kind:d.kind,period:d.period,title:d.title,amount,unitNumbers}});toast(out.created?`برای ${fa(out.created)} واحد ثبت شد`:'موردی ثبت نشد (تکراری یا واحد نامعتبر)');reload();});}
-  const ex=$('#exNew',box);if(ex)onSubmit(ex,async d=>{const amount=parseAmount(d.amount);if(!amount)throw new Error('مبلغ را به‌صورت عدد وارد کنید');await api('/transactions',{method:'POST',body:{kind:'expense',fund:d.fund,period:d.period,category:d.category,title:d.title,amount,reference:d.reference||undefined}});toast('هزینه ثبت شد و در انتظار تأیید است');reload();});
- }};
+   <div class="nika-actions"><button class="nika-primary" type="submit">ثبت مصوبه جدید</button></div></form><div class="nika-footnote">با رسیدن تاریخ اجرای مصوبه، شارژ ماهیانه برای واحدها و شارژ مالکانه برای مالکان به‌صورت خودکار در حساب‌ها ثبت می‌شود. ثبت خودکار روزانه انجام می‌شود؛ سوابق مصوبه‌ها و بدهی‌های قبلی محفوظ می‌مانند.</div>`)}</div>`,
+  bind(box){
+   bindGroupedMoneyInputs(box);
+   const fs=$('#financeSettings',box);
+   if(fs){bindJalaliDateControls(fs);onSubmit(fs,async d=>{const num=v=>parseAmount(v);await api('/finance/reminder-settings',{method:'POST',body:{monthlyAmount:num(d.monthlyAmount),monthlyDueDay:num(d.monthlyDueDay),ownerAmount:num(d.ownerAmount),monthlyEffectiveFrom:normDigits(d.monthlyEffectiveFrom),ownerEffectiveFrom:normDigits(d.ownerEffectiveFrom),ownerDueDate:normDigits(d.ownerDueDate)}});toast('مصوبه مالی جدید ثبت شد؛ شارژها طبق تاریخ اجرا به‌صورت خودکار ثبت می‌شوند');reload();});}
+  }
+ };
+}
+async function financeApprovalsTab() {
+ const pend=await api('/transactions?fund=monthly&scope=all&status=pending').then(a=>api('/transactions?fund=owner&scope=all&status=pending').then(b=>[...a.transactions,...b.transactions]));
+ const pending=pend.filter(t=>t.kind==='payment'?can('finance.approve'):can('expenses.approve'));
+ return {
+  html:card('در انتظار تأیید',pending.length?html`<div class="nika-users">${pending.map(t=>html`<div class="nika-usercard"><strong>${t.title} · ${toman(t.amount)}</strong><small>${KIND_FA[t.kind]} · ${FUND_FA[t.fund_id]}${t.unit_number?' · واحد '+t.unit_number:''}${t.category?' · '+t.category:''}${t.period?' · '+(t.fund_id==='owner'?fa(t.period):periodLabel(t.period)):''}${t.reference?' · پیگیری '+t.reference:''} · ثبت: ${t.created_name} · ${fdt(t.created_at)}${t.note?' · '+t.note:''}</small><div class="row-actions"><button class="page-btn sm ok" data-ok="${t.id}">تأیید</button><button class="page-btn sm danger" data-no="${t.id}">رد</button></div></div>` )}</div>`:empty('موردی در انتظار تأیید وجود ندارد.')),
+  bind(box){
+   act(box,'[data-ok]',async b=>{await api(`/transactions/${b.dataset.ok}/decision`,{method:'POST',body:{status:'approved'}});toast('تأیید شد');reload();});
+   act(box,'[data-no]',async b=>{const note=await promptText('رد مورد','دلیل رد را بنویسید (برای کاربر نمایش داده می‌شود)','ثبت رد');if(!note)return;await api(`/transactions/${b.dataset.no}/decision`,{method:'POST',body:{status:'rejected',note}});toast('رد شد');reload();});
+  }
+ };
+}
+async function expensesTab() {
+ return {
+  html:card('ثبت هزینه‌ی ساختمان',html`<form id="exNew" novalidate>${fields([
+   {name:'fund',label:'صندوق',type:'select',value:'monthly',options:fundOpts},{name:'period',label:'دوره',value:curPeriod(),dir:'ltr',required:true},{name:'category',label:'دسته‌بندی',value:'سایر',required:true,placeholder:'آب، برق، نظافت، تعمیرات…'},{name:'title',label:'عنوان هزینه',required:true},{name:'amount',label:'مبلغ (تومان)',inputmode:'numeric',required:true,dir:'ltr'},{name:'reference',label:'شماره سند / فاکتور (اختیاری)',dir:'ltr'}],'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ثبت هزینه</button></div></form><div class="nika-footnote">هزینه پس از ثبت، برای تأیید مدیر مالی ارسال می‌شود. ثبت‌کننده نمی‌تواند هزینه‌ی خود را تأیید کند.</div>`),
+  bind(box){bindGroupedMoneyInputs(box);const ex=$('#exNew',box);if(ex)onSubmit(ex,async d=>{const amount=parseAmount(d.amount);if(!amount)throw new Error('مبلغ را به‌صورت عدد وارد کنید');await api('/transactions',{method:'POST',body:{kind:'expense',fund:d.fund,period:d.period,category:d.category,title:d.title,amount,reference:d.reference||undefined}});toast('هزینه ثبت شد و برای تأیید ارسال شد');reload();});}
+ };
 }
 // ====================== درخواست‌ها ======================
 async function requestsTab() {
@@ -306,4 +314,4 @@ async function auditTab() {
   return { html: card('گزارش ممیزی (۱۵۰ رویداد اخیر)', html`<table class="nika-table"><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>جزئیات</th></tr>${logs.map(l => html`<tr><td>${fdt(l.created_at)}</td><td>${l.actor || '—'}</td><td dir="ltr" style="text-align:left">${l.action}</td><td dir="ltr" style="text-align:left;font-size:9px;overflow-wrap:anywhere">${l.details && l.details !== '{}' ? l.details : ''}</td></tr>`)}</table>`) };
 }
 
-const RENDER = { users: usersTab, units: unitsTab, finance: financeTab, requests: requestsTab, messages: messagesTab, notices: noticesTab, content: contentTab, audit: auditTab };
+const RENDER = { users: usersTab, units: unitsTab, finance: financeTab, 'finance-approvals': financeApprovalsTab, expenses: expensesTab, requests: requestsTab, messages: messagesTab, notices: noticesTab, content: contentTab, audit: auditTab };
