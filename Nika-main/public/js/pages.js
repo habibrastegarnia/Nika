@@ -44,7 +44,7 @@ function renderCharges(d) {
 function fillMonths(d) {
   const list = d.periods.length ? d.periods : [d.period || curPeriod()];
   for (const id of ['#expMonth', '#finMonth']) {
-    const s = $(id); s.innerHTML = join(list.map(p => html`<option value="${p}">${periodLabel(p)}</option>`)); s.value = d.period || list[0];
+    const s = $(id); s.innerHTML = join(list.map(p => html`<option value="${p}">${d.fund === 'owner' ? fa(p) : periodLabel(p)}</option>`)); s.value = d.period || list[0];
   }
 }
 export async function loadDashboard(which, period) {
