@@ -116,10 +116,10 @@ R('POST', '/api/messages/:id/read', { perm: 'messages.use' }, async c => {
 const shortTime = v => { const s = String(v ?? '').trim(); if (!s) return null; const t = s.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw err(400, 'INVALID_TIME', 'ساعت باید به شکل ۱۸:۳۰ باشد'); return t; };
 const httpsUrl = v => { const s = String(v ?? '').trim(); try { const u = new URL(s); if (u.protocol !== 'https:' || s.length > 500) throw 0; return u.href; } catch { throw err(400, 'INVALID_URL', 'نشانی باید با https شروع شود'); } };
 const CONTENT = {
-  rules: { perm: 'content.manage', order: 'sort_order ASC,created_at ASC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), body: str(x.body, { max: 2000, multiline: true, field: 'متن' }), sort_order: x.sort_order == null || x.sort_order === '' ? 0 : int(x.sort_order, { min: 0, max: 9999 }) }) },
+  rules: { perm: 'rules.manage', order: 'sort_order ASC,created_at ASC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), body: str(x.body, { max: 2000, multiline: true, field: 'متن' }), sort_order: x.sort_order == null || x.sort_order === '' ? 0 : int(x.sort_order, { min: 0, max: 9999 }) }) },
   resolutions: { perm: 'resolutions.manage', order: 'decided_on DESC,created_at DESC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), body: str(x.body, { max: 2000, multiline: true, field: 'متن' }), decided_on: jdate(x.decided_on, '/') }) },
-  events: { perm: 'content.manage', order: 'event_date ASC,event_time ASC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), body: optStr(x.body, { max: 1000, multiline: true, field: 'توضیحات' }), event_date: jdate(x.event_date, '-'), event_time: shortTime(x.event_time) }) },
-  documents: { perm: 'content.manage', order: 'created_at DESC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), description: optStr(x.description, { max: 300, field: 'توضیحات' }), url: httpsUrl(x.url) }) }
+  events: { perm: 'events.manage', order: 'event_date ASC,event_time ASC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), body: optStr(x.body, { max: 1000, multiline: true, field: 'توضیحات' }), event_date: jdate(x.event_date, '-'), event_time: shortTime(x.event_time) }) },
+  documents: { perm: 'documents.manage', order: 'created_at DESC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), description: optStr(x.description, { max: 300, field: 'توضیحات' }), url: httpsUrl(x.url) }) }
 };
 for (const [name, def] of Object.entries(CONTENT)) {
   R('GET', `/api/${name}`, async c => {
