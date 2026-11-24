@@ -75,7 +75,7 @@ function setupNav() {
     b.onclick = () => showAdmin(key);
     shortcutHost.appendChild(b);
   }
-  const roles = S.user?.roles || [];
+  const roles = [...(S.user?.roles || []), ...(S.user?.delegatedRoles || [])];
   const order = roles.includes('chair')
     ? ['finance', 'users', 'units', 'calendar', 'resolutions', 'rules']
     : roles.includes('finance')
