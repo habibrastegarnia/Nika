@@ -28,8 +28,13 @@ function updateWorkspaceToggle(manager) {
   toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
 }
 function showManagerShortcuts(show) {
-  $$('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
-  $('.category[data-menu="requests"]')?.classList.toggle('nika-hide', show);
+  const roles = S.user?.roles || [];
+  const technicalOnly = roles.includes('system_admin') && !roles.some(r => ['chair', 'finance', 'board', 'executive'].includes(r));
+  $('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
+  $('.category[data-menu]').forEach(el => {
+    const hidden = show && (el.dataset.menu === 'requests' || technicalOnly);
+    el.classList.toggle('nika-hide', hidden);
+  });
   $('#noticeHead')?.classList.toggle('nika-hide', show);
   $('#noticeCard')?.classList.toggle('nika-hide', show);
 }
