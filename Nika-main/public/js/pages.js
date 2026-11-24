@@ -13,7 +13,9 @@ export const canDash = () => dashFunds().length > 0;
 export function fillHeader() {
   const u = S.user;
   $('#hdrName').textContent = u.name;
-  $('#hdrSub').textContent = u.unit_number ? `واحد ${u.unit_number} · ${u.account_type === 'owner' ? 'مالک' : 'ساکن'}` : u.roles.map(r => ROLE_FA[r]).join('، ');
+  const baseRoleText = u.unit_number ? `واحد ${u.unit_number} · ${u.account_type === 'owner' ? 'مالک' : 'ساکن'}` : u.roles.map(r => ROLE_FA[r]).join('، ');
+  const delegatedText = (u.delegatedRoles || []).map(r => `جانشین ${ROLE_FA[r]}`).join('، ');
+  $('#hdrSub').textContent = [baseRoleText, delegatedText].filter(Boolean).join(' · ');
   $('#hdrAvatar').src = u.has_avatar ? `/api/avatar?v=${encodeURIComponent(u.avatar_v || '')}` : 'assets/avatar.jpg';
 }
 
