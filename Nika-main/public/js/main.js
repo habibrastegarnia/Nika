@@ -103,7 +103,7 @@ function initNav() {
 }
 function initCarousel() {
   const track = $('#track'), dots = $$('.slide-dot'); let i = 0, x0 = null;
-  const go = n => { i = (n + 3) % 3; track.style.transform = `translate3d(${i * (100 / 3)}%,0,0)`; dots.forEach((d, j) => d.classList.toggle('active', j === i)); };
+  const go = n => { i = (n + 3) % 3; track.style.transform = `translate3d(${i * 100}%,0,0)`; dots.forEach((d, j) => d.classList.toggle('active', j === i)); };
   $('#next').onclick = () => go(i + 1); $('#prev').onclick = () => go(i - 1); dots.forEach(d => d.onclick = () => go(+d.dataset.index));
   const c = $('#carousel');
   c.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
