@@ -195,12 +195,14 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
 test('درخواست پرداخت: ثبت، تأیید دومرحله‌ای، کنترل صندوق و سوابق', async () => {
   const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
   const create = (amount, title) => ({ fund: 'monthly', amount, documentTitle: title, documentDate: '1405-09-01', description: 'سند آزمایشی', files: [{ name: 'invoice.png', data: image }] });
+  assert.equal((await exec.put('/api/delegations/executive', { enabled: true, delegateId: ids.finId })).status, 200);
   assert.equal((await res1.post('/api/transactions', { fund: 'monthly', kind: 'expense', amount: 1, title: 'x', period: '1405-09' })).status, 410);
   assert.equal((await exec.post('/api/transactions', { fund: 'monthly', kind: 'expense', amount: 1, title: 'x', period: '1405-09' })).status, 410);
 
   let r = await exec.post('/api/expense-requests', create(990000, 'قبض آب'));
   assert.equal(r.status, 201, JSON.stringify(r.data)); const first = r.data.id;
   assert.match(r.data.referenceNo, /^1405-\d{6}$/);
+  assert.ok((await fin.get('/api/expense-requests?scope=mine')).data.requests.some(q => q.id === first), 'جانشین فعال باید درخواست‌های مدیر اجرایی را ببیند');
   assert.equal((await exec.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' })).status, 403);
   let review = await fin.get('/api/expense-requests?scope=review');
   assert.equal(review.data.requests.length, 1); assert.equal(review.data.requests[0].cash_balance, 3000000);
@@ -216,11 +218,13 @@ test('درخواست پرداخت: ثبت، تأیید دومرحله‌ای، �
   assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'revision', reason: 'نیاز به فاکتور خواناتر' })).data.status, 'revision_chair');
   const mine = await exec.get('/api/expense-requests?scope=mine');
   assert.equal(mine.data.requests[0].status, 'revision_chair');
-  assert.equal((await exec.patch(`/api/expense-requests/${first}`, { ...create(990000, 'قبض آب اصلاح‌شده'), files: [], reason: 'اصلاح عنوان سند' })).status, 200);
+  assert.equal((await fin.patch(\`/api/expense-requests/\${first}\`, { ...create(990000, 'قبض آب اصلاح‌شده'), files: [], reason: 'اصلاح توسط جانشین فعال مدیر اجرایی' })).status, 200);
   assert.equal((await fin.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' })).data.status, 'pending_chair');
   assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'approved' })).status, 200);
   assert.equal((await exec.get(`/api/expense-requests/${first}`)).data.request.status, 'finalized');
   assert.equal((await fin.get('/api/finance/funds')).data.funds.find(f => f.fund_id === 'monthly').balance, 2010000);
+  assert.equal((await exec.put('/api/delegations/executive', { enabled: false })).status, 200);
+  assert.equal((await fin.get('/api/expense-requests?scope=mine')).status, 403, 'با لغو جانشینی، دسترسی فوراً قطع می‌شود');
 
   r = await exec.post('/api/expense-requests', create(4000000, 'هزینه بیش از موجودی'));
   assert.equal(r.status, 201);
