@@ -1,5 +1,5 @@
 // عناصر مشترک رابط: اعلان، پنجره، مسیریابی صفحه‌ها، ساخت فرم
-import { html, esc, raw, $, $$, normDigits } from './util.js';
+import { html, esc, raw, $, $, normDigits, JM, fa, jToday, monthStart, monthLen } from './util.js';
 
 // ---------- اعلان و پنجره ----------
 let toastTimer;
@@ -14,10 +14,56 @@ export function openModal(title, content) {
   return $('#modalContent');
 }
 export const closeModal = () => $('#modalBackdrop').classList.remove('open');
+function jalaliParts(value) {
+  const s = normDigits(value || '');
+  const m = s.match(/(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})/);
+  if (m) return { y:+m[1], m:+m[2], d:+m[3] };
+  return jToday();
+}
+function showJalaliPicker(display) {
+  const wrap = display.closest('[data-jpicker]') || display.parentElement;
+  const hidden = wrap.querySelector('[data-jvalue], [data-jalali-value]');
+  if (!hidden) return;
+  const separator = display.dataset.jalaliSeparator || wrap.dataset.jalaliSeparator || '-';
+  const selected = jalaliParts(hidden.value || display.value);
+  let year = selected.y, month = selected.m;
+  const weekdays = ['ش','ی','د','س','چ','پ','ج'];
+  const modal = openModal('انتخاب تاریخ شمسی', html\`<div class="jalali-picker" dir="rtl"></div>\`);
+  const render = () => {
+    const offset = (monthStart(year, month).getUTCDay() + 1) % 7;
+    const count = monthLen(year, month);
+    let cells = '';
+    for (let i=0;i<offset;i++) cells += '<i></i>';
+    for (let day=1;day<=count;day++) {
+      const active = year===selected.y && month===selected.m && day===selected.d;
+      cells += \`<button type="button" data-jcal-day="${day}" class="${active?'selected':''}">${fa(day)}</button>\`;
+    }
+    modal.innerHTML = \`<div class="jalali-calendar-head"><button type="button" data-jcal-prev aria-label="ماه قبل">›</button><strong>${JM[month-1]} ${fa(year)}</strong><button type="button" data-jcal-next aria-label="ماه بعد">‹</button></div><div class="jalali-calendar-grid">${weekdays.map(x=>\`<span>${x}</span>\`).join('')}${cells}</div>\`;
+  };
+  modal.onclick = e => {
+    const b=e.target.closest('button');
+    if(!b)return;
+    if(b.hasAttribute('data-jcal-prev')) { if(--month<1){month=12;year--;} render(); return; }
+    if(b.hasAttribute('data-jcal-next')) { if(++month>12){month=1;year++;} render(); return; }
+    if(b.hasAttribute('data-jcal-day')) {
+      const day=+b.dataset.jcalDay;
+      const y=String(year).padStart(4,'0'), m=String(month).padStart(2,'0'), d=String(day).padStart(2,'0');
+      hidden.value=[y,m,d].join(separator);
+      display.value=[fa(year),fa(m),fa(d)].join('/');
+      hidden.dispatchEvent(new Event('change',{bubbles:true}));
+      closeModal();
+    }
+  };
+  render();
+}
 export function initModal() {
   $('#closeModal').onclick = closeModal;
   $('#modalBackdrop').addEventListener('click', e => { if (e.target.id === 'modalBackdrop') closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('click', e => {
+    const display=e.target.closest('[data-jalali-date], [data-jdisplay]');
+    if(display) { e.preventDefault(); showJalaliPicker(display); }
+  });
 }
 export function ask(title, message, okLabel = 'تأیید', danger = false) {
   return new Promise(res => {
@@ -93,6 +139,11 @@ export function fields(list, cls = 'page') {
   return list.map(f => {
     const req = f.required ? raw(' required') : '', ph = f.placeholder ? raw(` placeholder="${esc(f.placeholder)}"`) : '', dir = f.dir ? raw(` dir="${f.dir}"`) : '';
     let ctl;
+    if (f.type === 'date') {
+      const s=normDigits(f.value || ''), match=s.match(/(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})/), p=match?{y:+match[1],m:+match[2],d:+match[3]}:jToday();
+      const sep=f.dateSeparator || '-', y=String(p.y).padStart(4,'0'), m=String(p.m).padStart(2,'0'), d=String(p.d).padStart(2,'0');
+      ctl=html\`<div class="jalali-date-field"><input class="${inp}" type="text" readonly data-jalali-date data-jalali-separator="${sep}" value="${fa(p.y)}/${fa(m)}/${fa(d)}" placeholder="انتخاب تاریخ" aria-label="${f.label}" autocomplete="off"><input type="hidden" name="${f.name}" data-jalali-value value="${y}${sep}${m}${sep}${d}"${req}></div>\`;
+    }
     if (f.type === 'select') ctl = html`<select class="${sel}" name="${f.name}"${req}>${f.options.map(([v, l]) => html`<option value="${v}" ${String(f.value) === String(v) ? raw('selected') : ''}>${l}</option>`)}</select>`;
     else if (f.type === 'textarea') ctl = html`<textarea class="${ta}" name="${f.name}" rows="${f.rows || 4}"${req}${ph}>${f.value ?? ''}</textarea>`;
     else if (f.type === 'checks') ctl = html`<div class="nika-rolelist">${f.options.map(([v, l]) => html`<label class="nika-roleoption"><input type="checkbox" name="${f.name}[]" value="${v}" ${(f.value || []).includes(v) ? raw('checked') : ''}>${l}</label>`)}</div>`;
