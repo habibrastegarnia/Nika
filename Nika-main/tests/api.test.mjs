@@ -199,7 +199,7 @@ test('درخواست پرداخت: ثبت، تأیید دومرحله‌ای، �
 
   let r = await exec.post('/api/expense-requests', create(990000, 'قبض آب'));
   assert.equal(r.status, 201, JSON.stringify(r.data)); const first = r.data.id;
-  assert.match(r.data.referenceNo, /^1405-\\d{6}$/);
+  assert.match(r.data.referenceNo, /^1405-\d{6}$/);
   assert.equal((await exec.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' })).status, 403);
   let review = await fin.get('/api/expense-requests?scope=review');
   assert.equal(review.data.requests.length, 1); assert.equal(review.data.requests[0].cash_balance, 3000000);
@@ -263,7 +263,7 @@ test('اطلاعیه، درخواست، پیام و اتصال بین آن‌ه�
   await res1.post(`/api/messages/${msgs[0].id}/read`); assert.equal((await res1.get('/api/summary')).data.unreadMessages, 0);
   assert.equal((await exec.post(`/api/requests/${rid}/publish`)).status, 403);
   assert.equal((await chair.post(`/api/requests/${rid}/publish`)).status, 201);
-  assert.equal((await admin.post(`/api/requests/${rid}/publish`)).status, 409);
+  assert.equal((await chair.post(`/api/requests/${rid}/publish`)).status, 409);
   assert.ok((await res2.get('/api/notices')).data.notices.some(n => n.title === 'لامپ سوخته'));
 
   // پیام به مدیریت و پاسخ مدیر
