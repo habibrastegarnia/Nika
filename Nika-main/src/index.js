@@ -24,6 +24,7 @@ async function handle(request, env, url) {
   if (mutating && origin && origin !== url.origin) throw err(403, 'BAD_ORIGIN', 'درخواست از مبدأ نامعتبر');
 
   const c = { request, env, db: env.DB, url, params, now: Math.floor(Date.now() / 1000), user: null };
+  let ownerRoles = [];
   if (!route.opts.public) {
     if (mutating && request.headers.get('X-Nika-Client') !== '1') throw err(403, 'BAD_ORIGIN', 'درخواست نامعتبر');
     c.user = await authenticate(c);
@@ -34,7 +35,7 @@ async function handle(request, env, url) {
 
     // اگر انجام‌دهنده مسئول اصلی این مجوز نباشد، ثبت دلیل پیش از عملیات الزامی است.
     const ownerRole = mutating && perm ? PERMISSION_OWNER[perm] : null;
-    const ownerRoles = Array.isArray(ownerRole) ? ownerRole : (ownerRole ? [ownerRole] : []);
+    ownerRoles = Array.isArray(ownerRole) ? ownerRole : (ownerRole ? [ownerRole] : []);
     if (ownerRoles.length && !ownerRoles.some(role => c.user.roles.includes(role))) {
       let body = {};
       try { body = await request.clone().json(); } catch {}
