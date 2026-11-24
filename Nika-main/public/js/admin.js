@@ -134,11 +134,11 @@ async function financeTab() {
     canAny(['finance.reports', 'finance.approve']) ? api(`/finance/balances?fund=${fund}`) : null]);
   const pending = pend.filter(t => t.kind === 'payment' ? can('finance.approve') : can('expenses.approve'));
   const sections = [];
-  if (canApprove) sections.push(card(`در انتظار تأیید (${fa(pending.length)})`, pending.length ? html`<div class="nika-users">${pending.map(t => html`<div class="nika-usercard"><strong>${t.title} · ${toman(t.amount)}</strong><small>${KIND_FA[t.kind]} · ${FUND_FA[t.fund_id]}${t.unit_number ? ' · واحد ' + t.unit_number : ''}${t.category ? ' · ' + t.category : ''}${t.period ? ' · ' + periodLabel(t.period) : ''}${t.reference ? ' · پیگیری ' + t.reference : ''} · ثبت: ${t.created_name} · ${fdt(t.created_at)}${t.note ? ' · ' + t.note : ''}</small><div class="row-actions"><button class="page-btn sm ok" data-ok="${t.id}">تأیید</button><button class="page-btn sm danger" data-no="${t.id}">رد</button></div></div>`)}</div>` : empty('مورد در انتظاری وجود ندارد.')));
+  if (canApprove) sections.push(card(`در انتظار تأیید (${fa(pending.length)})`, pending.length ? html`<div class="nika-users">${pending.map(t => html`<div class="nika-usercard"><strong>${t.title} · ${toman(t.amount)}</strong><small>${KIND_FA[t.kind]} · ${FUND_FA[t.fund_id]}${t.unit_number ? ' · واحد ' + t.unit_number : ''}${t.category ? ' · ' + t.category : ''}${t.period ? ' · ' + (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) : ''}${t.reference ? ' · پیگیری ' + t.reference : ''} · ثبت: ${t.created_name} · ${fdt(t.created_at)}${t.note ? ' · ' + t.note : ''}</small><div class="row-actions"><button class="page-btn sm ok" data-ok="${t.id}">تأیید</button><button class="page-btn sm danger" data-no="${t.id}">رد</button></div></div>`)}</div>` : empty('مورد در انتظاری وجود ندارد.')));
   if (can('finance.charge')) sections.push(card('تعریف شارژ / اعتبار', html`<form id="chNew" novalidate>${fields([
     { name: 'fund', label: 'صندوق', type: 'select', value: 'monthly', options: fundOpts },
     { name: 'kind', label: 'نوع', type: 'select', value: 'charge', options: [['charge', 'شارژ (افزایش بدهی)'], ['adjustment', 'اعتبار / تخفیف (کاهش بدهی)']] },
-    { name: 'period', label: 'دوره', value: curPeriod(), dir: 'ltr', required: true, hint: 'مثلاً ۱۴۰۵-۰۹' },
+    { name: 'period', label: 'سال / دوره', value: curPeriod(), dir: 'ltr', required: true, hint: 'شارژ مالکانه: ۱۴۰۵ · شارژ ماهیانه: ۱۴۰۵-۰۹' },
     { name: 'title', label: 'عنوان', placeholder: 'مثلاً شارژ آذر', required: true },
     { name: 'amount', label: 'مبلغ برای هر واحد (تومان)', inputmode: 'numeric', required: true, dir: 'ltr' },
     { name: 'units', label: 'فقط این واحدها (اختیاری، با ویرگول جدا کنید)', placeholder: 'خالی = همه‌ی واحدها' }], 'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ثبت برای واحدها</button></div></form><div class="nika-footnote">اگر شارژی با همین عنوان و دوره قبلاً برای واحدی ثبت شده باشد، دوباره ثبت نمی‌شود.</div>`));
@@ -156,12 +156,24 @@ async function financeTab() {
       act(box, '[data-ok]', async b => { await api(`/transactions/${b.dataset.ok}/decision`, { method: 'POST', body: { status: 'approved' } }); toast('تأیید شد'); reload(); });
       act(box, '[data-no]', async b => { const note = await promptText('رد مورد', 'دلیل رد را بنویسید (برای کاربر نمایش داده می‌شود)', 'ثبت رد'); if (!note) return; await api(`/transactions/${b.dataset.no}/decision`, { method: 'POST', body: { status: 'rejected', note } }); toast('رد شد'); reload(); });
       act(box, '[data-fund]', async b => { sub.fund = b.dataset.fund; reload(); });
-      const ch = $('#chNew', box); if (ch) onSubmit(ch, async d => {
+      const ch = $('#chNew', box); if (ch) {
+        const fundInput = ch.elements.fund, periodInput = ch.elements.period;
+        fundInput.addEventListener('change', () => {
+          if (fundInput.value === 'owner') {
+            periodInput.value = curPeriod().slice(0, 4);
+            periodInput.placeholder = '۱۴۰۵';
+          } else {
+            periodInput.value = curPeriod();
+            periodInput.placeholder = '۱۴۰۵-۰۹';
+          }
+        });
+        onSubmit(ch, async d => {
         const amount = parseAmount(d.amount); if (!amount) throw new Error('مبلغ را به‌صورت عدد وارد کنید');
         const unitNumbers = d.units.split(/[,،\s]+/).map(s => normDigits(s).trim()).filter(Boolean);
         const r = await api('/finance/charges', { method: 'POST', body: { fund: d.fund, kind: d.kind, period: d.period, title: d.title, amount, unitNumbers } });
         toast(r.created ? `برای ${fa(r.created)} واحد ثبت شد` : 'موردی ثبت نشد (تکراری یا واحد نامعتبر)'); reload();
-      });
+        });
+      }
       const ex = $('#exNew', box); if (ex) onSubmit(ex, async d => {
         const amount = parseAmount(d.amount); if (!amount) throw new Error('مبلغ را به‌صورت عدد وارد کنید');
         await api('/transactions', { method: 'POST', body: { kind: 'expense', fund: d.fund, period: d.period, category: d.category, title: d.title, amount, reference: d.reference || undefined } }); toast('هزینه ثبت شد و در انتظار تأیید است'); reload();
