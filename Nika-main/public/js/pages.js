@@ -88,17 +88,47 @@ export async function resolutionsPage() {
 export async function calendarPage(y, m) {
   const t = jToday(); y ??= t.y; m ??= t.m;
   const mm = String(m).padStart(2, '0'), { items } = await api(`/events?month=${y}-${mm}`);
+  const canEdit = can('events.manage');
   const byDay = {}; items.forEach(e => (byDay[+e.event_date.slice(8, 10)] ||= []).push(e));
   const start = monthStart(y, m), len = Math.round(((m === 12 ? monthStart(y + 1, 1) : monthStart(y, m + 1)) - start) / 864e5), lead = (start.getUTCDay() + 1) % 7;
   const cells = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map(d => html`<span class="dow">${d}</span>`);
   for (let i = 0; i < lead; i++) cells.push(html`<span class="blank"></span>`);
   for (let d = 1; d <= len; d++) cells.push(html`<span class="${byDay[d] ? 'event' : ''} ${y === t.y && m === t.m && d === t.d ? 'today' : ''}" ${byDay[d] ? raw(`data-day="${d}"`) : ''}>${faN(d)}</span>`);
   const prev = m === 1 ? [y - 1, 12] : [y, m - 1], next = m === 12 ? [y + 1, 1] : [y, m + 1];
-  const v = route('خانه', 'تقویم ساختمان', 'جلسات، سرویس‌ها و رویدادهای پیش‌رو', html`<div class="page-card"><div class="cal-nav"><button class="page-btn sm secondary" id="calPrev">‹ ماه قبل</button><strong>${JM[m - 1]} ${faN(y)}</strong><button class="page-btn sm secondary" id="calNext">ماه بعد ›</button></div><div class="page-calendar">${cells}</div></div>
-    <div class="page-card"><h3>رویدادهای ${JM[m - 1]}</h3>${items.length ? html`<div class="page-timeline">${items.map(e => html`<div class="page-event"><strong>${e.title}</strong><small>${faN(+e.event_date.slice(8, 10))} ${JM[m - 1]}${e.event_time ? ' · ' + normFa(e.event_time) : ''}</small>${e.body ? html`<p>${e.body}</p>` : ''}</div>`)}</div>` : html`<div class="page-empty">رویدادی برای این ماه ثبت نشده است.</div>`}</div>`);
+  const eventFields = [
+    { name: 'title', label: 'عنوان رویداد', required: true },
+    { name: 'event_date', label: 'تاریخ رویداد', type: 'date', dateSeparator: '-', dir: 'ltr', required: true },
+    { name: 'event_time', label: 'ساعت (اختیاری)', dir: 'ltr', placeholder: '18:30' },
+    { name: 'body', label: 'توضیحات', type: 'textarea', rows: 2 }
+  ];
+  const v = route('خانه', 'تقویم ساختمان', 'جلسات، سرویس‌ها و رویدادهای پیش‌رو', html`${canEdit ? html`<div class="page-card"><h3>ثبت رویداد جدید</h3><form id="eventNew" class="page-form" novalidate>${fields(eventFields)}<button class="page-btn full" type="submit">ثبت رویداد</button></form></div>` : ''}
+    <div class="page-card"><div class="cal-nav"><button class="page-btn sm secondary" id="calPrev">‹ ماه قبل</button><strong>${JM[m - 1]} ${faN(y)}</strong><button class="page-btn sm secondary" id="calNext">ماه بعد ›</button></div><div class="page-calendar">${cells}</div></div>
+    <div class="page-card"><h3>رویدادهای ${JM[m - 1]}</h3>${items.length ? html`<div class="page-timeline">${items.map(e => html`<div class="page-event"><strong>${e.title}</strong><small>${faN(+e.event_date.slice(8, 10))} ${JM[m - 1]}${e.event_time ? ' · ' + normFa(e.event_time) : ''}</small>${e.body ? html`<p>${e.body}</p>` : ''}${canEdit ? html`<div class="row-actions"><button class="page-btn sm secondary" data-event-edit="${e.id}">ویرایش</button><button class="page-btn sm danger" data-event-delete="${e.id}">حذف</button></div>` : ''}</div>` )}</div>` : html`<div class="page-empty">رویدادی برای این ماه ثبت نشده است.</div>`}</div>`);
   $('#calPrev', v).onclick = () => open(() => calendarPage(...prev), { replace: true });
   $('#calNext', v).onclick = () => open(() => calendarPage(...next), { replace: true });
+  const form = $('#eventNew', v);
+  if (form) onSubmit(form, async d => {
+    await api('/events', { method: 'POST', body: d });
+    toast('رویداد ثبت شد');
+    open(() => calendarPage(y, m), { replace: true });
+  });
+  $$('[data-event-edit]', v).forEach(b => b.onclick = () => {
+    const event = items.find(e => e.id === b.dataset.eventEdit);
+    const modal = openModal('ویرایش رویداد', html`<form class="page-form" novalidate>${fields(eventFields.map(f => ({ ...f, value: event[f.name] ?? '' })))}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>`);
+    onSubmit($('form', modal), async d => {
+      await api(`/events/${event.id}`, { method: 'PUT', body: d });
+      closeModal(); toast('رویداد ویرایش شد');
+      open(() => calendarPage(y, m), { replace: true });
+    });
+  });
+  $$('[data-event-delete]', v).forEach(b => b.onclick = async () => {
+    if (!await ask('حذف رویداد', 'این رویداد از تقویم حذف شود؟', 'حذف', true)) return;
+    await api(`/events/${b.dataset.eventDelete}`, { method: 'DELETE' });
+    toast('رویداد حذف شد');
+    open(() => calendarPage(y, m), { replace: true });
+  });
 }
+
 const normFa = s => String(s).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
 
 // ====================== تابلو و اسناد ======================
