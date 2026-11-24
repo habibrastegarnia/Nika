@@ -419,3 +419,13 @@ html[data-theme="light"] .workspace-toggle{background:linear-gradient(145deg,#ff
 html[data-theme="light"] .finance-setting-block{background:#fff;border-color:#dfe7e3}
 html[data-theme="light"] .finance-setting-block>h4{background:#fff;color:#258b69}
 @media(max-width:390px){.finance-owner-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:8px}}
+
+
+/* فضای مدیریت در همان قاب ثابت داشبورد */
+#nikaAdmin.nika-admin-inline{position:relative;inset:auto;z-index:auto;width:100%;min-height:0;overflow:visible;background:transparent;color:inherit}
+.nika-admin-inline .nika-admin-shell{width:100%;max-width:100%;margin:0 auto;padding:0 18px 24px;box-sizing:border-box}
+.nika-dashboard-hidden{display:none!important}
+.nika-admin-inline .nika-adminnav{position:sticky;top:0;z-index:4;padding:7px 0;background:rgba(32,40,57,.96);backdrop-filter:blur(14px)}
+html[data-theme="light"] .nika-admin-inline .nika-adminnav{background:rgba(247,248,252,.96)}
+.nika-admin-inline .nika-admincard{width:100%;box-sizing:border-box}
+@media(max-width:720px){.nika-admin-inline .nika-admin-shell{padding:0 12px 24px}}
