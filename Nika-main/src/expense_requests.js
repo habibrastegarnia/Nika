@@ -187,16 +187,17 @@ R('PATCH', '/api/expense-requests/:id', { perm: 'expenses.create' }, async c => 
       c.db.prepare(`UPDATE expense_requests SET fund_id=?,amount=?,document_title=?,document_date=?,description=?,
                     status='pending_finance',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('revision_finance','revision_chair')`)
         .bind(fund, amount, title, documentDate, description, row.id),
-      c.db.prepare('INSERT INTO expense_request_versions(id,request_id,version_no,snapshot,changed_by,reason) VALUES(?,?,?,?,?,?)')
+      c.db.prepare('INSERT INTO expense_request_versions(id,request_id,version_no,snapshot,changed_by,reason) SELECT ?,?,?,?,?,? WHERE changes()=1')
         .bind(crypto.randomUUID(), row.id, versionNo.version_no, JSON.stringify(snapshot), c.user.id, reason)
     ];
     for (const f of files) statements.push(
-      c.db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size) VALUES(?,?,?,?,?,?,?)')
+      c.db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size) SELECT ?,?,?,?,?,?,? WHERE changes()=1')
         .bind(f.id, f.request_id, f.version_no, f.object_key, f.filename, f.content_type, f.size)
     );
-    statements.push(c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) VALUES(?,?,?,?,?,?)')
+    statements.push(c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) SELECT ?,?,?,?,?,? WHERE changes()=1')
       .bind(crypto.randomUUID(), row.id, c.user.id, 'executive', 'resubmitted', reason));
-    await c.db.batch(statements);
+    const results = await c.db.batch(statements);
+    if (!results[0]?.meta?.changes) throw err(409, 'NOT_EDITABLE', 'وضعیت درخواست تغییر کرده است');
   } catch (e) {
     await Promise.all(files.map(f => c.env.FILES.delete(f.object_key).catch(() => {})));
     throw e;
@@ -212,11 +213,12 @@ R('POST', '/api/expense-requests/:id/cancel', { perm: 'expenses.create' }, async
   if (row.created_by !== c.user.id) throw err(403, 'FORBIDDEN', 'فقط ثبت‌کننده می‌تواند درخواست را منتفی کند');
   if (!['revision_finance', 'revision_chair'].includes(row.status)) throw err(409, 'NOT_CANCELLABLE', 'فقط درخواست نیازمند اصلاح قابل منتفی‌کردن است');
   const reason = optStr(x.reason, { max: 500, multiline: true, field: 'دلیل منتفی‌کردن' });
-  await c.db.batch([
+  const results = await c.db.batch([
     c.db.prepare("UPDATE expense_requests SET status='cancelled',cancelled_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('revision_finance','revision_chair')").bind(row.id),
-    c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) VALUES(?,?,?,?,?,?)')
+    c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) SELECT ?,?,?,?,?,? WHERE changes()=1')
       .bind(crypto.randomUUID(), row.id, c.user.id, 'executive', 'cancelled', reason)
   ]);
+  if (!results[0]?.meta?.changes) throw err(409, 'NOT_CANCELLABLE', 'وضعیت درخواست تغییر کرده است');
   await audit(c.db, c.user.id, 'expense_request.cancel', 'expense_request', row.id, { referenceNo: row.reference_no, reason });
   return reply({ ok: true, status: 'cancelled' });
 });
