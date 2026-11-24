@@ -131,36 +131,23 @@ R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async
   return reply({ ok: true, ...(row.account_type === 'staff' ? { tempPassword: initialPassword } : { initialPasswordIsPhone: true }) });
 });
 
-// حذف حساب کاربر؛ فقط رئیس هیئت‌مدیره اجازه دارد.
-R('DELETE', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
-  const t = await c.db.prepare('SELECT id FROM users WHERE id=?').bind(c.params.id).first();
-  if (!t) throw err(404, 'NOT_FOUND', 'کاربر پیدا نشد');
-  if (t.id === c.user.id) throw err(400, 'SELF_DELETE', 'حسابی که با آن وارد شده‌اید قابل حذف نیست');
-  const roles = await rolesOf(c.db, t.id);
-  if (!can(c.user, '*') && !(c.user.roles || []).includes('system_admin')) throw err(403, 'FORBIDDEN', 'اجازه حذف حساب کاربران را ندارید');
-  if (roles.includes('chair') && !can(c.user, '*')) throw err(403, 'FORBIDDEN', 'مدیر سامانه اجازه حذف حساب رئیس هیئت‌مدیره را ندارد');
-  if (roles.includes('chair') && !await otherActiveChairs(c.db, t.id)) throw err(400, 'LAST_CHAIR', 'آخرین رئیس هیئت‌مدیره را نمی‌توان حذف کرد');
+// غیرفعال‌سازی حساب؛ سوابق مالی و مدیریتی کاربر حفظ می‌شوند.
+R('DELETE', '/api/admin/users/:id', { perm: 'users.delete' }, async c => {
+  const t = await targetOrFail(c);
+  if (t.id === c.user.id) throw err(400, 'SELF_DELETE', 'حسابی که با آن وارد شده‌اید قابل غیرفعال‌سازی نیست');
+  if (t.roles.includes('chair') && !can(c.user, 'roles.assign')) throw err(403, 'FORBIDDEN', 'فقط رئیس هیئت‌مدیره می‌تواند حساب رئیس را مدیریت کند');
+  if (t.roles.includes('chair') && !await otherActiveChairs(c.db, t.id)) throw err(400, 'LAST_CHAIR', 'آخرین رئیس هیئت‌مدیره را نمی‌توان غیرفعال کرد');
   await c.db.batch([
-    c.db.prepare('DELETE FROM transactions WHERE created_by=? OR approved_by=? OR user_id=?').bind(t.id, t.id, t.id),
-    c.db.prepare('DELETE FROM messages WHERE sender_id=? OR recipient_id=?').bind(t.id, t.id),
-    c.db.prepare('DELETE FROM requests WHERE user_id=? OR assigned_to=?').bind(t.id, t.id),
-    c.db.prepare('UPDATE notices SET created_by=NULL WHERE created_by=?').bind(t.id),
-    c.db.prepare('UPDATE rules SET created_by=NULL WHERE created_by=?').bind(t.id),
-    c.db.prepare('UPDATE resolutions SET created_by=NULL WHERE created_by=?').bind(t.id),
-    c.db.prepare('UPDATE events SET created_by=NULL WHERE created_by=?').bind(t.id),
-    c.db.prepare('UPDATE documents SET created_by=NULL WHERE created_by=?').bind(t.id),
-    c.db.prepare('UPDATE audit_logs SET actor_id=NULL WHERE actor_id=?').bind(t.id),
-    c.db.prepare('DELETE FROM sessions WHERE user_id=?').bind(t.id),
-    c.db.prepare('DELETE FROM user_roles WHERE user_id=?').bind(t.id),
-    c.db.prepare('DELETE FROM users WHERE id=?').bind(t.id)
+    c.db.prepare("UPDATE users SET active=0,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(t.id),
+    c.db.prepare('DELETE FROM sessions WHERE user_id=?').bind(t.id)
   ]);
-  await audit(c.db, c.user.id, 'user.delete', 'user', t.id);
+  await audit(c.db, c.user.id, 'user.deactivate', 'user', t.id);
   return reply({ ok: true });
 });
 
 // پاک‌سازی کامل داده‌های آزمایشی؛ حساب رئیس فعلی و صندوق‌های پایه حفظ می‌شوند.
 R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
-  if (!can(c.user, '*')) throw err(403, 'FORBIDDEN', 'فقط رئیس هیئت‌مدیره اجازه‌ی پاک‌سازی کامل را دارد');
+  if (!can(c.user, 'roles.assign')) throw err(403, 'FORBIDDEN', 'فقط رئیس هیئت‌مدیره اجازه‌ی پاک‌سازی کامل را دارد');
   await c.db.batch([
     c.db.prepare('DELETE FROM transactions'),
     c.db.prepare('DELETE FROM messages'),
