@@ -10,9 +10,9 @@ const empty = t => html`<p>${t}</p>`;
 let tab = 'users', sub = {};
 
 const TABS = () => [
-  ['users', 'کاربران', can('users.manage')],
-  ['units', 'واحدها', can('units.manage')],
-  ['finance', 'تنظیمات مالی', canAny(['system.settings', 'finance.approve', 'expenses.approve', 'expenses.create'])],
+  ['users', 'کاربران', can('users.read')],
+  ['units', 'واحدها', can('units.read')],
+  ['finance', 'مالی', canAny(['finance.settings', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'])],
 ].filter(t => t[2]);
 
 let managerHome = false;
@@ -239,11 +239,16 @@ function bindGroupedMoneyInputs(root){
  });
 }
 async function financeTab() {
- const settingsAllowed = can('*') || can('system.settings');
+ const settingsAllowed = can('*') || can('finance.settings');
  const approvalsAllowed = canAny(['finance.approve','expenses.approve']);
  const expenseAllowed = can('expenses.create');
+ const reportsAllowed = can('finance.reports');
  const parts = [];
  let settingsOut = null, approvalsOut = null, expenseOut = null;
+ if (reportsAllowed) {
+  const { funds } = await api('/finance/funds');
+  parts.push(card('موجودی صندوق‌ها', html`<div class="nika-users">${funds.map(f => html`<div class="nika-usercard"><strong>${f.title}</strong><div class="page-stat-grid"><div class="page-stat"><small>موجودی فعلی</small><strong class="${f.balance < 0 ? 'debt-text' : 'credit-text'}">${toman(f.balance)}</strong></div><div class="page-stat"><small>دریافتی تأییدشده</small><strong>${toman(f.incoming)}</strong></div><div class="page-stat"><small>هزینه قطعی‌شده</small><strong>${toman(f.outgoing)}</strong></div></div></div>` )}</div>`));
+ }
  if (settingsAllowed) {
   const {settings}=await api('/finance/reminder-settings');
   const t=jToday(),today=`${t.y}-${String(t.m).padStart(2,'0')}-${String(t.d).padStart(2,'0')}`;
