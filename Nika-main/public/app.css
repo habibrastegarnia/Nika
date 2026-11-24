@@ -429,3 +429,5 @@ html[data-theme="light"] .finance-setting-block>h4{background:#fff;color:#258b69
 html[data-theme="light"] .nika-admin-inline .nika-adminnav{background:rgba(247,248,252,.96)}
 .nika-admin-inline .nika-admincard{width:100%;box-sizing:border-box}
 @media(max-width:720px){.nika-admin-inline .nika-admin-shell{padding:0 12px 24px}}
+
+.phone{overflow-y:auto}
