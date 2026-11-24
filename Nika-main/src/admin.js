@@ -192,10 +192,22 @@ R('PATCH', '/api/admin/units/:id', { perm: 'units.manage' }, async c => {
   return reply({ ok: true });
 });
 
-// ---------- ممیزی (فقط رئیس) ----------
+// ---------- گزارش عملکرد بر اساس حوزه مسئولیت ----------
 R('GET', '/api/admin/audit', { perm: 'audit.read' }, async c => {
+  const roles = [...c.user.roles, ...(c.user.delegatedRoles || [])];
   const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 100, 1), 300);
+  let where = '1=1';
+  if (!(roles.includes('chair') || roles.includes('board'))) {
+    const scopes = [];
+    if (roles.includes('finance')) scopes.push(`(a.action LIKE 'payment.%' OR a.action LIKE 'expense.%' OR a.action LIKE 'charge.%' OR a.action LIKE 'finance.%' OR a.action='transaction.decision' OR a.action='manager.override_action')`);
+    if (roles.includes('executive')) scopes.push(`(a.action LIKE 'user.%' OR a.action LIKE 'request.%' OR a.action LIKE 'message.%' OR a.action LIKE 'event.%' OR a.action LIKE 'notice.%' OR a.action LIKE 'delegation.%' OR a.action='manager.override_action')`);
+    if (!scopes.length) throw err(403, 'FORBIDDEN', 'گزارش عملکرد برای این نقش فعال نیست');
+    where = '(' + scopes.join(' OR ') + ')';
+  }
   const r = await c.db.prepare(
-    `SELECT a.id,a.action,a.entity_type,a.entity_id,a.details,a.actor_role,a.is_delegate,a.reason,a.created_at,u.name actor FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_id ORDER BY a.created_at DESC,a.rowid DESC LIMIT ?`).bind(limit).all();
+    `SELECT a.id,a.action,a.entity_type,a.entity_id,a.details,a.actor_role,a.is_delegate,a.reason,a.created_at,
+            u.name actor,(SELECT GROUP_CONCAT(role) FROM user_roles ur WHERE ur.user_id=a.actor_id) actor_roles
+     FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_id
+     WHERE ${where} ORDER BY a.created_at DESC,a.rowid DESC LIMIT ?`).bind(limit).all();
   return reply({ logs: r.results });
 });
