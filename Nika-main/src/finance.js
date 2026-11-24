@@ -95,7 +95,7 @@ R('POST', '/api/transactions/:id/decision', async c => {
   ]);
   if (!results[0]?.meta?.changes) throw err(409, 'NOT_PENDING', 'این مورد در انتظار تأیید نیست');
   const actorRole = c.user.roles.includes('finance') ? 'finance' : (c.user.delegatedRoles?.includes('finance') ? 'جانشین finance' : (c.user.roles[0] || 'manager'));
-  await audit(c.db, c.user.id, 'transaction.decision', 'transaction', t.id, { status: x.status }, overrideReason ? { actorRole, isDelegate: !!c.user.delegatedRoles?.includes('finance'), reason: overrideReason } : {});
+  await audit(c.db, c.user.id, 'transaction.decision', 'transaction', t.id, { status: x.status }, overrideReason ? { actorRole, isDelegate: true, reason: overrideReason } : {});
   return reply({ ok: true });
 });
 
