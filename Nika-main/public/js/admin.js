@@ -34,12 +34,14 @@ export function showAdmin(want) {
   toggle.querySelector('.workspace-label-left').textContent = 'ساکن';
   toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
   $('#nikaAdmin').classList.remove('nika-hide');
-  $$('.phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice, .phone > .page-view').forEach(el => el.classList.add('nika-dashboard-hidden'));
+  $('.category[data-admin-tab]').forEach(el => el.classList.remove('nika-hide'));
+  $('.phone > .page-view').classList.add('nika-dashboard-hidden');
   renderNav(); loadTab();
 }
 export function hideAdmin() {
   $('#nikaAdmin').classList.add('nika-hide');
-  $$('.phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice, .phone > .page-view').forEach(el => el.classList.remove('nika-dashboard-hidden'));
+  $('.category[data-admin-tab]').forEach(el => el.classList.add('nika-hide'));
+  $('.phone > .page-view').classList.remove('nika-dashboard-hidden');
   const toggle = $('#workspaceToggle');
   toggle.classList.remove('is-admin');
   toggle.setAttribute('aria-label', 'ورود به فضای مدیریت');
