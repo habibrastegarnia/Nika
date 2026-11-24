@@ -51,6 +51,7 @@ export function showAdmin(want) {
   $('#noticeCard')?.classList.add('nika-dashboard-hidden');
   const box = $('.phone > .page-view');
   box.classList.remove('nika-dashboard-hidden');
+  box.classList.add('active');
   loadTab();
 }
 export function hideAdmin() {
@@ -62,6 +63,7 @@ export function hideAdmin() {
   $('#noticeCard')?.classList.toggle('nika-hide', managerHome);
   $('#noticeHead')?.classList.remove('nika-dashboard-hidden');
   $('#noticeCard')?.classList.remove('nika-dashboard-hidden');
+  $('.phone > .page-view').classList.remove('active');
   $('.phone > .page-view').classList.add('nika-dashboard-hidden');
   showManagerShortcuts(managerHome);
   updateWorkspaceToggle(managerHome);
@@ -73,14 +75,14 @@ export function showResidentMode() {
 }
 async function loadTab() {
   const box = $('.phone > .page-view');
-  box.innerHTML = '<div class="page-head"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div><h2>در حال بارگذاری…</h2></div></div>';
+  box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>در حال بارگذاری…</h2></div></div>';
   $('#managerPageBack').onclick = hideAdmin;
   try {
     const out = await RENDER[tab]();
-    box.innerHTML = '<div class="page-head"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div><h2>' + ({users:'کاربران',units:'واحدها',finance:'مالی'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
+    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({users:'کاربران',units:'واحدها',finance:'مالی'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
     $('#managerPageBack',box).onclick = hideAdmin;
     out.bind && out.bind(box);
-  } catch (e) { box.innerHTML = '<div class="page-head"><button class="page-back" id="managerPageBack">‹</button><h2>خطا</h2></div>' + String(card('خطا', empty(e.message))); $('#managerPageBack',box).onclick=hideAdmin; }
+  } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack">‹</button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); $('#managerPageBack',box).onclick=hideAdmin; }
 }
 const reload = () => loadTab();
 const act = (box, sel, fn) => $$(sel, box).forEach(b => b.onclick = () => fn(b).catch(e => toast(e.message)));
