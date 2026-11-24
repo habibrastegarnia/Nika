@@ -34,6 +34,21 @@ export const ROLE_PERMS = {
   ]
 };
 
+// اختیاراتی که با جانشینی واگذار می‌شوند. جانشین رئیس فقط مشاهده و تأیید دارد.
+export const DELEGATE_PERMS = {
+  chair: [
+    'users.read', 'units.read', 'finance.owner.read', 'finance.monthly.read',
+    'finance.reports', 'finance.approve', 'expenses.approve', 'expenses.finalize',
+    'reports.read', 'audit.read', 'rules.read', 'resolutions.read', 'events.read'
+  ],
+  finance: ROLE_PERMS.finance,
+  executive: ROLE_PERMS.executive,
+  board: ROLE_PERMS.board
+};
+export function delegatedPerms(roles) {
+  return [...new Set(roles.flatMap(role => DELEGATE_PERMS[role] || []))];
+}
+
 export function userPerms(roles) {
   const s = new Set(BASE);
   // مدیر سامانه‌ای که نقش ساکن/مالک ندارد، مجوزهای عمومی ساختمان را نمی‌گیرد.
