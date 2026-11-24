@@ -5,6 +5,7 @@ import { can, canAny, PERMISSION_OWNER } from './perms.js';
 import { authenticate } from './auth.js';
 import './admin.js';
 import './finance.js';
+import './expense_requests.js';
 import './delegation.js';
 import './content.js';
 import { runReminders } from './reminders.js';
