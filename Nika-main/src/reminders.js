@@ -26,7 +26,7 @@ async function send(db,sender,recipient,title,body,tone,key){
  await db.prepare("INSERT OR IGNORE INTO messages(id,sender_id,recipient_id,title,body,message_type,tone,text_direction,automatic_key) VALUES(?,?,?,?,?,'automatic',?,'rtl',?)")
  .bind(crypto.randomUUID(),sender,recipient,title,body,tone,key).run();
 }
-R('GET','/api/finance/reminder-settings',{perm:'*'},async c=>{
+R('GET','/api/finance/reminder-settings',{perm:'finance.settings'},async c=>{
  const monthly=await c.db.prepare('SELECT monthly_amount,monthly_due_day,monthly_effective_from FROM finance_settings WHERE monthly_effective_from IS NOT NULL ORDER BY monthly_effective_from DESC,created_at DESC LIMIT 1').first();
  const owner=await c.db.prepare('SELECT owner_amount,owner_due_date,owner_effective_from FROM finance_settings WHERE owner_effective_from IS NOT NULL ORDER BY owner_effective_from DESC,created_at DESC LIMIT 1').first();
  return reply({settings:{...(monthly||{}),...(owner||{})}});
