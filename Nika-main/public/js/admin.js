@@ -151,7 +151,7 @@ async function unitsTab() {
           <div class="nika-unit-fin-section"><h4>جزئیات صندوق‌ها</h4>${amountLine('شارژ ماهیانه', Number(x.monthly.balance || 0))}${amountLine('شارژ مالکانه', Number(x.owner.balance || 0))}</div>
           <div class="nika-footnote">مبالغ بر اساس تراکنش‌های تأییدشده محاسبه شده‌اند.</div>
           <div class="row-actions"><button type="button" class="nika-secondary sm" id="showUnitTransactions">ریز سوابق مالی واحد</button></div>
-        </div>\`;
+        </div>`;
         const m = openModal('اطلاعات واحد ' + fa(x.number), content), historyButton = $('#showUnitTransactions', m);
         historyButton.onclick = async () => {
           historyButton.disabled = true; historyButton.textContent = 'در حال دریافت سوابق…';
@@ -165,7 +165,7 @@ async function unitsTab() {
             historyBox.className = 'nika-unit-history';
             const statusText = { approved: 'تأییدشده', pending: 'در انتظار تأیید', rejected: 'ردشده' };
             const kindText = { payment: 'پرداخت', charge: 'شارژ', adjustment: 'اعتبار / تخفیف', expense: 'هزینه' };
-            historyBox.innerHTML = history.length ? String(html\`<div class="nika-unit-fin-section"><h4>تمام سوابق مالی (\${fa(history.length)})</h4><div class="nika-unit-history-list">\${history.map(t => html\`<article class="nika-unit-history-item"><strong>\${t.title || kindText[t.kind] || 'تراکنش'} · \${toman(t.amount)}</strong><small>\${kindText[t.kind] || t.kind} · \${FUND_FA[t.fund_id] || t.fund_id} · \${statusText[t.status] || t.status}</small><small>\${t.period ? (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) + ' · ' : ''}\${fdt(t.created_at)}\${t.reference ? ' · پیگیری ' + t.reference : ''}</small>\${t.note ? html\`<p>\${t.note}</p>\` : ''}</article>\` )}</div></div>\` ) : '<div class="nika-footnote">برای این واحد هنوز سابقه مالی ثبت نشده است.</div>';
+            historyBox.innerHTML = history.length ? String(html`<div class="nika-unit-fin-section"><h4>تمام سوابق مالی (${fa(history.length)})</h4><div class="nika-unit-history-list">${history.map(t => html`<article class="nika-unit-history-item"><strong>${t.title || kindText[t.kind] || 'تراکنش'} · ${toman(t.amount)}</strong><small>${kindText[t.kind] || t.kind} · ${FUND_FA[t.fund_id] || t.fund_id} · ${statusText[t.status] || t.status}</small><small>${t.period ? (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) + ' · ' : ''}${fdt(t.created_at)}${t.reference ? ' · پیگیری ' + t.reference : ''}</small>${t.note ? html`<p>${t.note}</p>` : ''}</article>` )}</div></div>` ) : '<div class="nika-footnote">برای این واحد هنوز سابقه مالی ثبت نشده است.</div>';
             const detail = $('.nika-unit-detail', m);
             const oldHistory = $('.nika-unit-history', detail); if (oldHistory) oldHistory.remove();
             detail.appendChild(historyBox);
