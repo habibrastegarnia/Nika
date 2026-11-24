@@ -162,8 +162,8 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
   let r = await chair.post('/api/finance/charges', { fund: 'monthly', period: '۱۴۰۵-۰۹', amount: 4000000, title: 'شارژ آذر' });
   assert.equal(r.status, 201); assert.equal(r.data.created, 2);
   assert.equal((await chair.post('/api/finance/charges', { fund: 'monthly', period: '1405-09', amount: 4000000, title: 'شارژ آذر' })).data.created, 0, 'تکراری ساخته نمی‌شود');
-  assert.equal((await chair.post('/api/finance/charges', { fund: 'owner', period: '1405-09', amount: 9000000, title: 'مالکانه', unitNumbers: ['۱۲'] })).data.created, 0, 'واحد ۱۲ فارسی با ۱۲ یکی نیست مگر نرمال شود');
-  r = await chair.post('/api/finance/charges', { fund: 'owner', period: '1405-09', amount: 9000000, title: 'مالکانه', unitNumbers: ['12'] });
+  assert.equal((await chair.post('/api/finance/charges', { fund: 'owner', period: '1405', amount: 9000000, title: 'مالکانه', unitNumbers: ['۱۲'] })).data.created, 0, 'واحد ۱۲ فارسی با ۱۲ یکی نیست مگر نرمال شود');
+  r = await chair.post('/api/finance/charges', { fund: 'owner', period: '1405', amount: 9000000, title: 'مالکانه', unitNumbers: ['12'] });
   assert.equal(r.data.created, 1);
 
   r = await res1.get('/api/finance/my?fund=monthly'); assert.equal(r.data.balance, 4000000);
