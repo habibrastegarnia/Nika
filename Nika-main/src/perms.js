@@ -26,7 +26,7 @@ export const ROLE_PERMS = {
   chair: [
     'users.read', 'users.manage', 'users.delete', 'roles.assign',
     'units.read', 'units.manage',
-    'finance.settings', 'finance.charge', 'finance.approve', 'expenses.approve', 'expenses.finalize',
+    'finance.settings', 'finance.charge', 'finance.approve', 'expenses.create', 'expenses.approve', 'expenses.finalize',
     'finance.owner.read', 'finance.monthly.read', 'finance.reports',
     'requests.manage', 'messages.manage', 'notices.manage',
     'rules.manage', 'resolutions.manage', 'events.manage', 'documents.manage',
