@@ -67,18 +67,18 @@ test('بدون کوکی/CSRF: درخواست رد می‌شود', async () => {
 });
 
 test('ساخت کاربران توسط رئیس: رمز موقت تصادفی', async () => {
-  let r = await chair.post('/api/admin/users', { name: 'مدیر ساختمان', accountType: 'staff', phone: '09120000010', roles: ['executive'] });
+  let r = await chair.post('/api/admin/users', { name: 'مدیر ساختمان', accountType: 'staff', phone: '09120000010', roles: ['executive'], reason: 'آزمون مجوز مدیریت کاربران' });
   assert.equal(r.status, 201); assert.ok(r.data.tempPassword.length >= 12); ids.adminTemp = r.data.tempPassword; ids.adminId = r.data.id;
-  r = await chair.post('/api/admin/users', { name: 'مدیر مالی', accountType: 'staff', phone: '09120000011', roles: ['finance'] });
+  r = await chair.post('/api/admin/users', { name: 'مدیر مالی', accountType: 'staff', phone: '09120000011', roles: ['finance'], reason: 'آزمون مجوز مدیریت کاربران' });
   ids.finTemp = r.data.tempPassword; ids.finId = r.data.id;
-  r = await chair.post('/api/admin/users', { name: 'مدیر اجرایی', accountType: 'staff', phone: '09120000012', roles: ['executive'] });
+  r = await chair.post('/api/admin/users', { name: 'مدیر اجرایی', accountType: 'staff', phone: '09120000012', roles: ['executive'], reason: 'آزمون مجوز مدیریت کاربران' });
   ids.execTemp = r.data.tempPassword;
   for (const [unit, phone, type] of [['12', '09121111111', 'resident'], ['12', '09122222222', 'owner'], ['13', '09123333333', 'resident']]) {
-    r = await chair.post('/api/admin/users', { name: `کاربر ${unit}-${type}`, accountType: type, unit: unit === '12' ? '۱۲' : unit, phone: phone.replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]), roles: [] });
+    r = await chair.post('/api/admin/users', { name: `کاربر ${unit}-${type}`, accountType: type, unit: unit === '12' ? '۱۲' : unit, phone: phone.replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]), roles: [], reason: 'آزمون مجوز مدیریت کاربران' });
     assert.equal(r.status, 201, JSON.stringify(r.data)); ids[`${unit}-${type}`] = r.data.tempPassword;
   }
-  assert.equal((await chair.post('/api/admin/users', { name: 'تکراری', accountType: 'resident', unit: '12', phone: '09121111111', roles: [] })).status, 409);
-  assert.equal((await chair.post('/api/admin/users', { name: 'بد', accountType: 'staff', phone: '123', roles: ['finance'] })).status, 400);
+  assert.equal((await chair.post('/api/admin/users', { name: 'تکراری', accountType: 'resident', unit: '12', phone: '09121111111', roles: [], reason: 'آزمون مجوز مدیریت کاربران' })).status, 409);
+  assert.equal((await chair.post('/api/admin/users', { name: 'بد', accountType: 'staff', phone: '123', roles: ['finance'], reason: 'آزمون مجوز مدیریت کاربران' })).status, 400);
 });
 
 test('تغییر رمز اجباری: تا قبل از تغییر همه‌ی مسیرها بسته است', async () => {
@@ -287,7 +287,7 @@ test('محتوای ساختمان: قوانین، مصوبات، رویداده�
   assert.equal((await chair.del(`/api/rules/${r.data.id}`)).status, 404);
   assert.equal((await chair.post('/api/resolutions', { title: 'سرویس', body: 'تصویب', decided_on: '۱۴۰۵/۰۹/۰۱' })).status, 201);
   assert.equal((await chair.post('/api/resolutions', { title: 'سرویس', body: 'تصویب', decided_on: 'دیروز' })).status, 400);
-  assert.equal((await chair.post('/api/events', { title: 'جلسه', body: '', event_date: '1405/09/05', event_time: '۱۸:۳۰' })).status, 201);
+  assert.equal((await exec.post('/api/events', { title: 'جلسه', body: '', event_date: '1405/09/05', event_time: '۱۸:۳۰' })).status, 201);
   assert.equal((await res1.get('/api/events?month=1405-09')).data.items[0].event_date, '1405-09-05');
   assert.equal((await res1.get('/api/events?month=1405-10')).data.items.length, 0);
   assert.equal((await chair.post('/api/documents', { title: 'آیین‌نامه', url: 'http://insecure.example/x.pdf' })).status, 400);
