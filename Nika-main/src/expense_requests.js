@@ -85,6 +85,7 @@ R('POST', '/api/expense-requests', { perm: 'expenses.create' }, async c => {
   const title = str(x.documentTitle, { max: 120, field: 'عنوان سند' });
   const documentDate = jdate(x.documentDate, '-');
   const description = str(x.description, { max: 2000, multiline: true, field: 'شرح درخواست' });
+  const reason = optStr(x.reason, { max: 500, multiline: true, field: 'دلیل انجام خارج از مسئولیت' });
   if (!Array.isArray(x.files) || !x.files.length) throw err(400, 'DOCUMENT_REQUIRED', 'تصویر حداقل یک سند پشتیبان را بارگذاری کنید');
 
   const sequence = await c.db.prepare('UPDATE expense_request_sequences SET next_value=next_value+1 WHERE id=1 RETURNING next_value-1 value').first();
@@ -100,11 +101,11 @@ R('POST', '/api/expense-requests', { perm: 'expenses.create' }, async c => {
       c.db.prepare(`INSERT INTO expense_requests(id,reference_no,fund_id,amount,document_title,document_date,description,status,created_by)
                     VALUES(?,?,?,?,?,?,?,'pending_finance',?)`).bind(id, referenceNo, fund, amount, title, documentDate, description, c.user.id),
       c.db.prepare('INSERT INTO expense_request_versions(id,request_id,version_no,snapshot,changed_by,reason) VALUES(?,?,?,?,?,?)')
-        .bind(crypto.randomUUID(), id, versionNo, JSON.stringify(snapshot), c.user.id, x.reason || null),
+        .bind(crypto.randomUUID(), id, versionNo, JSON.stringify(snapshot), c.user.id, reason),
       ...files.map(f => c.db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size) VALUES(?,?,?,?,?,?,?)')
         .bind(f.id, id, f.version_no, f.object_key, f.filename, f.content_type, f.size)),
       c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) VALUES(?,?,?,?,?,?)')
-        .bind(crypto.randomUUID(), id, c.user.id, 'executive', 'created', x.reason || null)
+        .bind(crypto.randomUUID(), id, c.user.id, 'executive', 'created', reason)
     ]);
   } catch (e) {
     await Promise.all(files.map(f => c.env.FILES.delete(f.object_key).catch(() => {})));
