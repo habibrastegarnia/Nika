@@ -126,42 +126,42 @@ async function unitsTab() {
   });
   const statusOf = b => b > 0 ? 'debt' : b < 0 ? 'credit' : 'settled';
   const statusLabel = { debt: 'بدهکار', credit: 'بستانکار', settled: 'تسویه' };
-  const unitTile = x => html\`<button type="button" class="nika-building-unit \${statusOf(x.balance)}" data-unit-detail="\${x.number}" aria-label="نمایش اطلاعات واحد \${x.number}"><span>\${fa(x.number)}</span></button>\`;
+  const unitTile = x => html`<button type="button" class="nika-building-unit ${statusOf(x.balance)}" data-unit-detail="${x.number}" aria-label="نمایش اطلاعات واحد ${x.number}"><span>${fa(x.number)}</span></button>`;
   const floors = Array.from({ length: 8 }, (_, i) => 8 - i).map(floor => {
     const row = allUnits.filter(x => x.number.startsWith(String(floor)));
     const left = row.filter(x => ['3','4'].includes(x.number.slice(-1)));
     const right = row.filter(x => ['1','2'].includes(x.number.slice(-1)));
-    return html\`<div class="nika-building-floor" aria-label="طبقه \${fa(floor)}">\${unitTile(left[1])}\${unitTile(left[0])}<div class="nika-building-core"><span>\${fa(floor)}</span><i></i></div>\${unitTile(right[0])}\${unitTile(right[1])}</div>\`;
+    return html`<div class="nika-building-floor" aria-label="طبقه ${fa(floor)}">${unitTile(left[1])}${unitTile(left[0])}<div class="nika-building-core"><span>${fa(floor)}</span><i></i></div>${unitTile(right[0])}${unitTile(right[1])}</div>`;
   });
   const debtCount = allUnits.filter(x => statusOf(x.balance) === 'debt').length;
   const creditCount = allUnits.filter(x => statusOf(x.balance) === 'credit').length;
   const settledCount = allUnits.length - debtCount - creditCount;
   return {
-    html: html\`<div class="nika-units-page" dir="rtl">
+    html: html`<div class="nika-units-page" dir="rtl">
       <section class="nika-building-panel">
         <div class="nika-building-heading"><strong>نمای ساختمان نیکا</strong><span>برای مشاهده جزئیات مالی، واحد را انتخاب کنید</span></div>
         <div class="nika-building-legend"><span><i class="debt"></i>بدهکار</span><span><i class="settled"></i>تسویه</span><span><i class="credit"></i>بستانکار</span></div>
-        <div class="nika-building-roof"></div><div class="nika-building-floors">\${floors}</div>
+        <div class="nika-building-roof"></div><div class="nika-building-floors">${floors}</div>
         <div class="nika-building-ground"><span>ورودی ساختمان نیکا</span></div>
       </section>
-      <div class="nika-building-counts"><div><i class="debt"></i><strong>\${fa(debtCount)}</strong><small>بدهکار</small></div><div><i class="settled"></i><strong>\${fa(settledCount)}</strong><small>تسویه</small></div><div><i class="credit"></i><strong>\${fa(creditCount)}</strong><small>بستانکار</small></div></div>
-      \${card('ثبت مشخصات واحد جدید', html\`<form id="unNew" novalidate>\${fields([{ name: 'unitNumber', label: 'شماره واحد', required: true, inputmode: 'numeric' }], 'nika')}\${f()}<div class="nika-actions"><button class="nika-primary" type="submit">افزودن واحد</button></div></form><div class="nika-footnote">با ساخت حساب برای یک شماره واحد جدید نیز واحد خودکار ساخته می‌شود؛ این بخش برای ثبت مشخصات است.</div>\`)}
-    </div>\`,
+      <div class="nika-building-counts"><div><i class="debt"></i><strong>${fa(debtCount)}</strong><small>بدهکار</small></div><div><i class="settled"></i><strong>${fa(settledCount)}</strong><small>تسویه</small></div><div><i class="credit"></i><strong>${fa(creditCount)}</strong><small>بستانکار</small></div></div>
+      ${card('ثبت مشخصات واحد جدید', html`<form id="unNew" novalidate>${fields([{ name: 'unitNumber', label: 'شماره واحد', required: true, inputmode: 'numeric' }], 'nika')}${f()}<div class="nika-actions"><button class="nika-primary" type="submit">افزودن واحد</button></div></form><div class="nika-footnote">با ساخت حساب برای یک شماره واحد جدید نیز واحد خودکار ساخته می‌شود؛ این بخش برای ثبت مشخصات است.</div>`)}
+    </div>`,
     bind(box) {
       onSubmit($('#unNew', box), async d => { await api('/admin/units', { method: 'POST', body: d }); toast('واحد افزوده شد'); reload(); });
       act(box, '[data-unit-detail]', async b => {
         const x = allUnits.find(item => item.number === b.dataset.unitDetail), overall = x.balance, state = statusOf(overall);
-        const amountLine = (label, value) => html\`<div class="nika-unit-fin-row"><span>\${label}</span><strong class="\${value > 0 ? 'debt-text' : value < 0 ? 'credit-text' : 'settled-text'}">\${value > 0 ? 'بدهی ' + toman(value) : value < 0 ? 'بستانکاری ' + toman(-value) : 'تسویه · ۰ تومان'}</strong></div>\`;
-        const content = html\`<div class="nika-unit-detail" dir="rtl">
-          <div class="nika-unit-detail-status \${state}"><span>وضعیت مالی واحد</span><strong>\${statusLabel[state]}</strong></div>
-          <div class="nika-unit-total \${state}"><small>مانده کل</small><strong>\${overall > 0 ? 'بدهی ' + toman(overall) : overall < 0 ? 'بستانکاری ' + toman(-overall) : '۰ تومان · تسویه'}</strong></div>
-          <div class="nika-unit-fin-section"><h4>جزئیات صندوق‌ها</h4>\${amountLine('شارژ ماهیانه', Number(x.monthly.balance || 0))}\${amountLine('شارژ مالکانه', Number(x.owner.balance || 0))}</div>
+        const amountLine = (label, value) => html`<div class="nika-unit-fin-row"><span>${label}</span><strong class="${value > 0 ? 'debt-text' : value < 0 ? 'credit-text' : 'settled-text'}">${value > 0 ? 'بدهی ' + toman(value) : value < 0 ? 'بستانکاری ' + toman(-value) : 'تسویه · ۰ تومان'}</strong></div>`;
+        const content = html`<div class="nika-unit-detail" dir="rtl">
+          <div class="nika-unit-detail-status ${state}"><span>وضعیت مالی واحد</span><strong>${statusLabel[state]}</strong></div>
+          <div class="nika-unit-total ${state}"><small>مانده کل</small><strong>${overall > 0 ? 'بدهی ' + toman(overall) : overall < 0 ? 'بستانکاری ' + toman(-overall) : '۰ تومان · تسویه'}</strong></div>
+          <div class="nika-unit-fin-section"><h4>جزئیات صندوق‌ها</h4>${amountLine('شارژ ماهیانه', Number(x.monthly.balance || 0))}${amountLine('شارژ مالکانه', Number(x.owner.balance || 0))}</div>
           <div class="nika-footnote">مبالغ بر اساس تراکنش‌های تأییدشده محاسبه شده‌اند.</div>
-          \${x.unit ? html\`<div class="row-actions"><button type="button" class="nika-secondary sm" id="editUnitInfo">ویرایش مشخصات واحد</button></div>\` : html\`<div class="nika-footnote">این شماره هنوز در فهرست واحدهای ثبت‌شده وجود ندارد.</div>\`}
-        </div>\`;
+          ${x.unit ? html`<div class="row-actions"><button type="button" class="nika-secondary sm" id="editUnitInfo">ویرایش مشخصات واحد</button></div>` : html`<div class="nika-footnote">این شماره هنوز در فهرست واحدهای ثبت‌شده وجود ندارد.</div>`}
+        </div>`;
         const m = openModal('اطلاعات واحد ' + fa(x.number), content), edit = $('#editUnitInfo', m);
         if (edit) edit.onclick = () => {
-          const u = x.unit, form = openModal('ویرایش مشخصات واحد ' + fa(x.number), html\`<form novalidate>\${f(u)}<div class="nika-actions"><button class="nika-primary" type="submit">ذخیره</button></div></form>\`);
+          const u = x.unit, form = openModal('ویرایش مشخصات واحد ' + fa(x.number), html`<form novalidate>${f(u)}<div class="nika-actions"><button class="nika-primary" type="submit">ذخیره</button></div></form>`);
           onSubmit($('form', form), async d => { await api('/admin/units/' + u.id, { method: 'PATCH', body: d }); closeModal(); closeModal(); toast('مشخصات واحد ذخیره شد'); reload(); });
         };
       });
