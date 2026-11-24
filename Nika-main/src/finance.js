@@ -5,6 +5,14 @@ import { err, reply, readJson, str, optStr, int, period, FUNDS, FUND_TITLE, audi
 import { can, canAny } from './perms.js';
 
 const fundOf = v => { if (!FUNDS.includes(v)) throw err(400, 'FUND_REQUIRED', 'صندوق نامعتبر است'); return v; };
+const ownerYear = v => {
+  const y = String(v ?? '').replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).trim();
+  if (!/^1[34]\\d{2}$/.test(y)) throw err(400, 'INVALID_PERIOD', 'سال شارژ مالکانه باید به شکل ۱۴۰۵ باشد');
+  return y;
+};
+const fundPeriod = (fund, value, required = true) => fund === 'owner'
+  ? (value == null || value === '' ? (required ? ownerYear(new Intl.DateTimeFormat('en-u-ca-persian', { timeZone: 'Asia/Tehran', year: 'numeric' }).format(new Date())) : null) : ownerYear(value))
+  : period(value, required);
 const canReadFund = (u, f) => can(u, `finance.${f}.read`);
 const canSeeAggregates = (u, f) => canReadFund(u, f) || canAny(u, ['reports.read', 'finance.reports']);
 const privileged = u => canAny(u, ['finance.approve', 'finance.reports', 'expenses.approve']);
@@ -38,7 +46,7 @@ R('POST', '/api/transactions', async c => {
     const amount = int(x.amount, { field: 'مبلغ' }), ref = optStr(x.reference, { max: 40, field: 'شماره پیگیری' });
     const title = optStr(x.title, { max: 120, field: 'عنوان' }) || `پرداخت ${FUND_TITLE[fund]}`;
     await c.db.prepare("INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,note,created_by) VALUES(?,?,?,?, 'payment',?,?,?,'pending',?,?,?)")
-      .bind(id, u.unit_id, u.id, fund, amount, title, period(x.period, false), ref, optStr(x.note, { max: 300, field: 'توضیحات', multiline: true }), u.id).run();
+      .bind(id, u.unit_id, u.id, fund, amount, title, fund === 'owner' ? null : period(x.period, false), ref, optStr(x.note, { max: 300, field: 'توضیحات', multiline: true }), u.id).run();
     await audit(c.db, u.id, 'payment.create', 'transaction', id, { fund, amount });
   } else if (x.kind === 'expense') {
     if (!can(u, 'expenses.create')) throw err(403, 'FORBIDDEN', 'اجازه‌ی ثبت هزینه را ندارید');
@@ -56,7 +64,7 @@ R('POST', '/api/finance/charges', { perm: 'finance.charge' }, async c => {
   const x = await readJson(c.request), fund = fundOf(x.fund);
   const kind = x.kind === 'adjustment' ? 'adjustment' : x.kind === 'charge' || x.kind == null ? 'charge' : null;
   if (!kind) throw err(400, 'INVALID_INPUT', 'نوع نامعتبر است');
-  const amount = int(x.amount, { field: 'مبلغ' }), per = period(x.period), title = str(x.title || `شارژ ${per}`, { max: 120, field: 'عنوان' });
+  const amount = int(x.amount, { field: 'مبلغ' }), per = fundPeriod(fund, x.period), title = str(x.title || (fund === 'owner' ? `شارژ مالکانه سال ${per}` : `شارژ ${per}`), { max: 120, field: 'عنوان' });
   const nums = Array.isArray(x.unitNumbers) ? x.unitNumbers.map(v => String(v).trim()).filter(Boolean).slice(0, 200) : [];
   const filter = nums.length ? `AND n.unit_number IN (${nums.map(() => '?').join(',')})` : '';
   const q = await c.db.prepare(
@@ -122,7 +130,7 @@ R('GET', '/api/dashboard', async c => {
   const per = await c.db.prepare("SELECT DISTINCT period FROM transactions WHERE fund_id=? AND period IS NOT NULL AND status='approved' ORDER BY period DESC LIMIT 12").bind(fund).all();
   const periods = per.results.map(p => p.period);
   const asked = c.url.searchParams.get('period');
-  const cur = asked ? period(asked) : (periods[0] || null);
+  const cur = asked ? fundPeriod(fund, asked) : (periods[0] || null);
   let expenses = [], charges = { units: 0, total: 0, paid: 0, unpaid: 0, paidUnits: 0, unpaidUnits: 0 };
   if (cur) {
     expenses = (await c.db.prepare("SELECT COALESCE(category,'سایر') category,SUM(amount) total FROM transactions WHERE fund_id=? AND kind='expense' AND status='approved' AND period=? GROUP BY 1 ORDER BY total DESC").bind(fund, cur).all()).results;
