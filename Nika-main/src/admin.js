@@ -199,8 +199,8 @@ R('GET', '/api/admin/audit', { perm: 'audit.read' }, async c => {
   let where = '1=1';
   if (!(roles.includes('chair') || roles.includes('board'))) {
     const scopes = [];
-    if (roles.includes('finance')) scopes.push(`(a.action LIKE 'payment.%' OR a.action LIKE 'expense.%' OR a.action LIKE 'charge.%' OR a.action LIKE 'finance.%' OR a.action='transaction.decision' OR a.action='manager.override_action')`);
-    if (roles.includes('executive')) scopes.push(`(a.action LIKE 'user.%' OR a.action LIKE 'request.%' OR a.action LIKE 'message.%' OR a.action LIKE 'event.%' OR a.action LIKE 'notice.%' OR a.action LIKE 'delegation.%' OR a.action='manager.override_action')`);
+    if (roles.includes('finance')) scopes.push(`(a.action LIKE 'payment.%' OR a.action LIKE 'expense.%' OR a.action LIKE 'expense_request.%' OR a.action LIKE 'charge.%' OR a.action LIKE 'finance.%' OR a.action='transaction.decision' OR a.action='manager.override_action')`);
+    if (roles.includes('executive')) scopes.push(`(a.action LIKE 'user.%' OR a.action LIKE 'request.%' OR a.action LIKE 'expense_request.create' OR a.action LIKE 'expense_request.resubmit' OR a.action LIKE 'expense_request.cancel' OR a.action LIKE 'message.%' OR a.action LIKE 'event.%' OR a.action LIKE 'notice.%' OR a.action LIKE 'delegation.%' OR a.action='manager.override_action')`);
     if (!scopes.length) throw err(403, 'FORBIDDEN', 'گزارش عملکرد برای این نقش فعال نیست');
     where = '(' + scopes.join(' OR ') + ')';
   }
