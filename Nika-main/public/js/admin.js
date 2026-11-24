@@ -39,6 +39,9 @@ export function showAdmin(want) {
   if (!want) {
     $('#nikaAdmin').classList.add('nika-hide');
     $('.phone > .page-view').classList.add('nika-dashboard-hidden');
+    $('.phone > .categories').classList.remove('nika-dashboard-hidden');
+    $('.phone > .categories').style.display = '';
+    showManagerShortcuts(true);
     return;
   }
   const tabs = TABS(); if (!tabs.some(t => t[0] === want)) return;
