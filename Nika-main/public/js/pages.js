@@ -110,7 +110,9 @@ export async function calendarPage(y, m) {
   $('#calNext', v).onclick = () => open(() => calendarPage(...next), { replace: true });
   const form = $('#eventNew', v);
   if (form) onSubmit(form, async d => {
-    await api('/events', { method: 'POST', body: d });
+    const body = { ...d };
+    if (!S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+    await api('/events', { method: 'POST', body });
     toast('رویداد ثبت شد');
     open(() => calendarPage(y, m), { replace: true });
   });
@@ -118,14 +120,18 @@ export async function calendarPage(y, m) {
     const event = items.find(e => e.id === b.dataset.eventEdit);
     const modal = openModal('ویرایش رویداد', html`<form class="page-form" novalidate>${fields(eventFields.map(f => ({ ...f, value: event[f.name] ?? '' })))}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>`);
     onSubmit($('form', modal), async d => {
-      await api(`/events/${event.id}`, { method: 'PUT', body: d });
+      const body = { ...d };
+      if (!S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی ویرایش می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+      await api(`/events/${event.id}`, { method: 'PUT', body });
       closeModal(); toast('رویداد ویرایش شد');
       open(() => calendarPage(y, m), { replace: true });
     });
   });
   $$('[data-event-delete]', v).forEach(b => b.onclick = async () => {
     if (!await ask('حذف رویداد', 'این رویداد از تقویم حذف شود؟', 'حذف', true)) return;
-    await api(`/events/${b.dataset.eventDelete}`, { method: 'DELETE' });
+    const body = {};
+    if (!S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی حذف می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+    await api(`/events/${b.dataset.eventDelete}`, { method: 'DELETE', body });
     toast('رویداد حذف شد');
     open(() => calendarPage(y, m), { replace: true });
   });
