@@ -33,7 +33,7 @@ async function canManageRequest(db, user, row) {
 function actorMeta(user, ownerRole, reason) {
   const delegated = user.delegatedRoles?.includes(ownerRole);
   const actorRole = delegated ? `جانشین ${ownerRole}` : (user.roles[0] || 'manager');
-  return { actorRole, isDelegate: !!reason && !user.roles.includes(ownerRole), reason: reason || null };
+  return { actorRole, isDelegate: !!delegated, reason: reason || null };
 }
 
 function decodeImage(file) {
