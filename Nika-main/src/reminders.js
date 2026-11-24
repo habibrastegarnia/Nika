@@ -39,8 +39,8 @@ R('POST','/api/finance/reminder-settings',{perm:'*'},async c=>{
  return reply({ok:true,id},201);
 });
 export async function runReminders(env,now=new Date()){
- const today=pparts(now), period=String(today.y)+'-'+String(today.m).padStart(2,'0');
- const settings=await env.DB.prepare('SELECT * FROM finance_settings WHERE effective_from<=? ORDER BY effective_from DESC,created_at DESC LIMIT 1').bind(keyDate(now)).first();
+ const today=pparts(now), period=String(today.y)+'-'+String(today.m).padStart(2,'0'), todayJ=period+'-'+String(today.d).padStart(2,'0');
+ const settings=await env.DB.prepare('SELECT * FROM finance_settings WHERE effective_from<=? ORDER BY effective_from DESC,created_at DESC LIMIT 1').bind(todayJ).first();
  if(!settings)return {sent:0,reason:'settings_missing'};
  const sender=await env.DB.prepare("SELECT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role='chair' AND u.active=1 LIMIT 1").first()
   || await env.DB.prepare("SELECT id FROM users WHERE account_type='staff' AND active=1 LIMIT 1").first();
@@ -58,7 +58,7 @@ export async function runReminders(env,now=new Date()){
  // یادآوری هر دوره‌ی دارای مانده بررسی می‌شود تا پیام روزانه بعد از هفته اول در ماه‌های بعد هم ادامه یابد.
  const rows=await env.DB.prepare("SELECT t.unit_id,n.unit_number,t.period,SUM(CASE WHEN t.kind='charge' THEN t.amount ELSE 0 END) charged,SUM(CASE WHEN t.kind IN ('payment','adjustment') THEN t.amount ELSE 0 END) paid FROM transactions t JOIN units n ON n.id=t.unit_id WHERE t.fund_id='monthly' AND t.status='approved' AND t.period IS NOT NULL GROUP BY t.unit_id,t.period HAVING charged>paid").all();
  for(const r of rows.results){
-  const parts=String(r.period).split('-').map(Number), dueDay=Math.min(settings.monthly_due_day,parts[1]===12?29:31);
+  const parts=String(r.period).split('-').map(Number), maxDay=parts[1]<=6?31:parts[1]<=11?30:29, dueDay=Math.min(settings.monthly_due_day,maxDay);
   const due=jalaliDate(parts[0],parts[1],dueDay), days=due?diff(now,due):null;
   const stage=days===-2?'before':days===0?'due':days===2?'late2':days>=7?'late7':null;
   if(!stage)continue;
@@ -84,7 +84,7 @@ export async function runReminders(env,now=new Date()){
    if(!exists)await env.DB.prepare("INSERT INTO transactions(id,unit_id,fund_id,kind,amount,title,period,status,created_by,approved_by,approved_at) VALUES(?,?,'owner','charge',?,?,?,'approved',?,?,CURRENT_TIMESTAMP)")
     .bind(crypto.randomUUID(),o.unit_id,settings.owner_amount,'شارژ مالکانه سال '+today.y,String(today.y),sender.id,sender.id).run();
   }
-  const odue=jalaliDate(today.y,settings.owner_due_month,Math.min(settings.owner_due_day,31));
+  const odue=jalaliDate(today.y,settings.owner_due_month,Math.min(settings.owner_due_day,settings.owner_due_month<=6?31:settings.owner_due_month<=11?30:29));
   const odays=odue?diff(now,odue):null, ostage=odays===-2?'before':odays===0?'due':odays===2?'late2':odays>=7?'late7':null;
   if(ostage){
    const ownersDue=await env.DB.prepare("SELECT u.id,u.unit_id,n.unit_number,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind='charge' AND status='approved' AND period=?),0) charged,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind IN ('payment','adjustment') AND status='approved'),0) paid FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' JOIN units n ON n.id=u.unit_id WHERE u.active=1").bind(String(today.y)).all();
