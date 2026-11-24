@@ -61,7 +61,7 @@ function setupNav() {
   for (const [key, label, allowed, path] of adminShortcuts) {
     if (!allowed) continue;
     const b = document.createElement('button');
-    b.className = 'category'; b.dataset.adminTab = key;
+    b.className = 'category nika-manager-shortcut nika-hide'; b.dataset.adminTab = key;
     b.innerHTML = '<span class="cat-icon"><svg viewBox="0 0 32 32">' + path + '</svg></span><span>' + label + '</span>';
     b.onclick = () => showAdmin(key);
     shortcutHost.appendChild(b);
