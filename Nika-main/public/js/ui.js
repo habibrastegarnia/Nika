@@ -28,7 +28,8 @@ function showJalaliPicker(display) {
   const selected = jalaliParts(hidden.value || display.value);
   let year = selected.y, month = selected.m;
   const weekdays = ['ش','ی','د','س','چ','پ','ج'];
-  const modal = openModal('انتخاب تاریخ شمسی', html`<div class="jalali-picker" dir="rtl"></div>`);\n  $('#modalBackdrop').classList.add('jalali-calendar-open');
+  const modal = openModal('انتخاب تاریخ شمسی', html`<div class="jalali-picker" dir="rtl"></div>`);
+  $('#modalBackdrop').classList.add('jalali-calendar-open');
   const render = () => {
     const offset = (monthStart(year, month).getUTCDay() + 1) % 7;
     const count = monthLen(year, month);
