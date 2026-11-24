@@ -36,9 +36,25 @@ export function showAdmin(want) {
     back.title = 'بازگشت به فضای شخصی'; back.setAttribute('aria-label', 'بازگشت به فضای شخصی');
     back.innerHTML = '<span class="workspace-label workspace-label-left">ساکن</span><span class="workspace-label workspace-label-right">مدیر اجرایی</span><span class="workspace-thumb"></span>';
   } else { back.className = 'nika-secondary sm'; back.textContent = 'بازگشت به برنامه'; }
-  $('#nikaAdmin').classList.remove('nika-hide'); $('.phone').classList.add('nika-hide'); renderNav(); loadTab();
+  const toggle = $('#workspaceToggle');
+  toggle.classList.add('is-admin');
+  toggle.setAttribute('aria-label', 'بازگشت به داشبورد');
+  toggle.title = 'بازگشت به داشبورد';
+  toggle.querySelector('.workspace-label-left').textContent = 'ساکن';
+  toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
+  $('#nikaAdmin').classList.remove('nika-hide');
+  $('.phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice, .phone > .page-view').forEach(el => el.classList.add('nika-dashboard-hidden'));
+  renderNav(); loadTab();
 }
-export function hideAdmin() { $('#nikaAdmin').classList.add('nika-hide'); $('.phone').classList.remove('nika-hide'); refreshSummary(); loadLatestNotice().catch(() => {}); }
+export function hideAdmin() {
+  $('#nikaAdmin').classList.add('nika-hide');
+  $('.phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice, .phone > .page-view').forEach(el => el.classList.remove('nika-dashboard-hidden'));
+  const toggle = $('#workspaceToggle');
+  toggle.classList.remove('is-admin');
+  toggle.setAttribute('aria-label', 'ورود به فضای مدیریت');
+  toggle.title = 'ورود به فضای مدیریت';
+  refreshSummary(); loadLatestNotice().catch(() => {});
+}
 function renderNav() {
   $('#adminNav').innerHTML = join(TABS().map(([k, l]) => html`<button class="${k === tab ? 'selected' : ''}" data-tab="${k}">${l}</button>`));
   $$('#adminNav [data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderNav(); loadTab(); });
