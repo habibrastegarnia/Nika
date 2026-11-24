@@ -295,3 +295,19 @@ html[data-theme="light"] .workspace-toggle.is-admin .workspace-label-right,html[
 .nika-admin-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .nika-admin-avatar{width:42px;height:42px;border-radius:14px;object-fit:cover;border:1px solid #ffffff25;box-shadow:0 4px 12px #0003}
 html[data-theme="light"] .workspace-toggle{background:linear-gradient(145deg,#fff,#edf2fb);border-color:#fff;color:#4269d5;box-shadow:0 4px 12px rgba(38,57,95,.13),inset 0 1px 2px #fff}
+
+
+/* Automatic finance reminders: strict RTL layout and progressive urgency */
+.nika-message-row{direction:rtl;text-align:right}
+.nika-message-row .page-row-main{text-align:right;direction:rtl}
+.nika-message-row .page-row-main strong,.nika-message-row .page-row-main small{display:block;text-align:right}
+.nika-message-row.tone-info{border-right:3px solid #4b91e2}
+.nika-message-row.tone-warning{border-right:3px solid #e5a13c}
+.nika-message-row.tone-amber{border-right:3px solid #d18a24}
+.nika-message-row.tone-danger{border-right:3px solid #d94b52}
+.nika-message-body{direction:rtl;text-align:right;unicode-bidi:plaintext;line-height:2.05;padding:12px;border-radius:12px}
+.nika-message-body.tone-info{background:#eaf3ff;color:#24496f;border-right:3px solid #4b91e2}
+.nika-message-body.tone-warning{background:#fff3e5;color:#81400a;border-right:3px solid #e5a13c}
+.nika-message-body.tone-amber{background:#fff0d8;color:#743b08;border-right:3px solid #d18a24}
+.nika-message-body.tone-danger{background:#fce9e9;color:#8d1717;border-right:3px solid #d94b52}
+.nika-message-body *{text-align:right;direction:rtl}
