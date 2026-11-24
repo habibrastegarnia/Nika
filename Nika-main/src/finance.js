@@ -123,9 +123,7 @@ R('GET', '/api/finance/my', async c => {
 // موجودی نقدی صندوق‌ها برای مدیران دارای دسترسی گزارش مالی
 R('GET', '/api/finance/funds', { any: ['finance.reports', 'finance.approve', 'expenses.approve'] }, async c => {
   const r = await c.db.prepare(
-    `SELECT f.id fund_id,f.title,
-            COALESCE(SUM(CASE WHEN t.kind='payment' AND t.status='approved' THEN t.amount
-                              WHEN t.kind='expense' AND t.status='approved' THEN -t.amount ELSE 0 END),0) balance,
+    `SELECT f.id fund_id,f.title,f.cash_balance balance,
             COALESCE(SUM(CASE WHEN t.kind='payment' AND t.status='approved' THEN t.amount ELSE 0 END),0) incoming,
             COALESCE(SUM(CASE WHEN t.kind='expense' AND t.status='approved' THEN t.amount ELSE 0 END),0) outgoing
      FROM funds f LEFT JOIN transactions t ON t.fund_id=f.id
