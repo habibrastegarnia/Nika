@@ -97,7 +97,7 @@ R('POST', '/api/login', { public: true }, async c => {
   const password = typeof x.password === 'string' ? x.password : '';
   if (!identifier || !password || password.length > 128) throw err(400, 'INVALID_INPUT', 'شناسه ورود و رمز عبور را وارد کنید');
   const isRootAdmin = identifier.toLowerCase() === 'admin';
-  const normalizedPhone = /^\\+?[0-9۰-۹٠-٩]{8,15}$/.test(identifier) ? normPhone(identifier) : null;
+  const normalizedPhone = /^\+?[0-9۰-۹٠-٩]{8,15}$/.test(identifier) ? normPhone(identifier) : null;
   const unit = unitOrNull(identifier);
   const ip = c.request.headers.get('CF-Connecting-IP') || 'unknown';
   const idKey = `id:unified:${identifier.toLowerCase()}`, ipKey = `ip:${ip}`;
