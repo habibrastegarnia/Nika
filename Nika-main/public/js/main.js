@@ -1,6 +1,6 @@
 // راه‌اندازی برنامه: ورود، تغییر رمز اجباری، ناوبری اصلی، اسلایدر خانه
 import { api, setHooks } from './api.js';
-import { S, can, isManager } from './state.js';
+import { S, can, canAny, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
 import * as P from './pages.js?v=4';
