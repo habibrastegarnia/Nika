@@ -12,8 +12,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/nika-logo.webp?v=3">
 <link rel="apple-touch-icon" sizes="192x192" href="/assets/nika-logo.webp?v=3">
-<link rel="stylesheet" href="/app.css?v=16">
-<script type="module" src="/js/main.js?v=24"></script>
+<link rel="stylesheet" href="/app.css?v=17">
+<script type="module" src="/js/main.js?v=25"></script>
 </head>
 <body>
 <section id="nikaGate"><div class="nika-shell"><div class="nika-brand"><img class="nika-logo" src="/assets/nika-logo.webp?v=3" alt="نیکا"><div><h1>نیکا</h1><p>سامانه مدیریت مجتمع مسکونی</p></div></div>
@@ -29,13 +29,13 @@
 <div class="nika-authcard"><form id="forceForm" novalidate><label class="nika-label" for="fpNew">رمز جدید (حداقل ۴ کاراکتر)</label><input class="nika-input" id="fpNew" type="password" autocomplete="new-password" dir="ltr">
 <label class="nika-label" for="fpNew2">تکرار رمز جدید</label><input class="nika-input" id="fpNew2" type="password" autocomplete="new-password" dir="ltr">
 <div class="nika-footnote">رمز نباید فقط عدد باشد و نباید شامل شماره موبایل شما باشد.</div><p class="nika-error" id="forceError" role="alert"></p>
-<div class="nika-actions"><button class="nika-primary" type="submit">ذخیره و ادامه</button><button class="nika-secondary" type="button" id="forceLogout">انصراف و خروج</button></div></form></div></div></section>
+<div class="nika-actions"><button class="nika-primary" type="submit">ذخیره و ادامه</button><button class="nika-secondary logout-action" type="button" id="forceLogout"><span data-icon="log-out"></span><span>انصراف و خروج</span></button></div></form></div></div></section>
 <main class="phone">
  <header class="header">
   <img class="avatar" id="hdrAvatar" src="assets/avatar.jpg" alt="آواتار کاربر">
   <div class="header-copy"><h1 id="hdrName"></h1><p id="hdrSub"></p></div>
   <button class="header-action workspace-toggle nika-hide" id="workspaceToggle" aria-label="ورود به فضای مدیریت" title="ورود به فضای مدیریت"><span class="workspace-label workspace-label-left">ساکن</span><span class="workspace-label workspace-label-right">مدیر اجرایی</span><span class="workspace-thumb"></span></button>
-  <button class="header-action header-logout" id="headerLogout" aria-label="خروج از حساب" title="خروج از حساب"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg><span>خروج</span></button>
+  <button class="header-action header-logout" id="headerLogout" aria-label="خروج از حساب" title="خروج از حساب"><span data-icon="log-out"></span><span>خروج</span></button>
  </header>
 
  <section class="panel carousel" id="carousel" aria-label="اسلایدهای داشبورد">
@@ -50,7 +50,7 @@
     <div class="slide-body"><div class="donut-wrap"><svg class="donut" viewBox="0 0 160 160" aria-label="نمودار وصول شارژ"><circle cx="80" cy="80" r="56" fill="none" stroke="#aeb9ed" stroke-width="24"/><circle id="paidArc" cx="80" cy="80" r="56" fill="none" stroke="#7886d8" stroke-width="24" stroke-dasharray="0 352" transform="rotate(-90 80 80)"/></svg></div><div class="legend">
      <div><div class="fin-label"><span class="legend-dot" style="display:inline-block;background:#7886d8;vertical-align:middle;margin-left:6px"></span>وصول‌شده</div><div class="fin-percent" id="paidPct">—</div><div class="fin-detail" id="paidDetail"> </div></div>
      <div><div class="fin-label"><span class="legend-dot" style="display:inline-block;background:#aeb9ed;vertical-align:middle;margin-left:6px"></span>وصول‌نشده</div><div class="fin-percent" id="unpaidPct">—</div><div class="fin-detail" id="unpaidDetail"> </div></div>
-    </div><div class="summary"><div class="summary-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6"/></svg></div><div class="summary-label">مجموع واحدها</div><div class="summary-value" id="unitCount">—</div></div></div>
+    </div><div class="summary"><div class="summary-icon"><span data-icon="building-2"></span></div><div class="summary-label">مجموع واحدها</div><div class="summary-value" id="unitCount">—</div></div></div>
     <div class="tap-note">درصدها بر اساس مبلغ شارژ؛ تعداد واحدها جداگانه محاسبه می‌شود</div>
    </article>
    <article class="slide board" aria-label="تابلوی ساختمان">
@@ -60,12 +60,12 @@
    </article>
   </div>
  </section>
- <div class="slide-controls"><button class="slide-arrow" id="prev" aria-label="اسلاید قبلی">‹</button><div class="slide-dots"><button class="slide-dot active" data-index="0" aria-label="اسلاید اول"></button><button class="slide-dot" data-index="1" aria-label="اسلاید دوم"></button><button class="slide-dot" data-index="2" aria-label="اسلاید سوم"></button></div><button class="slide-arrow" id="next" aria-label="اسلاید بعدی">›</button></div>
+ <div class="slide-controls"><button class="slide-arrow" id="prev" aria-label="اسلاید قبلی"><span data-icon="chevron-left"></span></button><div class="slide-dots"><button class="slide-dot active" data-index="0" aria-label="اسلاید اول"></button><button class="slide-dot" data-index="1" aria-label="اسلاید دوم"></button><button class="slide-dot" data-index="2" aria-label="اسلاید سوم"></button></div><button class="slide-arrow" id="next" aria-label="اسلاید بعدی"><span data-icon="chevron-right"></span></button></div>
 
  <section class="categories" aria-label="میانبرها">
-  <button class="category" data-menu="rules"><span class="cat-icon"><svg viewBox="0 0 32 32"><path d="M8 5h13l5 5v17H8z"/><path d="M21 5v6h5M12 16h10M12 21h10"/><path d="m12 11 2 2 4-4"/></svg></span><span>مقررات</span></button>
-  <button class="category" data-menu="requests"><span class="cat-icon"><svg viewBox="0 0 32 32"><path d="M6 7h20v18H6z"/><path d="M11 12h10M11 17h6"/><path d="M22 20v7M18.5 23.5h7"/></svg></span><span>درخواست‌ها</span></button>
-  <button class="category" data-menu="calendar"><span class="cat-icon"><svg viewBox="0 0 32 32"><rect x="5" y="7" width="22" height="21" rx="3"/><path d="M10 4v6M22 4v6M5 13h22M10 18h4M18 18h4M10 23h4"/></svg></span><span>تقویم</span></button>
+  <button class="category" data-menu="rules"><span class="cat-icon" data-icon="file-text"></span><span>مقررات</span></button>
+  <button class="category" data-menu="requests"><span class="cat-icon" data-icon="clipboard-list"></span><span>درخواست‌ها</span></button>
+  <button class="category" data-menu="calendar"><span class="cat-icon" data-icon="calendar-days"></span><span>تقویم</span></button>
 
  </section>
 
@@ -85,13 +85,13 @@
   </div>
  </section>
  <nav class="bottom-nav" aria-label="ناوبری اصلی">
-  <button class="nav-item active" data-nav="خانه"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v10h-6v-6H9v6H3z"/></svg><span>خانه</span></button>
-  <button class="nav-item" data-nav="حساب من"><svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/></svg><span>حساب من</span></button>
-  <button class="nav-item" data-nav="مالی"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="3"/><path d="M3 10h18M15 15h3"/></svg><span>مالی</span></button>
-  <button class="nav-item" data-nav="پیام‌ها"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/><path d="M8 12h8M8 8.5h5"/></svg><span>پیام‌ها</span><i class="nav-badge" id="msgBadge" style="display:none"></i></button>
+  <button class="nav-item active" data-nav="خانه"><span data-icon="house"></span><span>خانه</span></button>
+  <button class="nav-item" data-nav="حساب من"><span data-icon="user-round"></span><span>حساب من</span></button>
+  <button class="nav-item" data-nav="مالی"><span data-icon="wallet"></span><span>مالی</span></button>
+  <button class="nav-item" data-nav="پیام‌ها"><span data-icon="messages-square"></span><span>پیام‌ها</span><i class="nav-badge" id="msgBadge" style="display:none"></i></button>
  </nav>
  
 </main>
-<div class="modal-backdrop" id="modalBackdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-top"><h3 id="modalTitle">عنوان</h3><button class="close" id="closeModal" aria-label="بستن">×</button></div><div class="modal-content" id="modalContent"></div></section></div>
+<div class="modal-backdrop" id="modalBackdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-top"><h3 id="modalTitle">عنوان</h3><button class="close" id="closeModal" aria-label="بستن"><span data-icon="x"></span></button></div><div class="modal-content" id="modalContent"></div></section></div>
 <div class="toast" id="toast" role="status"></div>
 </body></html>
