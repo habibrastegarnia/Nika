@@ -10,6 +10,7 @@ const empty = t => html`<p>${t}</p>`;
 let tab = 'users', sub = {};
 
 const TABS = () => [
+  ['settings', 'تنظیمات', canAny(['finance.settings.read', 'finance.settings'])],
   ['users', 'کاربران', can('users.read')],
   ['units', 'واحدها', can('units.read')],
   ['finance', 'مالی', canAny(['finance.settings', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'])],
@@ -91,7 +92,7 @@ async function loadTab() {
   $('#managerPageBack').onclick = hideAdmin;
   try {
     const out = await RENDER[tab]();
-    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
+    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({settings:'تنظیمات',users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
     $('#managerPageBack',box).onclick = hideAdmin;
     out.bind && out.bind(box);
   } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack">‹</button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); $('#managerPageBack',box).onclick=hideAdmin; }
@@ -280,8 +281,50 @@ function bindGroupedMoneyInputs(root){
   format(); input.addEventListener('input',format);
  });
 }
+async function settingsTab() {
+ const editable = can('finance.settings');
+ const { settings } = await api('/finance/reminder-settings');
+ const t = jToday(), today = `${t.y}-${String(t.m).padStart(2,'0')}-${String(t.d).padStart(2,'0')}`;
+ if (!editable) {
+  const dateText = value => value ? fa(String(value).replace(/-/g,'/')) : '—';
+  const valueText = value => value == null || value === '' ? '—' : fa(String(value));
+  return {
+   html: html`<div class="nika-admin-grid finance-settings-grid">
+    ${card('تعاریف اولیه مالی', html`
+     <section class="finance-setting-block"><h4>شارژ ماهیانه</h4><div class="finance-setting-row">
+      <div class="finance-field"><label class="nika-label">مبلغ شارژ (تومان)</label><div class="nika-input" aria-readonly="true">${valueText(settings?.monthly_amount)}</div></div>
+      <div class="finance-field"><label class="nika-label">روز سررسید ماهیانه</label><div class="nika-input" aria-readonly="true">${valueText(settings?.monthly_due_day)}</div></div>
+     </div><div class="finance-field"><label class="nika-label">تاریخ مصوب اجرا</label><div class="nika-input" aria-readonly="true">${dateText(settings?.monthly_effective_from || settings?.effective_from)}</div></div></section>
+     <section class="finance-setting-block"><h4>شارژ مالکانه</h4><div class="finance-setting-row">
+      <div class="finance-field"><label class="nika-label">مبلغ شارژ (تومان)</label><div class="nika-input" aria-readonly="true">${valueText(settings?.owner_amount)}</div></div>
+      <div class="finance-field"><label class="nika-label">تاریخ سررسید پرداخت</label><div class="nika-input" aria-readonly="true">${dateText(settings?.owner_due_date)}</div></div>
+     </div><div class="finance-field"><label class="nika-label">تاریخ مصوب اجرا</label><div class="nika-input" aria-readonly="true">${dateText(settings?.owner_effective_from || settings?.effective_from)}</div></div></section>
+     <p class="nika-footnote">این تعاریف فقط توسط رئیس هیئت‌مدیره قابل تغییر هستند.</p>`)}
+   </div>`
+  };
+ }
+ return {
+  html: html`<div class="nika-admin-grid finance-settings-grid">${card('تعاریف اولیه مالی', html`<form id="financeSettings" novalidate>
+   <section class="finance-setting-block"><h4>شارژ ماهیانه</h4><div class="finance-setting-row">${financeNumberField('monthlyAmount','مبلغ شارژ (تومان)',settings?.monthly_amount)}${financeNumberField('monthlyDueDay','روز چندم ماه (سررسید)',settings?.monthly_due_day)}</div>${jalaliDateControl('monthlyEffectiveFrom','تاریخ مصوب اجرا',settings?.monthly_effective_from||settings?.effective_from||today)}</section>
+   <section class="finance-setting-block"><h4>شارژ مالکانه</h4><div class="finance-setting-row finance-owner-row">${financeNumberField('ownerAmount','مبلغ شارژ (تومان)',settings?.owner_amount)}${jalaliDateControl('ownerDueDate','تاریخ سررسید پرداخت',settings?.owner_due_date||today)}</div>${jalaliDateControl('ownerEffectiveFrom','تاریخ مصوب اجرا',settings?.owner_effective_from||settings?.effective_from||today)}</section>
+   <div class="nika-actions"><button class="nika-primary" type="submit">ثبت مصوبه جدید</button></div></form><div class="nika-footnote">با رسیدن تاریخ اجرای مصوبه، شارژها به‌صورت خودکار ثبت می‌شوند؛ سوابق مصوبه‌ها و بدهی‌های قبلی محفوظ می‌مانند.</div>`)}
+  </div>`,
+  bind(box) {
+   bindGroupedMoneyInputs(box);
+   const fs = $('#financeSettings', box);
+   if (fs) onSubmit(fs, async d => {
+    const num = v => parseAmount(v);
+    await api('/finance/reminder-settings', { method: 'POST', body: {
+     monthlyAmount: num(d.monthlyAmount), monthlyDueDay: num(d.monthlyDueDay),
+     ownerAmount: num(d.ownerAmount), monthlyEffectiveFrom: normDigits(d.monthlyEffectiveFrom),
+     ownerEffectiveFrom: normDigits(d.ownerEffectiveFrom), ownerDueDate: normDigits(d.ownerDueDate)
+    }});
+    toast('مصوبه مالی جدید ثبت شد؛ شارژها طبق تاریخ اجرا به‌صورت خودکار ثبت می‌شوند'); reload();
+   });
+  }
+ };
+}
 async function financeTab() {
- const settingsAllowed = can('finance.settings');
  const approvalsAllowed = canAny(['finance.approve','expenses.approve']);
  const expenseAllowed = can('expenses.create');
  const reportsAllowed = can('finance.reports');
@@ -290,18 +333,6 @@ async function financeTab() {
  if (reportsAllowed) {
   const { funds } = await api('/finance/funds');
   parts.push(card('موجودی صندوق‌ها', html`<div class="nika-users">${funds.map(f => html`<div class="nika-usercard"><strong>${f.title}</strong><div class="page-stat-grid"><div class="page-stat"><small>موجودی فعلی</small><strong class="${f.balance < 0 ? 'debt-text' : 'credit-text'}">${toman(f.balance)}</strong></div><div class="page-stat"><small>دریافتی تأییدشده</small><strong>${toman(f.incoming)}</strong></div><div class="page-stat"><small>هزینه قطعی‌شده</small><strong>${toman(f.outgoing)}</strong></div></div></div>` )}</div>`));
- }
- if (settingsAllowed) {
-  const {settings}=await api('/finance/reminder-settings');
-  const t=jToday(),today=`${t.y}-${String(t.m).padStart(2,'0')}-${String(t.d).padStart(2,'0')}`;
-  settingsOut = {
-   html:html`<div class="nika-admin-grid finance-settings-grid">${card('تنظیمات مالی',html`<form id="financeSettings" novalidate>
-    <section class="finance-setting-block"><h4>شارژ ماهیانه</h4><div class="finance-setting-row">${financeNumberField('monthlyAmount','مبلغ شارژ (تومان)',settings?.monthly_amount)}${financeNumberField('monthlyDueDay','روز چندم ماه (سررسید)',settings?.monthly_due_day)}</div>${jalaliDateControl('monthlyEffectiveFrom','تاریخ مصوب اجرا',settings?.monthly_effective_from||settings?.effective_from||today)}</section>
-    <section class="finance-setting-block"><h4>شارژ مالکانه</h4><div class="finance-setting-row finance-owner-row">${financeNumberField('ownerAmount','مبلغ شارژ (تومان)',settings?.owner_amount)}${jalaliDateControl('ownerDueDate','تاریخ سررسید پرداخت',settings?.owner_due_date||today)}</div>${jalaliDateControl('ownerEffectiveFrom','تاریخ مصوب اجرا',settings?.owner_effective_from||settings?.effective_from||today)}</section>
-    <div class="nika-actions"><button class="nika-primary" type="submit">ثبت مصوبه جدید</button></div></form><div class="nika-footnote">با رسیدن تاریخ اجرای مصوبه، شارژها به‌صورت خودکار ثبت می‌شوند؛ سوابق مصوبه‌ها و بدهی‌های قبلی محفوظ می‌مانند.</div>`)} </div>`,
-   bind(box){bindGroupedMoneyInputs(box);const fs=$('#financeSettings',box);if(fs){onSubmit(fs,async d=>{const num=v=>parseAmount(v);await api('/finance/reminder-settings',{method:'POST',body:{monthlyAmount:num(d.monthlyAmount),monthlyDueDay:num(d.monthlyDueDay),ownerAmount:num(d.ownerAmount),monthlyEffectiveFrom:normDigits(d.monthlyEffectiveFrom),ownerEffectiveFrom:normDigits(d.ownerEffectiveFrom),ownerDueDate:normDigits(d.ownerDueDate)}});toast('مصوبه مالی جدید ثبت شد؛ شارژها طبق تاریخ اجرا به‌صورت خودکار ثبت می‌شوند');reload();});}}
-  };
-  parts.push(settingsOut.html);
  }
  if (approvalsAllowed) { approvalsOut = await financeApprovalsTab(); parts.push(approvalsOut.html); }
  if (expenseAllowed) { expenseOut = await expenseRequestsTab(); parts.push(expenseOut.html); }
@@ -654,4 +685,4 @@ async function archiveTab() {
  };
 }
 
-const RENDER = { users: usersTab, units: unitsTab, finance: financeTab, reports: reportsTab, archive: archiveTab };
+const RENDER = { settings: settingsTab, users: usersTab, units: unitsTab, finance: financeTab, reports: reportsTab, archive: archiveTab };
