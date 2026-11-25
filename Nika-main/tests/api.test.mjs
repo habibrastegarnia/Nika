@@ -348,6 +348,7 @@ test('محتوای ساختمان: قوانین، مصوبات، رویداده�
   assert.equal(recurring.status, 201);
   let occurrences = (await res1.get('/api/events?month=1405-09')).data.items.filter(e => e.id === recurring.data.id);
   assert.deepEqual(occurrences.map(e => e.recurrence_date), ['1405-09-05','1405-09-12','1405-09-19','1405-09-26']);
+  assert.ok(occurrences.every(e => e.series_event_date === '1405-09-05'), 'ویرایش سری باید تاریخ پایه را مستقل از نوبت نمایشی نگه دارد');
   assert.equal((await exec.patch(`/api/events/${recurring.data.id}/occurrences/1405-09-12`, { event_date: '1405-09-13', event_time: '10:30' })).status, 200);
   occurrences = (await res1.get('/api/events?month=1405-09')).data.items.filter(e => e.id === recurring.data.id);
   assert.ok(occurrences.some(e => e.recurrence_date === '1405-09-12' && e.event_date === '1405-09-13'), 'جابجایی یک نوبت باید مستقل از نوبت‌های بعدی باشد');
