@@ -11,13 +11,19 @@ const COLORS = ['#7886d8', '#58c9a5', '#e8a65d', '#d77d9b', '#78baff', '#b79cf0'
 const CIRC = 2 * Math.PI * 56;
 export const canDash = () => dashFunds().length > 0;
 
+function avatarMarkup(user, extraClass = '') {
+  if (user.has_avatar) return `<img class="${extraClass}" src="/api/avatar?v=${encodeURIComponent(user.avatar_v || '')}" alt="تصویر پروفایل">`;
+  const mark = user.gender === 'female' ? iconMarkup('venus') : user.gender === 'male' ? iconMarkup('mars') : '';
+  return `<span class="nika-avatar ${extraClass}" aria-label="آواتار ${user.gender === 'female' ? 'خانم' : user.gender === 'male' ? 'آقا' : 'کاربر'}">${iconMarkup('user-round')}${mark ? `<i>${mark}</i>` : ''}</span>`;
+}
+
 export function fillHeader() {
   const u = S.user;
   $('#hdrName').textContent = u.name;
   const baseRoleText = u.unit_number ? `واحد ${u.unit_number} · ${u.account_type === 'owner' ? 'مالک' : 'ساکن'}` : u.roles.map(r => ROLE_FA[r]).join('، ');
   const delegatedText = (u.delegatedRoles || []).map(r => `جانشین ${ROLE_FA[r]}`).join('، ');
   $('#hdrSub').textContent = [baseRoleText, delegatedText].filter(Boolean).join(' · ');
-  $('#hdrAvatar').src = u.has_avatar ? `/api/avatar?v=${encodeURIComponent(u.avatar_v || '')}` : 'assets/avatar.jpg';
+  $('#hdrAvatar').innerHTML = avatarMarkup(u);
 }
 
 function renderExpenses(d) {
@@ -248,7 +254,7 @@ export function profilePage() {
     ...(unit ? [['شماره واحد', unit.number]] : [])
   ];
   const v = route('حساب من', 'حساب من', '', html`<section class="profile-panel">
-      <div class="profile-cover"><img src="${u.has_avatar ? `/api/avatar?v=${encodeURIComponent(u.avatar_v || '')}` : 'assets/avatar.jpg'}" alt="تصویر پروفایل"><div><strong>${u.name}</strong><small>${u.roles.map(r => ROLE_FA[r]).join(' · ')}</small></div></div>
+      <div class="profile-cover">${raw(avatarMarkup(u, 'profile-avatar'))}<div><strong>${u.name}</strong><small>${u.roles.map(r => ROLE_FA[r]).join(' · ')}</small></div></div>
       <div class="profile-details">${details.map(([k, val]) => html`<div class="profile-detail"><small>${k}</small><strong>${val}</strong></div>`)}</div>
     </section>
     <div class="profile-actions">
@@ -271,10 +277,11 @@ export function editProfilePage() {
     { name: 'name', label: 'نام و نام خانوادگی', value: u.name, required: true },
     { name: 'email', label: 'ایمیل (اختیاری)', type: 'email', value: u.email || '', dir: 'ltr' },
     { name: 'phone', label: 'شماره موبایل (نام کاربری ورود)', value: u.phone, inputmode: 'tel', dir: 'ltr' },
+    { name: 'gender', label: 'جنسیت', type: 'select', value: u.gender || 'unspecified', options: [['female','خانم'],['male','آقا'],['unspecified','تمایلی به اعلام ندارم']] },
     { name: 'currentPassword', label: 'رمز فعلی (فقط هنگام تغییر شماره موبایل)', type: 'password', dir: 'ltr', autocomplete: 'current-password' }])}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>
     <div class="page-card"><h3>تصویر پروفایل</h3><input type="file" id="avFile" accept="image/jpeg,image/png,image/webp" class="page-input"><div class="row-actions">${u.has_avatar ? html`<button class="page-btn sm danger" id="avDel">حذف تصویر</button>` : ''}</div><p class="form-error" id="avErr"></p></div>`);
   onSubmit($('form', v), async d => {
-    const body = { name: d.name, email: d.email }; if (d.phone && d.phone !== u.phone) { body.phone = d.phone; body.currentPassword = d.currentPassword; }
+    const body = { name: d.name, email: d.email, gender: d.gender }; if (d.phone && d.phone !== u.phone) { body.phone = d.phone; body.currentPassword = d.currentPassword; }
     const r = await api('/profile', { method: 'PATCH', body }); S.user = r.user; fillHeader(); toast('ذخیره شد'); open(profilePage, { replace: true });
   });
   $('#avFile', v).onchange = async e => {
