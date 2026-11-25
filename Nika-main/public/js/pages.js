@@ -4,6 +4,7 @@ import { S, can, readableFunds, dashFunds, isManager } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, isRecent, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
   FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, route, open, fields, onSubmit } from './ui.js';
+import { iconMarkup } from './icons.js';
 
 // ====================== خانه ======================
 const COLORS = ['#7886d8', '#58c9a5', '#e8a65d', '#d77d9b', '#78baff', '#b79cf0', '#9ac96b'];
@@ -76,15 +77,9 @@ export async function loadHome() {
 }
 
 // ====================== مقررات و مصوبات ======================
-const lineIcon = d => html`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${raw(d)}"/></svg>`;
-const ICONS = [
-  lineIcon('M3 10.5 12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6'),
-  lineIcon('M12 3v9l6 3M21 12a9 9 0 1 1-9-9'),
-  lineIcon('M7 7h10l-2.5-2.5M17 17H7l2.5 2.5M19 7a8 8 0 0 1 1 10M5 17A8 8 0 0 1 4 7'),
-  lineIcon('M5 4h14v16H5zM8 8h8M8 12h8M8 16h5'),
-  lineIcon('M12 3 4 7v5c0 5 3.5 8 8 9 4.5-1 8-4 8-9V7zM9 12l2 2 4-4'),
-  lineIcon('M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4')
-];
+const lineIcon = name => raw(iconMarkup(name));
+const ICONS = ['file-text', 'clock', 'history', 'receipt-text', 'shield-check', 'building-2'];
+const FACILITY_ICONS = ['building-2', 'car-front', 'lightbulb', 'trash-2', 'shield-check'];
 export async function rulesPage() {
   const { items } = await api('/rules');
   route('خانه', 'مقررات ساختمان', 'قوانین و ضوابط مصوب برای همه‌ی ساکنان', html`<div class="page-list">${items.length ? items.map((r, i) => html`<div class="page-card"><div class="page-row" style="background:none;border:0;padding:0"><div class="page-row-icon">${ICONS[i % ICONS.length]}</div><div class="page-row-main"><strong>${r.title}</strong><p>${r.body}</p></div></div></div>`) : html`<div class="page-card"><div class="page-empty">هنوز مقرراتی ثبت نشده است.</div></div>`}</div>`);
