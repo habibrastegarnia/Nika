@@ -14,6 +14,7 @@ const TABS = () => [
   ['units', 'واحدها', can('units.read')],
   ['finance', 'مالی', canAny(['finance.settings', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'])],
   ['reports', 'گزارش عملکرد', can('audit.read')],
+  ['archive', 'پشتیبان‌گیری', can('backup.manage')],
 ].filter(t => t[2]);
 
 let managerHome = false;
@@ -346,9 +347,9 @@ async function expenseRequestsTab() {
      { name: 'description', label: 'شرح درخواست', type: 'textarea', rows: 3, required: true }
    ], 'nika')}
    <div class="nika-footnote" id="expenseFundBalance"></div>
-   <label class="nika-label">تصویر فاکتور، پیش‌فاکتور یا مدارک پشتیبان</label>
+   <label class="nika-label">تصویر فاکتور، پیش‌فاکتور یا مدارک پشتیبان (اختیاری)</label>
    <input class="nika-input" type="file" id="expenseFiles" accept="image/jpeg,image/png,image/webp" multiple>
-   <div class="nika-footnote">حداکثر ۴ تصویر؛ تصاویر پیش از ارسال در مرورگر فشرده می‌شوند.</div>
+   <div class="nika-footnote">در صورت نیاز حداکثر ۴ تصویر بارگذاری کنید؛ تصاویر پس از پشتیبان‌گیری آفلاین از سامانه حذف می‌شوند.</div>
    <div class="nika-actions"><button class="nika-primary" type="submit">ثبت و ارسال برای مدیر مالی</button></div></form>`)}
    ${card('پیگیری درخواست‌ها', requests.length ? html`<div class="nika-users">${requests.map(q => html`<div class="nika-usercard">
      <strong>${q.reference_no} · ${q.document_title}</strong>
@@ -364,9 +365,8 @@ async function expenseRequestsTab() {
    fundSelect.onchange = updateBalance; updateBalance();
    onSubmit(form, async d => {
     const selected = Array.from($('#expenseFiles', box).files || []);
-    if (!selected.length) throw new Error('تصویر حداقل یک سند پشتیبان را انتخاب کنید');
     if (selected.length > 4) throw new Error('حداکثر چهار تصویر قابل ارسال است');
-    const files = await Promise.all(selected.map(toDocumentImage));
+    const files = selected.length ? await Promise.all(selected.map(toDocumentImage)) : [];
     const body = { ...d, files };
     if (!S.user.roles.includes('executive')) { const reason = await promptText('دلیل انجام خارج از مسئولیت', 'چرا این درخواست را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
     const result = await api('/expense-requests', { method: 'POST', body });
@@ -391,7 +391,7 @@ async function showExpenseRequestDetails(id) {
  const stageFa = { executive:'مدیر اجرایی',finance:'مدیر مالی',chair:'رئیس هیئت‌مدیره' };
  openModal(`درخواست ${q.reference_no}`, html`<div class="nika-users">
   <div class="nika-usercard"><strong>${q.document_title}</strong><small>${q.fund_title} · ${toman(q.amount)} · ${q.document_date}</small><p>${q.description}</p><span class="page-chip ${q.status === 'finalized' ? 'green' : q.status.startsWith('revision') ? 'amber' : 'blue'}">${q.statusLabel}</span></div>
-  <div class="nika-usercard"><strong>تصاویر اسناد</strong>${data.files.length ? html`<div class="row-actions">${data.files.map(f => html`<a class="page-btn sm secondary" href="${f.url}" target="_blank" rel="noopener">${f.filename} · نسخه ${f.version_no}</a>`)}</div>` : empty('تصویری ثبت نشده است.')}</div>
+  <div class="nika-usercard"><strong>تصاویر اسناد</strong>${data.files.length ? html`<div class="row-actions">${data.files.map(f => f.has_data ? html`<a class="page-btn sm secondary" href="${f.url}" target="_blank" rel="noopener">${f.filename} · نسخه ${f.version_no}</a>` : html`<span class="page-chip">${f.filename} · نسخه ${f.version_no} · در بایگانی آفلاین</span>`)}</div>` : empty('تصویری ثبت نشده است.')}</div>
   <div class="nika-usercard"><strong>سوابق بررسی و اصلاح</strong>${data.history.length ? data.history.map(h => html`<div class="page-event"><strong>${stageFa[h.stage] || h.stage} · ${actionFa[h.action] || h.action}</strong><small>${h.actor || 'سامانه'} · ${fdt(h.created_at)}</small>${h.reason ? html`<p>دلیل: ${h.reason}</p>` : ''}</div>`) : empty('سابقه‌ای ثبت نشده است.')}</div>
   <div class="nika-usercard"><strong>نسخه‌های سند</strong>${data.versions.map(v => html`<div class="page-event"><strong>نسخه ${v.version_no}</strong><small>${fdt(v.created_at)}</small>${v.reason ? html`<p>${v.reason}</p>` : ''}</div>`)}</div>
  </div>`);
@@ -541,4 +541,63 @@ async function auditTab() {
   return { html: card('گزارش ممیزی (۱۵۰ رویداد اخیر)', html`<table class="nika-table"><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>جزئیات</th></tr>${logs.map(l => html`<tr><td>${fdt(l.created_at)}</td><td>${l.actor || '—'}</td><td dir="ltr" style="text-align:left">${l.action}</td><td dir="ltr" style="text-align:left;font-size:9px;overflow-wrap:anywhere">${l.details && l.details !== '{}' ? l.details : ''}</td></tr>`)}</table>`) };
 }
 
-const RENDER = { users: usersTab, units: unitsTab, finance: financeTab, reports: reportsTab };
+async function archiveTab() {
+ const status = await api('/backups/status');
+ let pendingBackup = null;
+ return {
+  html: card('پشتیبان‌گیری ماهانه و بایگانی آفلاین', html`
+   <p>فایل پشتیبان شامل سوابق کاربران، واحدها، امور مالی، درخواست‌ها، گردش تأییدها، گزارش‌ها و تصاویر موجود است. رمزهای عبور و نشست‌های ورود در فایل قرار نمی‌گیرند.</p>
+   <div class="nika-usercard">
+    <strong>وضعیت بایگانی</strong>
+    <small id="backupSummary">تصاویر آماده بایگانی: ${fa(status.pendingImages)} · آخرین پشتیبان تأییدشده: ${status.lastConfirmedAt ? fdt(status.lastConfirmedAt) : 'هنوز تهیه نشده است'}</small>
+   </div>
+   <div class="nika-footnote">فایل را روی رایانه و ترجیحاً یک حافظه جداگانه ذخیره کنید. پس از دانلود، فایل را نگه دارید و فقط در صورت اطمینان از ذخیره‌شدن آن، پاک‌سازی تصاویر آنلاین را تأیید کنید. تمام سوابق متنی و مالی در سامانه باقی می‌مانند.</div>
+   <div class="nika-actions"><button class="nika-primary" type="button" data-backup-download>تهیه و دانلود فایل پشتیبان</button>
+    <button class="nika-secondary" type="button" data-backup-confirm hidden>فایل ذخیره شد؛ تأیید و پاک‌سازی تصاویر</button></div>
+   <p class="nika-footnote" id="backupMessage">تهیه فایل به‌صورت دستی انجام می‌شود تا بتوانید نسخه آن را روی رایانه خود نگهداری کنید.</p>
+  `),
+  bind(box) {
+   act(box, '[data-backup-download]', async button => {
+    button.disabled = true;
+    try {
+     const response = await fetch('/api/backups/export', { credentials: 'same-origin' });
+     if (!response.ok) {
+      let message = 'تهیه فایل پشتیبان ناموفق بود';
+      try { message = (await response.json()).message || message; } catch {}
+      throw new Error(message);
+     }
+     const blob = await response.blob();
+     const buffer = await blob.arrayBuffer();
+     const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', buffer))]
+       .map(v => v.toString(16).padStart(2, '0')).join('');
+     const backupId = response.headers.get('X-Nika-Backup-Id');
+     const expected = response.headers.get('X-Nika-Backup-SHA256');
+     if (!backupId || !expected || digest !== expected) throw new Error('صحت فایل پشتیبان تأیید نشد؛ هیچ تصویری حذف نشده است');
+     const url = URL.createObjectURL(new Blob([buffer], { type: 'application/json' }));
+     const link = document.createElement('a');
+     link.href = url;
+     link.download = 'nika-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+     document.body.appendChild(link); link.click(); link.remove();
+     setTimeout(() => URL.revokeObjectURL(url), 10000);
+     pendingBackup = { id: backupId, checksum: digest };
+     $('[data-backup-confirm]', box).hidden = false;
+     $('#backupMessage', box).textContent = 'فایل تولید و صحت آن بررسی شد. پس از اطمینان از ذخیره‌شدن فایل در رایانه، دکمه تأیید پاک‌سازی را بزنید.';
+     toast('فایل پشتیبان دانلود شد؛ برای حذف تصاویر، ذخیره فایل را تأیید کنید');
+    } catch (e) { toast(e.message); }
+    finally { button.disabled = false; }
+   });
+   act(box, '[data-backup-confirm]', async button => {
+    if (!pendingBackup) return;
+    if (!await ask('تأیید بایگانی آفلاین', 'آیا فایل پشتیبان را روی رایانه ذخیره کرده‌اید؟ فقط تصاویر پیوست‌شده حذف می‌شوند و تمام سوابق و اطلاعات مالی آنلاین باقی می‌مانند.', 'تأیید و پاک‌سازی', true)) return;
+    button.disabled = true;
+    try {
+     const result = await api(`/backups/${pendingBackup.id}/confirm`, { method: 'POST', body: { checksum: pendingBackup.checksum } });
+     toast(`${fa(result.archivedImages)} تصویر به بایگانی آفلاین منتقل شد؛ سوابق سامانه باقی ماندند`);
+     pendingBackup = null; reload();
+    } catch (e) { toast(e.message); button.disabled = false; }
+   });
+  }
+ };
+}
+
+const RENDER = { users: usersTab, units: unitsTab, finance: financeTab, reports: reportsTab, archive: archiveTab };
