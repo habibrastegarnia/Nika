@@ -557,3 +557,8 @@ html[data-theme="light"] .header .header-logout{background:transparent!important
 .header-user{order:2!important;direction:rtl!important;text-align:right!important}
 .header-tools{order:1!important;direction:rtl!important}
 .header .header-logout,.header .header-logout:hover,.header .header-logout:focus,.header .header-logout:focus-visible,.header .header-logout:active{border:0!important;outline:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+
+
+/* Restore the logout icon wrapper; an older span selector was hiding it */
+.header .header-tools .header-logout span[data-icon]{display:inline-flex!important;visibility:visible!important;opacity:1!important;width:19px!important;height:19px!important;align-items:center!important;justify-content:center!important}
+.header .header-tools .header-logout span[data-icon] svg{display:block!important;visibility:visible!important;opacity:1!important;width:19px!important;height:19px!important}
