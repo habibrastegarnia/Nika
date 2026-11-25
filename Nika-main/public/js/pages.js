@@ -109,11 +109,13 @@ export async function calendarPage(y, m) {
     { name: 'title', label: 'عنوان رویداد', required: true },
     { name: 'event_date', label: 'تاریخ رویداد', type: 'date', dateSeparator: '-', dir: 'ltr', required: true },
     { name: 'event_time', label: 'ساعت (اختیاری)', dir: 'ltr', placeholder: '18:30' },
-    { name: 'body', label: 'توضیحات', type: 'textarea', rows: 2 }
+    { name: 'body', label: 'توضیحات', type: 'textarea', rows: 2 },
+    { name: 'recurrence', label: 'تکرار رویداد', type: 'select', value: 'none', options: [['none','بدون تکرار'],['weekly','هفتگی'],['monthly','ماهانه'],['yearly','سالانه']] },
+    { name: 'recurrenceUntil', label: 'پایان تکرار (اختیاری)', type: 'date', dateSeparator: '-', dir: 'ltr' }
   ];
   const v = route('خانه', 'تقویم ساختمان', 'جلسات، سرویس‌ها و رویدادهای پیش‌رو', html`${canEdit ? html`<div class="page-card"><h3>ثبت رویداد جدید</h3><form id="eventNew" class="page-form" novalidate>${fields(eventFields)}<button class="page-btn full" type="submit">ثبت رویداد</button></form></div>` : ''}
     <div class="page-card"><div class="cal-nav"><button class="page-btn sm secondary" id="calPrev">‹ ماه قبل</button><strong>${JM[m - 1]} ${faN(y)}</strong><button class="page-btn sm secondary" id="calNext">ماه بعد ›</button></div><div class="page-calendar">${cells}</div></div>
-    <div class="page-card"><h3>رویدادهای ${JM[m - 1]}</h3>${items.length ? html`<div class="page-timeline">${items.map(e => html`<div class="page-event"><strong>${e.title}</strong><small>${faN(+e.event_date.slice(8, 10))} ${JM[m - 1]}${e.event_time ? ' · ' + normFa(e.event_time) : ''}</small>${e.body ? html`<p>${e.body}</p>` : ''}${canEdit ? html`<div class="row-actions"><button class="page-btn sm secondary" data-event-edit="${e.id}">ویرایش</button><button class="page-btn sm danger" data-event-delete="${e.id}">حذف</button></div>` : ''}</div>` )}</div>` : html`<div class="page-empty">رویدادی برای این ماه ثبت نشده است.</div>`}</div>`);
+    <div class="page-card"><h3>رویدادهای ${JM[m - 1]}</h3>${items.length ? html`<div class="page-timeline">${items.map(e => html`<div class="page-event"><strong>${e.title}</strong><small>${faN(+e.event_date.slice(8, 10))} ${JM[m - 1]}${e.event_time ? ' · ' + normFa(e.event_time) : ''}</small>${e.body ? html`<p>${e.body}</p>` : ''}${canEdit ? html`<div class="row-actions">${e.recurrence !== 'none' ? html`<button class="page-btn sm secondary" data-event-edit-occ="${e.id}" data-occ-date="${e.recurrence_date}">ویرایش این نوبت</button><button class="page-btn sm danger" data-event-delete-occ="${e.id}" data-occ-date="${e.recurrence_date}">حذف این نوبت</button>` : ''}<button class="page-btn sm secondary" data-event-edit="${e.id}">ویرایش ${e.recurrence !== 'none' ? 'سری' : 'رویداد'}</button><button class="page-btn sm danger" data-event-delete="${e.id}">حذف ${e.recurrence !== 'none' ? 'کل سری' : 'رویداد'}</button></div>` : ''}</div>` )}</div>` : html`<div class="page-empty">رویدادی برای این ماه ثبت نشده است.</div>`}</div>`);
   $('#calPrev', v).onclick = () => open(() => calendarPage(...prev), { replace: true });
   $('#calNext', v).onclick = () => open(() => calendarPage(...next), { replace: true });
   const form = $('#eventNew', v);
@@ -124,7 +126,24 @@ export async function calendarPage(y, m) {
     toast('رویداد ثبت شد');
     open(() => calendarPage(y, m), { replace: true });
   });
-  $$('[data-event-edit]', v).forEach(b => b.onclick = () => {
+  $('[data-event-edit-occ]', v).forEach(b => b.onclick = () => {
+    const event=items.find(e=>e.id===b.dataset.eventEditOcc&&e.recurrence_date===b.dataset.occDate);
+    const occurrenceFields=eventFields.slice(0,4).map(f=>({...f,value:f.name==='event_date'?event.event_date:(event[f.name]??'')}));
+    const modal=openModal('تغییر یک نوبت رویداد',html\`<form class="page-form" novalidate>\${fields(occurrenceFields)}<button class="page-btn full" type="submit">ذخیره تغییر تاریخ</button></form>\`);
+    onSubmit($('form',modal),async d=>{
+      const body={...d};if(!S.user.roles.includes('executive')){const reason=await promptText('ثبت دلیل انجام خارج از مسئولیت','چرا این نوبت را به‌جای مدیر اجرایی تغییر می‌دهید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
+      await api(\`/events/\${event.id}/occurrences/\${event.recurrence_date}\`,{method:'PATCH',body});
+      closeModal();toast('تغییر این نوبت ثبت شد');open(()=>calendarPage(y,m),{replace:true});
+    });
+  });
+  $('[data-event-delete-occ]',v).forEach(b=>b.onclick=async()=>{
+    if(!await ask('حذف یک نوبت','فقط این نوبت حذف شود و نوبت‌های بعدی باقی بمانند؟','حذف',true))return;
+    const event=items.find(e=>e.id===b.dataset.eventDeleteOcc&&e.recurrence_date===b.dataset.occDate),body={};
+    if(!S.user.roles.includes('executive')){const reason=await promptText('ثبت دلیل انجام خارج از مسئولیت','چرا این نوبت را به‌جای مدیر اجرایی حذف می‌کنید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
+    await api(\`/events/\${event.id}/occurrences/\${event.recurrence_date}\`,{method:'DELETE',body});
+    toast('این نوبت حذف شد');open(()=>calendarPage(y,m),{replace:true});
+  });
+  $('[data-event-edit]', v).forEach(b => b.onclick = () => {
     const event = items.find(e => e.id === b.dataset.eventEdit);
     const modal = openModal('ویرایش رویداد', html`<form class="page-form" novalidate>${fields(eventFields.map(f => ({ ...f, value: event[f.name] ?? '' })))}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>`);
     onSubmit($('form', modal), async d => {
