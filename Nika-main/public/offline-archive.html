@@ -42,6 +42,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px;borde
     <button data-tab="images">تصاویر بایگانی</button>
     <button data-tab="users">کاربران و واحدها</button>
    </div>
+   <div class="controls" style="margin:0 0 12px"><input id="archiveSearch" type="search" placeholder="جست‌وجو در سوابق مالی، درخواست‌ها، تصاویر و کاربران" style="width:100%"></div>
    <div id="annual"></div>
    <div id="transactions" class="hidden"></div>
    <div id="expenses" class="hidden"></div>
@@ -109,17 +110,17 @@ function renderAnnual(){
 }
 function renderTransactions(){
  var list=rows('transactions').slice().sort(function(a,b){return String(b.created_at).localeCompare(String(a.created_at));});
- var body=list.map(function(x){return '<tr><td>'+esc(x.period||yearOf(x))+'</td><td>'+esc(x.title)+'</td><td>'+esc(x.fund_id)+'</td><td>'+esc(x.kind)+'</td><td>'+esc(x.status)+'</td><td>'+esc(money(x.amount))+'</td><td>'+esc(x.reference||'')+'</td></tr>';}).join('');
+ var body=list.map(function(x){return '<tr data-search="'+esc([x.period,x.title,x.fund_id,x.kind,x.status,x.reference,x.note].join(' '))+'"><td>'+esc(x.period||yearOf(x))+'</td><td>'+esc(x.title)+'</td><td>'+esc(x.fund_id)+'</td><td>'+esc(x.kind)+'</td><td>'+esc(x.status)+'</td><td>'+esc(money(x.amount))+'</td><td>'+esc(x.reference||'')+'</td></tr>';}).join('');
  document.getElementById('transactions').innerHTML='<h2>همه سوابق مالی</h2>'+table(['دوره','عنوان','صندوق','نوع','وضعیت','مبلغ','شناسه پیگیری'],body||'<tr><td colspan="7">موردی وجود ندارد.</td></tr>');
 }
 function renderExpenses(){
  var list=rows('expense_requests').slice().sort(function(a,b){return String(b.created_at).localeCompare(String(a.created_at));});
- var body=list.map(function(x){return '<tr><td>'+esc(x.reference_no)+'</td><td>'+esc(x.document_title)+'</td><td>'+esc(x.document_date)+'</td><td>'+esc(x.status)+'</td><td>'+esc(money(x.amount))+'</td><td>'+esc(x.description)+'</td></tr>';}).join('');
+ var body=list.map(function(x){return '<tr data-search="'+esc([x.reference_no,x.document_title,x.document_date,x.status,x.description].join(' '))+'"><td>'+esc(x.reference_no)+'</td><td>'+esc(x.document_title)+'</td><td>'+esc(x.document_date)+'</td><td>'+esc(x.status)+'</td><td>'+esc(money(x.amount))+'</td><td>'+esc(x.description)+'</td></tr>';}).join('');
  document.getElementById('expenses').innerHTML='<h2>درخواست‌ها و سوابق هزینه</h2>'+table(['شماره','عنوان','تاریخ','وضعیت','مبلغ','شرح'],body||'<tr><td colspan="6">درخواستی وجود ندارد.</td></tr>');
 }
 function renderImages(){
  var list=rows('expense_request_files').filter(function(f){return !!f.data_base64;});
- var body=list.map(function(x){return '<tr><td>'+esc(x.filename)+'</td><td>'+esc(x.request_id)+'</td><td>'+esc(x.version_no)+'</td><td>'+esc(x.size)+'</td><td><button class="secondary" data-image="'+esc(x.id)+'">مشاهده تصویر</button></td></tr>';}).join('');
+ var body=list.map(function(x){return '<tr data-search="'+esc([x.filename,x.request_id,x.version_no].join(' '))+'"><td>'+esc(x.filename)+'</td><td>'+esc(x.request_id)+'</td><td>'+esc(x.version_no)+'</td><td>'+esc(x.size)+'</td><td><button class="secondary" data-image="'+esc(x.id)+'">مشاهده تصویر</button></td></tr>';}).join('');
  document.getElementById('images').innerHTML='<h2>تصاویر ذخیره‌شده در فایل‌های ماهانه</h2><p class="muted">تصاویر فایل‌های پشتیبان قبلی با نسخه‌های جدیدتر ادغام شده‌اند.</p>'+table(['نام فایل','شناسه درخواست','نسخه','حجم (بایت)','نمایش'],body||'<tr><td colspan="5">تصویری در فایل‌های انتخاب‌شده وجود ندارد.</td></tr>');
  document.querySelectorAll('[data-image]').forEach(function(btn){btn.addEventListener('click',function(){
   var file=list.find(function(x){return x.id===btn.getAttribute('data-image');});
@@ -128,7 +129,7 @@ function renderImages(){
 }
 function renderUsers(){
  var list=rows('users').slice().sort(function(a,b){return String(a.name).localeCompare(String(b.name));});
- var body=list.map(function(u){var unit=rows('units').find(function(x){return x.id===u.unit_id;});return '<tr><td>'+esc(u.name)+'</td><td>'+esc(unit?unit.unit_number:'—')+'</td><td>'+esc(u.account_type)+'</td><td>'+esc(u.phone)+'</td><td>'+esc(u.active?'فعال':'غیرفعال')+'</td></tr>';}).join('');
+ var body=list.map(function(u){var unit=rows('units').find(function(x){return x.id===u.unit_id;});return '<tr data-search="'+esc([u.name,u.phone,u.account_type,unit?unit.unit_number:''].join(' '))+'"><td>'+esc(u.name)+'</td><td>'+esc(unit?unit.unit_number:'—')+'</td><td>'+esc(u.account_type)+'</td><td>'+esc(u.phone)+'</td><td>'+esc(u.active?'فعال':'غیرفعال')+'</td></tr>';}).join('');
  document.getElementById('users').innerHTML='<h2>کاربران و واحدها</h2>'+table(['نام','واحد','نوع حساب','موبایل','وضعیت'],body||'<tr><td colspan="5">کاربری وجود ندارد.</td></tr>');
 }
 document.getElementById('loadBtn').addEventListener('click',function(){
@@ -144,6 +145,12 @@ document.querySelectorAll('[data-tab]').forEach(function(btn){btn.addEventListen
  document.querySelectorAll('[data-tab]').forEach(function(x){x.classList.toggle('on',x===btn);});
  ['annual','transactions','expenses','images','users'].forEach(function(id){document.getElementById(id).classList.toggle('hidden',id!==btn.getAttribute('data-tab'));});
 });});
+document.getElementById('archiveSearch').addEventListener('input',function(){
+ var q=this.value.trim().toLocaleLowerCase();
+ document.querySelectorAll('[data-search]').forEach(function(row){
+  row.classList.toggle('hidden',!!q&&row.getAttribute('data-search').toLocaleLowerCase().indexOf(q)===-1);
+ });
+});
 document.getElementById('closeImage').addEventListener('click',function(){document.getElementById('imageModal').classList.add('hidden');document.getElementById('preview').src='';});
 document.getElementById('imageModal').addEventListener('click',function(e){if(e.target.id==='imageModal')document.getElementById('closeImage').click();});
 })();
