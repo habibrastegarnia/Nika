@@ -145,7 +145,7 @@ export async function calendarPage(y, m) {
   });
   $('[data-event-edit]', v).forEach(b => b.onclick = () => {
     const event = items.find(e => e.id === b.dataset.eventEdit);
-    const modal = openModal('ویرایش رویداد', html`<form class="page-form" novalidate>${fields(eventFields.map(f => ({ ...f, value: event[f.name] ?? '' })))}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>`);
+    const modal = openModal('ویرایش رویداد', html`<form class="page-form" novalidate>${fields(eventFields.map(f => ({ ...f, value: f.name === 'recurrenceUntil' ? (event.recurrence_until || '') : (event[f.name] ?? '') })))}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>`);
     onSubmit($('form', modal), async d => {
       const body = { ...d };
       if (!S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی ویرایش می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
