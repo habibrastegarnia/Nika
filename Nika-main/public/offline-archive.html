@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none';">
+<title>بایگانی آفلاین نیکا</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f9;color:#172238;font-family:Tahoma,Arial,sans-serif;line-height:1.8}
+main{max-width:1100px;margin:24px auto;padding:16px}.head,.panel{background:#fff;border:1px solid #e1e6ef;border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 4px 18px #18243a0b}
+h1{font-size:22px;margin:0 0 6px}h2{font-size:17px;margin:0 0 12px}.muted{color:#68758a;font-size:13px}
+input,select,button{font:inherit;border-radius:10px;padding:10px;border:1px solid #d5dce8;background:#fff;color:#172238}
+button{cursor:pointer;background:#172b4d;color:#fff;border:0}button.secondary{background:#e9eef7;color:#172b4d}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.controls input[type=file]{max-width:100%}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.stat{background:#f6f8fc;border-radius:12px;padding:12px}.stat b{display:block;font-size:22px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px;border-bottom:1px solid #e8ecf2;text-align:right;vertical-align:top}th{background:#f6f8fc}
+.table-wrap{overflow:auto;max-height:520px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.tabs button{background:#e9eef7;color:#172b4d}.tabs button.on{background:#172b4d;color:#fff}
+.hidden{display:none!important}.notice{padding:12px;border-radius:10px;background:#fff8e8;color:#72521b;font-size:13px}
+.modal{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;padding:20px}.modal img{max-width:95vw;max-height:85vh;background:#fff;padding:8px;border-radius:12px}
+@media(max-width:600px){main{padding:10px;margin:8px auto}.head,.panel{padding:13px}h1{font-size:19px}}
+</style>
+</head>
+<body>
+<main>
+ <header class="head">
+  <h1>بایگانی آفلاین نیکا</h1>
+  <div class="muted">ابزار دسکتاپ برای مشاهده و گزارش‌گیری از فایل‌های پشتیبان؛ فقط خواندنی و بدون اتصال به اینترنت.</div>
+  <div class="controls" style="margin-top:14px">
+   <input id="backupFiles" type="file" accept=".json,application/json" multiple>
+   <button id="loadBtn">بازخوانی فایل‌ها</button>
+  </div>
+  <p id="status" class="muted">یک یا چند فایل پشتیبان ماهانه نیکا را انتخاب کنید.</p>
+ </header>
+ <section id="content" class="hidden">
+  <div class="panel"><h2>نمای کلی بایگانی</h2><div id="stats" class="grid"></div><p id="backupDates" class="muted"></p></div>
+  <div class="panel">
+   <div class="tabs">
+    <button class="on" data-tab="annual">گزارش سالانه</button>
+    <button data-tab="transactions">سوابق مالی</button>
+    <button data-tab="expenses">درخواست‌های هزینه</button>
+    <button data-tab="images">تصاویر بایگانی</button>
+    <button data-tab="users">کاربران و واحدها</button>
+   </div>
+   <div id="annual"></div>
+   <div id="transactions" class="hidden"></div>
+   <div id="expenses" class="hidden"></div>
+   <div id="images" class="hidden"></div>
+   <div id="users" class="hidden"></div>
+  </div>
+ </section>
+</main>
+<div id="imageModal" class="modal hidden"><button id="closeImage" class="secondary" style="position:absolute;top:18px;right:18px">بستن</button><img id="preview" alt="تصویر بایگانی‌شده"></div>
+<script>
+(function(){
+'use strict';
+var archive=null, money=function(n){return Number(n||0).toLocaleString('fa-IR')+' تومان';};
+var esc=function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+var keyOf=function(table,row){
+ if(table==='user_roles')return row.user_id+'|'+row.role;
+ if(table==='manager_delegations')return row.delegator_user_id+'|'+row.delegator_role;
+ return row.id;
+};
+function mergeBackups(list){
+ list.sort(function(a,b){return String(a.exportedAt).localeCompare(String(b.exportedAt));});
+ var tables={}, names={};
+ list.forEach(function(b){
+  Object.keys(b.tables||{}).forEach(function(name){names[name]=true;});
+ });
+ Object.keys(names).forEach(function(name){
+  var map=new Map();
+  list.forEach(function(b){
+   (b.tables&&b.tables[name]||[]).forEach(function(row){
+    var k=keyOf(name,row);
+    if(k==null)return;
+    var old=map.get(k);
+    if(name==='expense_request_files'&&old){
+     var merged=Object.assign({},old,row);
+     merged.data_base64=row.data_base64||old.data_base64||null;
+     merged.archived_at=row.archived_at||old.archived_at||null;
+     map.set(k,merged);
+    }else map.set(k,row);
+   });
+  });
+  tables[name]=Array.from(map.values());
+ });
+ return {tables:tables,backups:list};
+}
+function rows(name){return archive.tables[name]||[];}
+function stat(label,value){return '<div class="stat"><span class="muted">'+esc(label)+'</span><b>'+esc(value)+'</b></div>';}
+function table(headers,body){return '<div class="table-wrap"><table><thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+body+'</tbody></table></div>';}
+function render(){
+ var t=archive.tables, tx=rows('transactions'), req=rows('expense_requests'), users=rows('users'), units=rows('units'), files=rows('expense_request_files').filter(function(f){return !!f.data_base64;});
+ document.getElementById('content').classList.remove('hidden');
+ document.getElementById('stats').innerHTML=stat('واحدها',units.length)+stat('کاربران',users.length)+stat('تراکنش‌ها',tx.length)+stat('درخواست‌های هزینه',req.length)+stat('تصاویر قابل بازیابی',files.length);
+ document.getElementById('backupDates').textContent='فایل‌های بارگذاری‌شده: '+archive.backups.length+' · جدیدترین نسخه: '+(archive.backups[archive.backups.length-1].exportedAt||'—');
+ renderAnnual();renderTransactions();renderExpenses();renderImages();renderUsers();
+}
+function yearOf(row){var p=String(row.period||'');if(/^1[34]\\d{2}/.test(p))return p.slice(0,4);var d=String(row.document_date||row.created_at||'');var m=d.match(/1[34]\\d{2}/);return m?m[0]:'نامشخص';}
+function renderAnnual(){
+ var groups={};rows('transactions').forEach(function(x){
+  var y=yearOf(x),k=[y,x.fund_id||'',x.kind||'',x.status||''].join('|');
+  if(!groups[k])groups[k]={year:y,fund:x.fund_id,kind:x.kind,status:x.status,count:0,total:0};
+  groups[k].count++;groups[k].total+=Number(x.amount||0);
+ });
+ var items=Object.values(groups).sort(function(a,b){return b.year.localeCompare(a.year)||a.fund.localeCompare(b.fund)||a.kind.localeCompare(b.kind)||a.status.localeCompare(b.status);});
+ var body=items.map(function(x){return '<tr><td>'+esc(x.year)+'</td><td>'+esc(x.fund)+'</td><td>'+esc(x.kind)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.count)+'</td><td>'+esc(money(x.total))+'</td></tr>';}).join('');
+ document.getElementById('annual').innerHTML='<h2>جمع‌بندی سالانه تراکنش‌ها</h2><p class="muted">مبالغ بر اساس صندوق، نوع تراکنش و وضعیت جدا شده‌اند؛ بنابراین پرداخت‌های تأییدنشده با پرداخت‌های قطعی مخلوط نمی‌شوند.</p>'+table(['سال شمسی','صندوق','نوع','وضعیت','تعداد','جمع مبلغ'],body||'<tr><td colspan="6">تراکنشی ثبت نشده است.</td></tr>');
+}
+function renderTransactions(){
+ var list=rows('transactions').slice().sort(function(a,b){return String(b.created_at).localeCompare(String(a.created_at));});
+ var body=list.map(function(x){return '<tr><td>'+esc(x.period||yearOf(x))+'</td><td>'+esc(x.title)+'</td><td>'+esc(x.fund_id)+'</td><td>'+esc(x.kind)+'</td><td>'+esc(x.status)+'</td><td>'+esc(money(x.amount))+'</td><td>'+esc(x.reference||'')+'</td></tr>';}).join('');
+ document.getElementById('transactions').innerHTML='<h2>همه سوابق مالی</h2>'+table(['دوره','عنوان','صندوق','نوع','وضعیت','مبلغ','شناسه پیگیری'],body||'<tr><td colspan="7">موردی وجود ندارد.</td></tr>');
+}
+function renderExpenses(){
+ var list=rows('expense_requests').slice().sort(function(a,b){return String(b.created_at).localeCompare(String(a.created_at));});
+ var body=list.map(function(x){return '<tr><td>'+esc(x.reference_no)+'</td><td>'+esc(x.document_title)+'</td><td>'+esc(x.document_date)+'</td><td>'+esc(x.status)+'</td><td>'+esc(money(x.amount))+'</td><td>'+esc(x.description)+'</td></tr>';}).join('');
+ document.getElementById('expenses').innerHTML='<h2>درخواست‌ها و سوابق هزینه</h2>'+table(['شماره','عنوان','تاریخ','وضعیت','مبلغ','شرح'],body||'<tr><td colspan="6">درخواستی وجود ندارد.</td></tr>');
+}
+function renderImages(){
+ var list=rows('expense_request_files').filter(function(f){return !!f.data_base64;});
+ var body=list.map(function(x){return '<tr><td>'+esc(x.filename)+'</td><td>'+esc(x.request_id)+'</td><td>'+esc(x.version_no)+'</td><td>'+esc(x.size)+'</td><td><button class="secondary" data-image="'+esc(x.id)+'">مشاهده تصویر</button></td></tr>';}).join('');
+ document.getElementById('images').innerHTML='<h2>تصاویر ذخیره‌شده در فایل‌های ماهانه</h2><p class="muted">تصاویر فایل‌های پشتیبان قبلی با نسخه‌های جدیدتر ادغام شده‌اند.</p>'+table(['نام فایل','شناسه درخواست','نسخه','حجم (بایت)','نمایش'],body||'<tr><td colspan="5">تصویری در فایل‌های انتخاب‌شده وجود ندارد.</td></tr>');
+ document.querySelectorAll('[data-image]').forEach(function(btn){btn.addEventListener('click',function(){
+  var file=list.find(function(x){return x.id===btn.getAttribute('data-image');});
+  if(!file)return;document.getElementById('preview').src='data:'+file.content_type+';base64,'+file.data_base64;document.getElementById('imageModal').classList.remove('hidden');
+ });});
+}
+function renderUsers(){
+ var list=rows('users').slice().sort(function(a,b){return String(a.name).localeCompare(String(b.name));});
+ var body=list.map(function(u){var unit=rows('units').find(function(x){return x.id===u.unit_id;});return '<tr><td>'+esc(u.name)+'</td><td>'+esc(unit?unit.unit_number:'—')+'</td><td>'+esc(u.account_type)+'</td><td>'+esc(u.phone)+'</td><td>'+esc(u.active?'فعال':'غیرفعال')+'</td></tr>';}).join('');
+ document.getElementById('users').innerHTML='<h2>کاربران و واحدها</h2>'+table(['نام','واحد','نوع حساب','موبایل','وضعیت'],body||'<tr><td colspan="5">کاربری وجود ندارد.</td></tr>');
+}
+document.getElementById('loadBtn').addEventListener('click',function(){
+ var files=Array.from(document.getElementById('backupFiles').files||[]);
+ if(!files.length){document.getElementById('status').textContent='ابتدا فایل پشتیبان را انتخاب کنید.';return;}
+ Promise.all(files.map(function(file){return new Promise(function(resolve,reject){
+  var reader=new FileReader();reader.onload=function(){try{var data=JSON.parse(reader.result);if(data.format!=='nika-offline-archive'||!data.tables)throw new Error('فرمت فایل نیکا نیست');resolve(data);}catch(e){reject(e);}};
+  reader.onerror=function(){reject(new Error('خواندن فایل ناموفق بود'));};reader.readAsText(file,'UTF-8');
+ });})).then(function(list){archive=mergeBackups(list);render();document.getElementById('status').textContent=list.length+' فایل پشتیبان با موفقیت بازخوانی شد.';})
+ .catch(function(e){document.getElementById('status').textContent='خطا: '+e.message;});
+});
+document.querySelectorAll('[data-tab]').forEach(function(btn){btn.addEventListener('click',function(){
+ document.querySelectorAll('[data-tab]').forEach(function(x){x.classList.toggle('on',x===btn);});
+ ['annual','transactions','expenses','images','users'].forEach(function(id){document.getElementById(id).classList.toggle('hidden',id!==btn.getAttribute('data-tab'));});
+});});
+document.getElementById('closeImage').addEventListener('click',function(){document.getElementById('imageModal').classList.add('hidden');document.getElementById('preview').src='';});
+document.getElementById('imageModal').addEventListener('click',function(e){if(e.target.id==='imageModal')document.getElementById('closeImage').click();});
+})();
+</script>
+</body>
+</html>
