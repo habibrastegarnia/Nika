@@ -525,3 +525,25 @@ html[data-theme="light"] .header-action.header-logout{background:transparent!imp
 /* Header logout: icon only, neutral and same scale as navigation icons */
 .header .header-logout{color:#c8d4ea!important}
 html[data-theme="light"] .header .header-logout{color:#52627e!important}
+
+
+/* Header controls: keep the user identity spacious and stack logout above role switch */
+.header{direction:ltr!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important}
+.header-user{direction:rtl;flex:1 1 auto;min-width:0;grid-column:auto!important}
+.header-tools{direction:rtl;display:flex;flex:0 0 auto;flex-direction:column;align-items:stretch;justify-content:center;gap:6px;min-width:136px}
+.header .header-logout{display:flex!important;align-items:center;justify-content:center;gap:7px;width:136px!important;min-width:136px!important;height:32px!important;min-height:32px!important;flex:0 0 32px!important;padding:5px 10px!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:11px!important;background:rgba(255,255,255,.07)!important;color:#e3a5ae!important}
+.header .header-logout span:not(.nika-icon){display:inline-flex!important;align-items:center}
+.header .header-logout .logout-text{font:600 10px Vazirmatn,Tahoma,sans-serif;line-height:1}
+.header .header-logout .nika-icon{width:17px;height:17px}
+.header .header-logout:hover,.header .header-logout:focus-visible{background:rgba(255,255,255,.12)!important;outline:2px solid rgba(145,165,241,.55);outline-offset:2px}
+.header-tools .workspace-toggle{display:flex!important;width:136px!important;min-width:136px!important;height:34px!important;min-height:34px!important;flex:0 0 34px!important}
+.header-tools .workspace-toggle.nika-hide{display:none!important}
+@media(max-width:360px){
+ .header{gap:7px!important;padding-inline:12px!important}
+ .header-tools{min-width:126px}
+ .header .header-logout,.header-tools .workspace-toggle{width:126px!important;min-width:126px!important}
+ .header-user{gap:5px}
+ .header-copy h1{font-size:15px}
+ .header-copy p{font-size:10px}
+}
+html[data-theme="light"] .header .header-logout{background:rgba(82,98,126,.07)!important;border-color:rgba(82,98,126,.18)!important;color:#9b5362!important}
