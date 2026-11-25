@@ -325,12 +325,32 @@ async function financeApprovalsTab() {
 }
 async function toDocumentImage(file) {
  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود');
- const bitmap = await createImageBitmap(file), scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
- const canvas = document.createElement('canvas'); canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale);
- canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
- const data = canvas.toDataURL('image/jpeg', 0.78);
- if (data.length > 600000) throw new Error('حجم تصویر پس از فشرده‌سازی زیاد است؛ تصویر دیگری انتخاب کنید');
- return { name: file.name || 'document.jpg', data };
+ const bitmap = await createImageBitmap(file);
+ let scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
+ const canvas = document.createElement('canvas');
+ const ctx = canvas.getContext('2d');
+ const qualities = [0.76, 0.68, 0.60, 0.52];
+ for (let pass = 0; pass < 4; pass++) {
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  for (const quality of qualities) {
+   const data = canvas.toDataURL('image/jpeg', quality);
+   const base64 = data.slice(data.indexOf(',') + 1);
+   const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+   const size = Math.floor(base64.length * 3 / 4) - padding;
+   if (size <= 280000) {
+    if (bitmap.close) bitmap.close();
+    const stem = (file.name || 'document').replace(/\.[^.]+$/, '');
+    return { name: stem + '.jpg', data, size, width: canvas.width, height: canvas.height };
+   }
+  }
+  scale *= 0.82;
+ }
+ if (bitmap.close) bitmap.close();
+ throw new Error('حجم تصویر پس از فشرده‌سازی هنوز زیاد است؛ تصویر دیگری انتخاب کنید');
 }
 
 async function expenseRequestsTab() {
@@ -349,7 +369,8 @@ async function expenseRequestsTab() {
    <div class="nika-footnote" id="expenseFundBalance"></div>
    <label class="nika-label">تصویر فاکتور، پیش‌فاکتور یا مدارک پشتیبان (اختیاری)</label>
    <input class="nika-input" type="file" id="expenseFiles" accept="image/jpeg,image/png,image/webp" multiple>
-   <div class="nika-footnote">در صورت نیاز حداکثر ۴ تصویر بارگذاری کنید؛ تصاویر پس از پشتیبان‌گیری آفلاین از سامانه حذف می‌شوند.</div>
+   <div class="nika-footnote" id="expenseFilesStatus">تصاویر هنگام انتخاب، در همین دستگاه کوچک و فشرده می‌شوند؛ حداکثر ۴ تصویر.</div>
+   <div class="nika-footnote">نسخه اصلی تصویر ارسال نمی‌شود؛ نسخه فشرده پس از ثبت در دیتابیس ذخیره خواهد شد و پس از پشتیبان‌گیری آفلاین قابل پاک‌سازی است.</div>
    <div class="nika-actions"><button class="nika-primary" type="submit">ثبت و ارسال برای مدیر مالی</button></div></form>`)}
    ${card('پیگیری درخواست‌ها', requests.length ? html`<div class="nika-users">${requests.map(q => html`<div class="nika-usercard">
      <strong>${q.reference_no} · ${q.document_title}</strong>
@@ -361,12 +382,28 @@ async function expenseRequestsTab() {
   </div>`,
   bind(box) {
    const form = $('#expenseRequestNew', box), fundSelect = $('select[name="fund"]', box), balanceLabel = $('#expenseFundBalance', box);
+   const fileInput = $('#expenseFiles', box), fileStatus = $('#expenseFilesStatus', box);
+   let preparedFiles = [], filePreparation = Promise.resolve(), filePreparationError = null;
+   fileInput.addEventListener('change', () => {
+    preparedFiles = []; filePreparationError = null;
+    const selected = Array.from(fileInput.files || []);
+    if (selected.length > 4) { filePreparationError = new Error('حداکثر چهار تصویر قابل ارسال است'); fileInput.value = ''; fileStatus.textContent = filePreparationError.message; return; }
+    if (!selected.length) { fileStatus.textContent = 'تصویری انتخاب نشده است.'; return; }
+    fileStatus.textContent = 'در حال کاهش حجم و آماده‌سازی تصاویر در همین دستگاه…';
+    filePreparation = Promise.all(selected.map(toDocumentImage)).then(files => {
+     preparedFiles = files;
+     const total = files.reduce((sum, f) => sum + f.size, 0);
+     fileStatus.textContent = `${files.length} تصویر آماده شد؛ حجم مجموع نسخه‌های فشرده: ${Math.round(total / 1024)} کیلوبایت.`;
+    }).catch(error => {
+     filePreparationError = error; fileInput.value = ''; fileStatus.textContent = error.message;
+    });
+   });
    const updateBalance = () => { const f = funds.find(x => x.fund_id === fundSelect.value); balanceLabel.textContent = f ? `موجودی فعلی ${f.title}: ${toman(f.balance)}` : ''; };
    fundSelect.onchange = updateBalance; updateBalance();
    onSubmit(form, async d => {
-    const selected = Array.from($('#expenseFiles', box).files || []);
-    if (selected.length > 4) throw new Error('حداکثر چهار تصویر قابل ارسال است');
-    const files = selected.length ? await Promise.all(selected.map(toDocumentImage)) : [];
+    await filePreparation;
+    if (filePreparationError) throw filePreparationError;
+    const files = preparedFiles;
     const body = { ...d, files };
     if (!S.user.roles.includes('executive')) { const reason = await promptText('دلیل انجام خارج از مسئولیت', 'چرا این درخواست را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
     const result = await api('/expense-requests', { method: 'POST', body });
@@ -403,11 +440,24 @@ async function editExpenseRequest(q) {
   { name:'documentTitle',label:'عنوان سند',value:q.document_title,required:true },
   { name:'documentDate',label:'تاریخ سند',type:'date',dateSeparator:'-',value:q.document_date,required:true },
   { name:'description',label:'شرح درخواست',type:'textarea',rows:3,value:q.description,required:true }];
- const modal = openModal(`اصلاح درخواست ${q.reference_no}`, html`<form class="nika-form" novalidate>${fields(files,'nika')}<label class="nika-label">تصاویر جدید (اختیاری)</label><input class="nika-input" id="expenseEditFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple><div class="nika-actions"><button class="nika-primary" type="submit">اصلاح و ارسال مجدد</button></div></form>`);
+ const modal = openModal(`اصلاح درخواست ${q.reference_no}`, html`<form class="nika-form" novalidate>${fields(files,'nika')}<label class="nika-label">تصاویر جدید (اختیاری)</label><input class="nika-input" id="expenseEditFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple><div class="nika-footnote" id="expenseEditFilesStatus">تصاویر هنگام انتخاب، در همین دستگاه کوچک و فشرده می‌شوند؛ حداکثر ۴ تصویر.</div><div class="nika-actions"><button class="nika-primary" type="submit">اصلاح و ارسال مجدد</button></div></form>`);
+ const editInput = $('#expenseEditFiles', modal), editStatus = $('#expenseEditFilesStatus', modal);
+ let editPreparedFiles = [], editPreparation = Promise.resolve(), editPreparationError = null;
+ editInput.addEventListener('change', () => {
+  editPreparedFiles = []; editPreparationError = null;
+  const selected = Array.from(editInput.files || []);
+  if (selected.length > 4) { editPreparationError = new Error('حداکثر چهار تصویر قابل ارسال است'); editInput.value = ''; editStatus.textContent = editPreparationError.message; return; }
+  if (!selected.length) { editStatus.textContent = 'تصویر جدیدی انتخاب نشده است.'; return; }
+  editStatus.textContent = 'در حال کاهش حجم و آماده‌سازی تصاویر در همین دستگاه…';
+  editPreparation = Promise.all(selected.map(toDocumentImage)).then(result => {
+   editPreparedFiles = result;
+   editStatus.textContent = `${result.length} تصویر آماده شد؛ حجم مجموع نسخه‌های فشرده: ${Math.round(result.reduce((sum, f) => sum + f.size, 0) / 1024)} کیلوبایت.`;
+  }).catch(error => { editPreparationError = error; editInput.value = ''; editStatus.textContent = error.message; });
+ });
  onSubmit($('form',modal), async d => {
-  const selected=Array.from($('#expenseEditFiles',modal).files||[]);
-  if(selected.length>4) throw new Error('حداکثر چهار تصویر قابل ارسال است');
-  const body={...d,files:await Promise.all(selected.map(toDocumentImage))};
+  await editPreparation;
+  if (editPreparationError) throw editPreparationError;
+  const body={...d,files:editPreparedFiles};
   if(!S.user.roles.includes('executive')) { const reason=await promptText('دلیل اصلاح خارج از مسئولیت','چرا این درخواست را به‌جای مدیر اجرایی اصلاح می‌کنید؟','ثبت دلیل'); if(!reason)return; body.reason=reason; }
   await api(`/expense-requests/${q.id}`,{method:'PATCH',body}); closeModal(); toast('درخواست اصلاح و دوباره برای مدیر مالی ارسال شد'); reload();
  });
