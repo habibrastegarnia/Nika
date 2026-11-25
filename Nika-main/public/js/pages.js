@@ -145,7 +145,7 @@ export async function calendarPage(y, m) {
   });
   $('[data-event-edit]', v).forEach(b => b.onclick = () => {
     const event = items.find(e => e.id === b.dataset.eventEdit);
-    const modal = openModal('ویرایش رویداد', html`<form class="page-form" novalidate>${fields(eventFields.map(f => ({ ...f, value: f.name === 'recurrenceUntil' ? (event.recurrence_until || '') : (event[f.name] ?? '') })))}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>`);
+    const modal = openModal('ویرایش رویداد', html`<form class="page-form" novalidate>${fields(eventFields.map(f => ({ ...f, value: f.name === 'event_date' ? (event.series_event_date || event.event_date) : f.name === 'event_time' ? (event.series_event_time ?? event.event_time ?? '') : f.name === 'title' ? (event.series_title || event.title) : f.name === 'body' ? (event.series_body ?? event.body ?? '') : f.name === 'recurrenceUntil' ? (event.series_recurrence_until || event.recurrence_until || '') : (event[f.name] ?? '') })))}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>`);
     onSubmit($('form', modal), async d => {
       const body = { ...d };
       if (!S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی ویرایش می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
