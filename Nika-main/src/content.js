@@ -196,6 +196,7 @@ for (const [name, def] of Object.entries(CONTENT)) {
     const f = def.parse(await readJson(c.request)), keys = Object.keys(f);
     const r = await c.db.prepare(`UPDATE ${name} SET ${keys.map(k => k + '=?').join(',')} WHERE id=?`).bind(...keys.map(k => f[k]), c.params.id).run();
     if (!r.meta.changes) throw err(404, 'NOT_FOUND', 'مورد پیدا نشد');
+    if (name === 'events' && ('event_date' in f || 'recurrence' in f || 'recurrence_until' in f)) await c.db.prepare('DELETE FROM event_occurrences WHERE event_id=?').bind(c.params.id).run();
     await audit(c.db, c.user.id, `${name}.update`, name, c.params.id);
     return reply({ ok: true });
   });
