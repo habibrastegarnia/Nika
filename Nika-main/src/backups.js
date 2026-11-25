@@ -29,8 +29,23 @@ R('GET', '/api/backups/status', { perm: 'backup.manage' }, async c => {
 R('GET', '/api/backups/export', { perm: 'backup.manage' }, async c => {
   const tables = {};
   for (const table of ARCHIVE_TABLES) {
-    const result = await c.db.prepare(`SELECT * FROM ${table}`).all();
-    let rows = result.results || [];
+    let rows = [];
+    if (table === 'expense_request_files') {
+      // هر صفحه حداکثر ۵۰ تصویر دارد تا نتیجه یک Query از سقف ۵۰ مگابایت D1 عبور نکند.
+      // سقف اندازه فایل در API نیز ۴۵۰ کیلوبایت است؛ این صفحه حدود ۳۰ مگابایت داده تصویری خواهد داشت.
+      const pageSize = 50;
+      for (let offset = 0; ; offset += pageSize) {
+        const page = await c.db.prepare(
+          'SELECT * FROM expense_request_files ORDER BY created_at,id LIMIT ? OFFSET ?'
+        ).bind(pageSize, offset).all();
+        const pageRows = page.results || [];
+        rows.push(...pageRows);
+        if (pageRows.length < pageSize) break;
+      }
+    } else {
+      const result = await c.db.prepare(`SELECT * FROM ${table}`).all();
+      rows = result.results || [];
+    }
     // فایل آرشیو برای گزارش‌گیری است؛ هیچ اعتبارنامه یا رمز هش‌شده‌ای وارد آن نمی‌شود.
     if (table === 'users') {
       rows = rows.map(({ password_hash, password_salt, ...user }) => user);
