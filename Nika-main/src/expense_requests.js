@@ -1,4 +1,4 @@
-// گردش‌کار دومرحله‌ای درخواست پرداخت هزینه با نگهداری اسناد در R2
+// گردش‌کار دومرحله‌ای درخواست پرداخت هزینه با ذخیره موقت تصاویر در D1
 import { R } from './router.js';
 import { err, reply, readJson, str, optStr, int, jdate, audit } from './lib.js';
 import { can } from './perms.js';
@@ -42,29 +42,18 @@ function decodeImage(file) {
   if (!match) throw err(400, 'INVALID_FILE', 'فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود');
   const binary = atob(match[2]);
   if (!binary.length || binary.length > 450000) throw err(413, 'FILE_TOO_LARGE', 'حجم هر تصویر پس از فشرده‌سازی باید کمتر از ۴۵۰ کیلوبایت باشد');
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   const filename = String(file.name || 'document.jpg').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100) || 'document.jpg';
-  return { bytes, contentType: match[1], filename };
+  return { base64: match[2], contentType: match[1], filename, size: binary.length };
 }
 
-async function storeFiles(env, requestId, versionNo, files) {
+function storeFiles(requestId, versionNo, files) {
   if (!files?.length) return [];
-  if (!env.FILES) throw err(503, 'FILE_STORAGE_NOT_CONFIGURED', 'فضای ذخیره‌سازی اسناد هنوز در Cloudflare پیکربندی نشده است');
-  if (files.length > 4) throw err(400, 'TOO_MANY_FILES', 'حداکثر چهار تصویر برای هر نسخه قابل ثبت است');
-  const stored = [];
-  try {
-    for (const file of files) {
-      const decoded = decodeImage(file);
-      const id = crypto.randomUUID(), key = `expense-requests/${requestId}/${id}`;
-      await env.FILES.put(key, decoded.bytes, { httpMetadata: { contentType: decoded.contentType } });
-      stored.push({ id, request_id: requestId, version_no: versionNo, object_key: key, filename: decoded.filename, content_type: decoded.contentType, size: decoded.bytes.length });
-    }
-    return stored;
-  } catch (e) {
-    await Promise.all(stored.map(f => env.FILES.delete(f.object_key).catch(() => {})));
-    throw e;
-  }
+  if (!Array.isArray(files) || files.length > 4) throw err(400, 'TOO_MANY_FILES', 'حداکثر چهار تصویر برای هر نسخه قابل ثبت است');
+  return files.map(file => {
+    const decoded = decodeImage(file), id = crypto.randomUUID();
+    return { id, request_id: requestId, version_no: versionNo, object_key: `local:${id}`,
+      filename: decoded.filename, content_type: decoded.contentType, size: decoded.size, data_base64: decoded.base64 };
+  });
 }
 
 async function saveVersion(db, requestId, versionNo, snapshot, actorId, reason, files) {
@@ -73,8 +62,8 @@ async function saveVersion(db, requestId, versionNo, snapshot, actorId, reason, 
       .bind(crypto.randomUUID(), requestId, versionNo, JSON.stringify(snapshot), actorId, reason || null)
   ];
   for (const f of files) statements.push(
-    db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size) VALUES(?,?,?,?,?,?,?)')
-      .bind(f.id, f.request_id, f.version_no, f.object_key, f.filename, f.content_type, f.size)
+    db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size,data_base64) VALUES(?,?,?,?,?,?,?,?)')
+      .bind(f.id, f.request_id, f.version_no, f.object_key, f.filename, f.content_type, f.size, f.data_base64)
   );
   await db.batch(statements);
 }
@@ -86,7 +75,6 @@ R('POST', '/api/expense-requests', { perm: 'expenses.create' }, async c => {
   const documentDate = jdate(x.documentDate, '-');
   const description = str(x.description, { max: 2000, multiline: true, field: 'شرح درخواست' });
   const reason = optStr(x.reason, { max: 500, multiline: true, field: 'دلیل انجام خارج از مسئولیت' });
-  if (!Array.isArray(x.files) || !x.files.length) throw err(400, 'DOCUMENT_REQUIRED', 'تصویر حداقل یک سند پشتیبان را بارگذاری کنید');
 
   const sequence = await c.db.prepare('UPDATE expense_request_sequences SET next_value=next_value+1 WHERE id=1 RETURNING next_value-1 value').first();
   if (!sequence) throw err(500, 'SEQUENCE_NOT_CONFIGURED', 'شمارنده درخواست‌ها پیکربندی نشده است');
@@ -94,7 +82,7 @@ R('POST', '/api/expense-requests', { perm: 'expenses.create' }, async c => {
     .formatToParts(new Date()).find(p => p.type === 'year')?.value || '1405';
   const referenceNo = `${year}-${String(sequence.value).padStart(6, '0')}`;
   const id = crypto.randomUUID(), versionNo = 1;
-  const files = await storeFiles(c.env, id, versionNo, x.files);
+  const files = storeFiles(id, versionNo, Array.isArray(x.files) ? x.files : []);
   const snapshot = { fund, amount, documentTitle: title, documentDate, description };
   try {
     await c.db.batch([
@@ -102,13 +90,12 @@ R('POST', '/api/expense-requests', { perm: 'expenses.create' }, async c => {
                     VALUES(?,?,?,?,?,?,?,'pending_finance',?)`).bind(id, referenceNo, fund, amount, title, documentDate, description, c.user.id),
       c.db.prepare('INSERT INTO expense_request_versions(id,request_id,version_no,snapshot,changed_by,reason) VALUES(?,?,?,?,?,?)')
         .bind(crypto.randomUUID(), id, versionNo, JSON.stringify(snapshot), c.user.id, reason),
-      ...files.map(f => c.db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size) VALUES(?,?,?,?,?,?,?)')
-        .bind(f.id, id, f.version_no, f.object_key, f.filename, f.content_type, f.size)),
+      ...files.map(f => c.db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size,data_base64) VALUES(?,?,?,?,?,?,?,?)')
+        .bind(f.id, id, f.version_no, f.object_key, f.filename, f.content_type, f.size, f.data_base64)),
       c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) VALUES(?,?,?,?,?,?)')
         .bind(crypto.randomUUID(), id, c.user.id, 'executive', 'created', reason)
     ]);
   } catch (e) {
-    await Promise.all(files.map(f => c.env.FILES.delete(f.object_key).catch(() => {})));
     throw e;
   }
   await audit(c.db, c.user.id, 'expense_request.create', 'expense_request', id,
@@ -154,27 +141,27 @@ R('GET', '/api/expense-requests/:id', async c => {
   const [versions, history, files] = await Promise.all([
     c.db.prepare('SELECT version_no,snapshot,changed_by,reason,created_at FROM expense_request_versions WHERE request_id=? ORDER BY version_no DESC').bind(row.id).all(),
     c.db.prepare('SELECT h.stage,h.action,h.reason,h.created_at,u.name actor FROM expense_request_history h LEFT JOIN users u ON u.id=h.actor_id WHERE h.request_id=? ORDER BY h.created_at DESC').bind(row.id).all(),
-    c.db.prepare('SELECT id,version_no,filename,content_type,size,created_at FROM expense_request_files WHERE request_id=? ORDER BY version_no DESC,created_at DESC').bind(row.id).all()
+    c.db.prepare('SELECT id,version_no,filename,content_type,size,created_at,(data_base64 IS NOT NULL) has_data FROM expense_request_files WHERE request_id=? ORDER BY version_no DESC,created_at DESC').bind(row.id).all()
   ]);
   return reply({
     request: { ...row, statusLabel: statusLabel[row.status] || row.status },
     versions: versions.results.map(v => ({ ...v, snapshot: JSON.parse(v.snapshot) })),
     history: history.results,
-    files: files.results.map(f => ({ ...f, url: `/api/expense-requests/${row.id}/files/${f.id}` }))
+    files: files.results.map(f => ({ ...f, has_data: !!f.has_data, url: f.has_data ? `/api/expense-requests/${row.id}/files/${f.id}` : null }))
   });
 });
 
 R('GET', '/api/expense-requests/:id/files/:fileId', async c => {
   const row = await c.db.prepare(
-    `SELECT er.created_by,ef.object_key,ef.filename,ef.content_type
+    `SELECT er.created_by,ef.filename,ef.content_type,ef.data_base64
      FROM expense_request_files ef JOIN expense_requests er ON er.id=ef.request_id
      WHERE er.id=? AND ef.id=?`).bind(c.params.id, c.params.fileId).first();
   if (!row) throw err(404, 'NOT_FOUND', 'تصویر سند پیدا نشد');
   if (!await canSeeRequest(c.db, c.user, row)) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
-  if (!c.env.FILES) throw err(503, 'FILE_STORAGE_NOT_CONFIGURED', 'فضای ذخیره‌سازی اسناد پیکربندی نشده است');
-  const object = await c.env.FILES.get(row.object_key);
-  if (!object) throw err(404, 'FILE_NOT_FOUND', 'فایل سند پیدا نشد');
-  return new Response(object.body, { headers: {
+  if (!row.data_base64) throw err(410, 'FILE_ARCHIVED_OFFLINE', 'تصویر در بایگانی آفلاین نگهداری می‌شود و در سامانه آنلاین موجود نیست');
+  const binary = atob(row.data_base64), bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Response(bytes, { headers: {
     'Content-Type': row.content_type,
     'Content-Disposition': `inline; filename="${row.filename.replace(/["\\\\]/g, '')}"`,
     'Cache-Control': 'private, no-store',
@@ -194,7 +181,7 @@ R('PATCH', '/api/expense-requests/:id', { perm: 'expenses.create' }, async c => 
   const documentDate = jdate(x.documentDate ?? row.document_date, '-');
   const description = str(x.description ?? row.description, { max: 2000, multiline: true, field: 'شرح درخواست' });
   const versionNo = await c.db.prepare('SELECT COALESCE(MAX(version_no),0)+1 version_no FROM expense_request_versions WHERE request_id=?').bind(row.id).first();
-  const files = await storeFiles(c.env, row.id, versionNo.version_no, Array.isArray(x.files) ? x.files : []);
+  const files = storeFiles(row.id, versionNo.version_no, Array.isArray(x.files) ? x.files : []);
   const snapshot = { fund, amount, documentTitle: title, documentDate, description };
   const reason = optStr(x.reason, { max: 500, multiline: true, field: 'توضیح اصلاح' });
   try {
@@ -206,15 +193,14 @@ R('PATCH', '/api/expense-requests/:id', { perm: 'expenses.create' }, async c => 
         .bind(crypto.randomUUID(), row.id, versionNo.version_no, JSON.stringify(snapshot), c.user.id, reason)
     ];
     for (const f of files) statements.push(
-      c.db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size) SELECT ?,?,?,?,?,?,? WHERE changes()=1')
-        .bind(f.id, f.request_id, f.version_no, f.object_key, f.filename, f.content_type, f.size)
+      c.db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size,data_base64) SELECT ?,?,?,?,?,?,?,? WHERE changes()=1')
+        .bind(f.id, f.request_id, f.version_no, f.object_key, f.filename, f.content_type, f.size, f.data_base64)
     );
     statements.push(c.db.prepare('INSERT INTO expense_request_history(id,request_id,actor_id,stage,action,reason) SELECT ?,?,?,?,?,? WHERE changes()=1')
       .bind(crypto.randomUUID(), row.id, c.user.id, 'executive', 'resubmitted', reason));
     const results = await c.db.batch(statements);
     if (!results[0]?.meta?.changes) throw err(409, 'NOT_EDITABLE', 'وضعیت درخواست تغییر کرده است');
   } catch (e) {
-    await Promise.all(files.map(f => c.env.FILES.delete(f.object_key).catch(() => {})));
     throw e;
   }
   await audit(c.db, c.user.id, 'expense_request.resubmit', 'expense_request', row.id, { referenceNo: row.reference_no, version: versionNo.version_no });
