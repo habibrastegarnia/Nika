@@ -126,7 +126,7 @@ export async function calendarPage(y, m) {
     toast('رویداد ثبت شد');
     open(() => calendarPage(y, m), { replace: true });
   });
-  $('[data-event-edit-occ]', v).forEach(b => b.onclick = () => {
+  $$('[data-event-edit-occ]', v).forEach(b => b.onclick = () => {
     const event=items.find(e=>e.id===b.dataset.eventEditOcc&&e.recurrence_date===b.dataset.occDate);
     const occurrenceFields=eventFields.slice(0,4).map(f=>({...f,value:f.name==='event_date'?event.event_date:(event[f.name]??'')}));
     const modal=openModal('تغییر یک نوبت رویداد',html\`<form class="page-form" novalidate>\${fields(occurrenceFields)}<button class="page-btn full" type="submit">ذخیره تغییر تاریخ</button></form>\`);
@@ -136,7 +136,7 @@ export async function calendarPage(y, m) {
       closeModal();toast('تغییر این نوبت ثبت شد');open(()=>calendarPage(y,m),{replace:true});
     });
   });
-  $('[data-event-delete-occ]',v).forEach(b=>b.onclick=async()=>{
+  $$('[data-event-delete-occ]',v).forEach(b=>b.onclick=async()=>{
     if(!await ask('حذف یک نوبت','فقط این نوبت حذف شود و نوبت‌های بعدی باقی بمانند؟','حذف',true))return;
     const event=items.find(e=>e.id===b.dataset.eventDeleteOcc&&e.recurrence_date===b.dataset.occDate),body={};
     if(!S.user.roles.includes('executive')){const reason=await promptText('ثبت دلیل انجام خارج از مسئولیت','چرا این نوبت را به‌جای مدیر اجرایی حذف می‌کنید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
