@@ -1,8 +1,9 @@
 import { R } from './router.js';
 import { reply, readJson, int, jdate, audit } from './lib.js';
 
+const PERSIAN_FORMAT = new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'2-digit',day:'2-digit'});
 const pparts = d => {
- const a = new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);
+ const a = PERSIAN_FORMAT.formatToParts(d);
  const o=Object.fromEntries(a.map(x=>[x.type,x.value]));
  return {y:+o.year,m:+o.month,d:+o.day};
 };
