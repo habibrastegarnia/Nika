@@ -352,6 +352,7 @@ test('محتوای ساختمان: قوانین، مصوبات، رویداده�
   assert.equal((await exec.patch(`/api/events/${recurring.data.id}/occurrences/1405-09-12`, { event_date: '1405-09-13', event_time: '10:30' })).status, 200);
   occurrences = (await res1.get('/api/events?month=1405-09')).data.items.filter(e => e.id === recurring.data.id);
   assert.ok(occurrences.some(e => e.recurrence_date === '1405-09-12' && e.event_date === '1405-09-13'), 'جابجایی یک نوبت باید مستقل از نوبت‌های بعدی باشد');
+  assert.equal(occurrences.find(e => e.recurrence_date === '1405-09-12').series_event_date, '1405-09-05', 'پس از جابه‌جایی هم تاریخ پایه‌ی سری باید حفظ شود');
   assert.equal((await exec.del(`/api/events/${recurring.data.id}/occurrences/1405-09-19`)).status, 200);
   occurrences = (await res1.get('/api/events?month=1405-09')).data.items.filter(e => e.id === recurring.data.id);
   assert.ok(!occurrences.some(e => e.recurrence_date === '1405-09-19'), 'حذف یک نوبت نباید سری را حذف کند');
