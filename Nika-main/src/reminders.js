@@ -119,7 +119,7 @@ export async function runReminders(env,now=new Date()){
   const fromDate=dt=>{const p=pparts(dt);return String(p.y)+'-'+String(p.m).padStart(2,'0')+'-'+String(p.d).padStart(2,'0');};
   if(recurrence==='weekly'){const dt=toDate(y,m,d);return dt?fromDate(new Date(dt.getTime()+7*86400000)):null;}
   let yy=y,mm=m;if(recurrence==='monthly'){mm++;if(mm===13){mm=1;yy++;}}else if(recurrence==='yearly')yy++;else return null;
-  for(let day=d;day>=28;day--)if(toDate(yy,mm,day))return String(yy)+'-'+String(mm).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+  for(let day=d;day>=1;day--)if(toDate(yy,mm,day))return String(yy)+'-'+String(mm).padStart(2,'0')+'-'+String(day).padStart(2,'0');
   return null;
  };
  for(const ev of calendarEvents.results){
@@ -150,7 +150,7 @@ export async function runReminders(env,now=new Date()){
  const contracts=await env.DB.prepare("SELECT u.id,u.name,u.contract_end_date,n.unit_number FROM users u LEFT JOIN units n ON n.id=u.unit_id WHERE u.active=1 AND u.contract_end_date IS NOT NULL").all();
  const subtractMonth=date=>{
   const [y,m,d]=date.split('-').map(Number);let yy=y,mm=m-1;if(mm===0){mm=12;yy--;}
-  for(let day=d;day>=28;day--)if(jalaliDate(yy,mm,day))return String(yy)+'-'+String(mm).padStart(2,'0')+'-'+String(day).padStart(2,'0');return String(yy)+'-'+String(mm).padStart(2,'0')+'-28';
+  for(let day=d;day>=1;day--)if(jalaliDate(yy,mm,day))return String(yy)+'-'+String(mm).padStart(2,'0')+'-'+String(day).padStart(2,'0');return String(yy)+'-'+String(mm).padStart(2,'0')+'-28';
  };
  for(const person of contracts.results){
   if(subtractMonth(person.contract_end_date)!==todayJ)continue;
