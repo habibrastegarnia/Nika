@@ -63,9 +63,10 @@ function setupNav() {
   const shortcutHost = $('.categories');
   $$('.category[data-admin-tab]', shortcutHost).forEach(el => el.remove());
   const adminShortcuts = [
+    ['settings', 'تنظیمات', can('finance.settings'), '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/>'],
+    ['finance', 'مالی', !can('finance.settings') && canAny(['finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>'],
     ['users', 'کاربران', can('users.read'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>'],
     ['units', 'واحدها', can('units.read'), '<path d="M4 27V5h24v22"/><path d="M9 10h4v4H9zM19 10h4v4h-4zM9 19h4v4H9zM19 19h4v4h-4z"/>'],
-    ['finance', 'مالی', canAny(['finance.settings', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>'],
     ['reports', 'گزارش عملکرد', can('audit.read'), '<path d="M5 27V5M5 27h23M10 21v-6M16 21V9M22 21v-9"/>'],
     ['archive', 'پشتیبان‌گیری', can('backup.manage'), '<path d="M4 8h24v19H4zM3 4h26v4H3zM12 15h8M16 11v8"/>']
   ];
@@ -74,24 +75,21 @@ function setupNav() {
     const b = document.createElement('button');
     b.className = 'category nika-manager-shortcut nika-hide'; b.dataset.adminTab = key;
     b.innerHTML = '<span class="cat-icon"><svg viewBox="0 0 32 32">' + path + '</svg></span><span>' + label + '</span>';
-    b.onclick = () => showAdmin(key);
+    b.onclick = () => showAdmin(key === 'settings' ? 'finance' : key);
     shortcutHost.appendChild(b);
   }
-  const roles = [...(S.user?.roles || []), ...(S.user?.delegatedRoles || [])];
-  const order = roles.includes('chair')
-    ? ['finance', 'users', 'units', 'archive', 'reports', 'calendar', 'resolutions', 'rules']
-    : roles.includes('finance')
-      ? ['finance', 'users', 'units', 'calendar', 'resolutions', 'rules']
-      : roles.includes('executive')
-        ? ['finance', 'users', 'units', 'calendar', 'reports', 'rules', 'resolutions']
-        : roles.includes('board')
-          ? ['finance', 'units', 'reports', 'calendar', 'resolutions', 'rules']
-          : roles.includes('system_admin')
-            ? ['users', 'archive']
-            : ['rules', 'requests', 'calendar', 'resolutions'];
   const shortcutByKey = new Map();
   $('.category[data-admin-tab]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.adminTab, b));
   $('.category[data-menu]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.menu, b));
+  const order = [
+    ...(can('finance.settings') ? ['settings'] : []),
+    ...(!can('finance.settings') && canAny(['finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']) ? ['finance'] : []),
+    ...(can('users.read') ? ['users'] : []),
+    ...(can('units.read') ? ['units'] : []),
+    ...(can('audit.read') ? ['reports'] : []),
+    ...(can('backup.manage') ? ['archive'] : []),
+    ...['calendar', 'resolutions', 'rules']
+  ];
   order.forEach(key => { const b = shortcutByKey.get(key); if (b) shortcutHost.appendChild(b); });
   $('#admNavBtn')?.remove();
   nav.style.gridTemplateColumns = '';
