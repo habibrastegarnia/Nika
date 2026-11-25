@@ -63,8 +63,8 @@ function setupNav() {
   const shortcutHost = $('.categories');
   $$('.category[data-admin-tab]', shortcutHost).forEach(el => el.remove());
   const adminShortcuts = [
-    ['settings', 'تنظیمات', can('finance.settings'), '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/>'],
-    ['finance', 'مالی', !can('finance.settings') && canAny(['finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>'],
+    ['settings', 'تنظیمات', canAny(['finance.settings.read', 'finance.settings']), '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/>'],
+    ['finance', 'مالی', canAny(['finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>'],
     ['users', 'کاربران', can('users.read'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>'],
     ['units', 'واحدها', can('units.read'), '<path d="M4 27V5h24v22"/><path d="M9 10h4v4H9zM19 10h4v4h-4zM9 19h4v4H9zM19 19h4v4h-4z"/>'],
     ['reports', 'گزارش عملکرد', can('audit.read'), '<path d="M5 27V5M5 27h23M10 21v-6M16 21V9M22 21v-9"/>'],
@@ -75,15 +75,15 @@ function setupNav() {
     const b = document.createElement('button');
     b.className = 'category nika-manager-shortcut nika-hide'; b.dataset.adminTab = key;
     b.innerHTML = '<span class="cat-icon"><svg viewBox="0 0 32 32">' + path + '</svg></span><span>' + label + '</span>';
-    b.onclick = () => showAdmin(key === 'settings' ? 'finance' : key);
+    b.onclick = () => showAdmin(key);
     shortcutHost.appendChild(b);
   }
   const shortcutByKey = new Map();
   $$('.category[data-admin-tab]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.adminTab, b));
   $$('.category[data-menu]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.menu, b));
   const order = [
-    ...(can('finance.settings') ? ['settings'] : []),
-    ...(!can('finance.settings') && canAny(['finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']) ? ['finance'] : []),
+    ...(canAny(['finance.settings.read', 'finance.settings']) ? ['settings'] : []),
+    ...(canAny(['finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']) ? ['finance'] : []),
     ...(can('users.read') ? ['users'] : []),
     ...(can('units.read') ? ['units'] : []),
     ...(can('audit.read') ? ['reports'] : []),
