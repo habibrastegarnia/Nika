@@ -467,3 +467,9 @@ html[data-theme="light"] .jalali-calendar-grid button.selected{background:#657bb
 /* تقویم شمسی باید به‌صورت پنجره مستقل در مرکز صفحه باز شود، نه زیر فیلد یا چسبیده به پایین */
 .modal-backdrop.jalali-calendar-open{align-items:center!important}
 .modal-backdrop.jalali-calendar-open .modal{width:min(100%,410px);max-height:85svh}
+
+
+/* Unified line-icon system: consistent Lucide-like outline treatment */
+.page-row-icon svg,.profile-action-icon svg,.summary-icon svg{width:20px;height:20px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.page-row-icon{color:#92a7ed}
+.profile-action-icon{display:grid;place-items:center}
