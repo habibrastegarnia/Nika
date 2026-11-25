@@ -78,11 +78,10 @@ export async function loadHome() {
 
 // ====================== مقررات و مصوبات ======================
 const lineIcon = name => raw(iconMarkup(name));
-const ICONS = ['file-text', 'clock', 'history', 'receipt-text', 'shield-check', 'building-2'];
 const FACILITY_ICONS = ['building-2', 'car-front', 'lightbulb', 'trash-2', 'shield-check'];
 export async function rulesPage() {
   const { items } = await api('/rules');
-  route('خانه', 'مقررات ساختمان', 'قوانین و ضوابط مصوب برای همه‌ی ساکنان', html`<div class="page-list">${items.length ? items.map((r, i) => html`<div class="page-card"><div class="page-row" style="background:none;border:0;padding:0"><div class="page-row-icon">${lineIcon(ICONS[i % ICONS.length])}</div><div class="page-row-main"><strong>${r.title}</strong><p>${r.body}</p></div></div></div>`) : html`<div class="page-card"><div class="page-empty">هنوز مقرراتی ثبت نشده است.</div></div>`}</div>`);
+  route('خانه', 'مقررات ساختمان', 'قوانین و ضوابط مصوب برای همه‌ی ساکنان', html`<div class="page-list">${items.length ? items.map((r, i) => html`<div class="page-card"><div class="page-row" style="background:none;border:0;padding:0"><div class="page-row-icon">${lineIcon('file-text')}</div><div class="page-row-main"><strong>${r.title}</strong><p>${r.body}</p></div></div></div>`) : html`<div class="page-card"><div class="page-empty">هنوز مقرراتی ثبت نشده است.</div></div>`}</div>`);
 }
 export async function resolutionsPage() {
   const { items } = await api('/resolutions');
@@ -179,7 +178,7 @@ export function composePage(kind = 'request', category = 'عمومی', subject =
 }
 
 // ====================== مالی ======================
-const txRow = (t, mine) => html`<div class="page-row"><div class="page-row-icon">${lineIcon(t.kind === 'payment' ? 'arrow-up-right' : t.kind === 'expense' ? 'arrow-down-left' : 'circle-dot')}</div><div class="page-row-main"><strong>${t.title}</strong><small>${KIND_FA[t.kind]}${t.period ? ' · ' + (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) : ''} · ${fdate(t.created_at)}${t.reference ? ' · پیگیری ' + t.reference : ''}${t.unit_number && !mine ? ' · واحد ' + t.unit_number : ''}</small>${t.status === 'rejected' && t.note ? html`<small style="color:#ee9bae">دلیل رد: ${t.note}</small>` : ''}</div><div style="text-align:left"><div class="page-row-tail" style="color:#e6edf9">${toman(t.amount)}</div>${chip(TX_STATUS[t.status] || [t.status, ''])}${mine && t.status === 'pending' && t.created_by === S.user.id ? html`<div><button class="page-btn sm secondary" data-cancel="${t.id}" style="margin-top:5px">لغو</button></div>` : ''}</div></div>`;
+const txRow = (t, mine) => html`<div class="page-row"><div class="page-row-icon">${lineIcon(t.kind === 'payment' ? 'wallet' : t.kind === 'expense' ? 'receipt-text' : 'circle-dot')}</div><div class="page-row-main"><strong>${t.title}</strong><small>${KIND_FA[t.kind]}${t.period ? ' · ' + (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) : ''} · ${fdate(t.created_at)}${t.reference ? ' · پیگیری ' + t.reference : ''}${t.unit_number && !mine ? ' · واحد ' + t.unit_number : ''}</small>${t.status === 'rejected' && t.note ? html`<small style="color:#ee9bae">دلیل رد: ${t.note}</small>` : ''}</div><div style="text-align:left"><div class="page-row-tail" style="color:#e6edf9">${toman(t.amount)}</div>${chip(TX_STATUS[t.status] || [t.status, ''])}${mine && t.status === 'pending' && t.created_by === S.user.id ? html`<div><button class="page-btn sm secondary" data-cancel="${t.id}" style="margin-top:5px">لغو</button></div>` : ''}</div></div>`;
 
 export async function financePage(fund) {
   const funds = readableFunds();
@@ -306,7 +305,7 @@ export async function settingsPage() {
     })}
     ${delegationData.available.length ? '' : html`<p class="nika-footnote">در حال حاضر مدیر فعال دیگری برای انتخاب به‌عنوان جانشین وجود ندارد.</p>`}
   </section>` : '';
-  const v = route('حساب من', 'تنظیمات و امنیت', '', html`<section class="page-card theme-setting"><div class="theme-setting-copy"><h3>حالت نمایش</h3><p>انتخاب بین نمای شب و روز</p></div><div class="theme-switch-wrap"><span class="theme-current" id="themeCurrent">${currentTheme === 'light' ? 'روز' : 'شب'}</span><button class="theme-switch" type="button" id="themeToggle" role="switch" aria-checked="${currentTheme === 'light'}" aria-label="تغییر بین حالت شب و روز"><span class="theme-switch-sun">☀</span><span class="theme-switch-moon">☾</span><span class="theme-switch-thumb"></span></button></div></section>
+  const v = route('حساب من', 'تنظیمات و امنیت', '', html`<section class="page-card theme-setting"><div class="theme-setting-copy"><h3>حالت نمایش</h3><p>انتخاب بین نمای شب و روز</p></div><div class="theme-switch-wrap"><span class="theme-current" id="themeCurrent">${currentTheme === 'light' ? 'روز' : 'شب'}</span><button class="theme-switch" type="button" id="themeToggle" role="switch" aria-checked="${currentTheme === 'light'}" aria-label="تغییر بین حالت شب و روز"><span class="theme-switch-sun">${raw(iconMarkup('sun'))}</span><span class="theme-switch-moon">${raw(iconMarkup('moon'))}</span><span class="theme-switch-thumb"></span></button></div></section>
   ${delegationCard}
   <form class="page-card page-form" novalidate><h3>تغییر رمز عبور</h3>${fields([
     { name: 'currentPassword', label: 'رمز فعلی', type: 'password', required: true, dir: 'ltr', autocomplete: 'current-password' },
