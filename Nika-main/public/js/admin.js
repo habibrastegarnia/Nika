@@ -96,7 +96,7 @@ async function loadTab() {
     box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>' + ({settings:'تنظیمات',users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>'; applyIcons(box);
     $('#managerPageBack',box).onclick = hideAdmin;
     out.bind && out.bind(box);
-  } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack">‹</button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); applyIcons(box); $('#managerPageBack',box).onclick=hideAdmin; }
+  } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); applyIcons(box); $('#managerPageBack',box).onclick=hideAdmin; }
 }
 const reload = () => loadTab();
 const act = (box, sel, fn) => $$(sel, box).forEach(b => b.onclick = () => fn(b).catch(e => toast(e.message)));
