@@ -8,7 +8,7 @@ const ARCHIVE_TABLES = [
   'resolutions', 'events', 'documents', 'finance_settings',
   'manager_delegations', 'expense_request_sequences',
   'expense_requests', 'expense_request_versions',
-  'expense_request_files', 'expense_request_history'
+  'expense_request_files', 'expense_request_history', 'backup_runs'
 ];
 
 function hex(buffer) {
