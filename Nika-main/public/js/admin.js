@@ -30,6 +30,7 @@ function updateWorkspaceToggle(manager) {
   toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
 }
 function showManagerShortcuts(show) {
+  $('.categories').classList.toggle('is-manager', show);
   const roles = [...(S.user?.roles || []), ...(S.user?.delegatedRoles || [])];
   const technicalOnly = roles.includes('system_admin') && !roles.some(r => ['chair', 'finance', 'board', 'executive'].includes(r));
   $('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
@@ -90,7 +91,7 @@ async function loadTab() {
   $('#managerPageBack').onclick = hideAdmin;
   try {
     const out = await RENDER[tab]();
-    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
+    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
     $('#managerPageBack',box).onclick = hideAdmin;
     out.bind && out.bind(box);
   } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack">‹</button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); $('#managerPageBack',box).onclick=hideAdmin; }
