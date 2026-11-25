@@ -153,7 +153,7 @@ export async function documentsPage() {
 }
 export function facilitiesPage() {
   const items = [['آسانسور', 'تأسیسات و تعمیرات'], ['پارکینگ', 'عمومی'], ['روشنایی مشاعات', 'تأسیسات و تعمیرات'], ['نظافت و پسماند', 'نظافت'], ['امنیت و دوربین‌ها', 'امنیت']];
-  const v = route('حساب من', 'امکانات و تأسیسات', 'برای هر مورد می‌توانید خرابی یا مشکل را گزارش دهید', html`<div class="page-list">${items.map(([n, c], i) => html`<div class="page-row clickable" data-i="${i}"><div class="page-row-icon">${lineIcon(ICONS[i % ICONS.length])}</div><div class="page-row-main"><strong>${n}</strong><small>گزارش مشکل یا درخواست رسیدگی</small></div><span class="page-row-tail">گزارش ←</span></div>`)}</div>`);
+  const v = route('حساب من', 'امکانات و تأسیسات', 'برای هر مورد می‌توانید خرابی یا مشکل را گزارش دهید', html`<div class="page-list">${items.map(([n, c], i) => html`<div class="page-row clickable" data-i="${i}"><div class="page-row-icon">${lineIcon(FACILITY_ICONS[i % FACILITY_ICONS.length])}</div><div class="page-row-main"><strong>${n}</strong><small>گزارش مشکل یا درخواست رسیدگی</small></div><span class="page-row-tail">گزارش ←</span></div>`)}</div>`);
   $$('[data-i]', v).forEach(r => r.onclick = () => open(() => composePage('issue', items[r.dataset.i][1], items[r.dataset.i][0])));
 }
 
