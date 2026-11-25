@@ -132,7 +132,7 @@ const nextOccurrence = (date, recurrence) => {
 };
 R('GET','/api/events',async c=>{
   const month=c.url.searchParams.get('month');
-  if(!month||!/^1[34]\\d{2}-\\d{2}$/.test(month)) throw err(400,'INVALID_MONTH','ماه نامعتبر است');
+  if(!month||!/^1[34]\d{2}-\d{2}$/.test(month)) throw err(400,'INVALID_MONTH','ماه نامعتبر است');
   const [yy,mm]=month.split('-').map(Number),first=month+'-01',next=mm===12?String(yy+1)+'-01':String(yy)+'-'+String(mm+1).padStart(2,'0');
   const end=next+'-01';
   const rows=await c.db.prepare("SELECT * FROM events WHERE event_date<? AND (recurrence='none' OR recurrence_until IS NULL OR recurrence_until>=?) ORDER BY event_date,event_time").bind(end,first).all();
