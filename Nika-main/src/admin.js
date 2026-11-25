@@ -1,6 +1,6 @@
 // مدیریت کاربران، واحدها و گزارش ممیزی
 import { R } from './router.js';
-import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, tempPassword, hashPassword, newSalt, safeEqual, audit } from './lib.js';
+import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, tempPassword, hashPassword, newSalt, safeEqual, audit, jdate } from './lib.js';
 import { can, EXTRA_ROLES, assignableExtraRoles, canManageTarget } from './perms.js';
 
 const rolesOf = async (db, id) => (await db.prepare('SELECT role FROM user_roles WHERE user_id=?').bind(id).all()).results.map(r => r.role);
