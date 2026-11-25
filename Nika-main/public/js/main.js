@@ -4,7 +4,7 @@ import { S, can, canAny, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
 import * as P from './pages.js?v=4';
-import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=11';
+import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=12';
 
 let managerMode = false;
 const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList.toggle('nika-hide', s !== id); $('.phone').classList.toggle('nika-hide', id !== '#app'); $('#nikaAdmin').classList.add('nika-hide'); };
@@ -66,7 +66,8 @@ function setupNav() {
     ['users', 'کاربران', can('users.read'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>'],
     ['units', 'واحدها', can('units.read'), '<path d="M4 27V5h24v22"/><path d="M9 10h4v4H9zM19 10h4v4h-4zM9 19h4v4H9zM19 19h4v4h-4z"/>'],
     ['finance', 'مالی', canAny(['finance.settings', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>'],
-    ['reports', 'گزارش عملکرد', can('audit.read'), '<path d="M5 27V5M5 27h23M10 21v-6M16 21V9M22 21v-9"/>']
+    ['reports', 'گزارش عملکرد', can('audit.read'), '<path d="M5 27V5M5 27h23M10 21v-6M16 21V9M22 21v-9"/>'],
+    ['archive', 'پشتیبان‌گیری', can('backup.manage'), '<path d="M4 8h24v19H4zM3 4h26v4H3zM12 15h8M16 11v8"/>']
   ];
   for (const [key, label, allowed, path] of adminShortcuts) {
     if (!allowed) continue;
@@ -78,7 +79,7 @@ function setupNav() {
   }
   const roles = [...(S.user?.roles || []), ...(S.user?.delegatedRoles || [])];
   const order = roles.includes('chair')
-    ? ['finance', 'users', 'units', 'reports', 'calendar', 'resolutions', 'rules']
+    ? ['finance', 'users', 'units', 'archive', 'reports', 'calendar', 'resolutions', 'rules']
     : roles.includes('finance')
       ? ['finance', 'users', 'units', 'calendar', 'resolutions', 'rules']
       : roles.includes('executive')
@@ -86,7 +87,7 @@ function setupNav() {
         : roles.includes('board')
           ? ['finance', 'units', 'reports', 'calendar', 'resolutions', 'rules']
           : roles.includes('system_admin')
-            ? ['users']
+            ? ['users', 'archive']
             : ['rules', 'requests', 'calendar', 'resolutions'];
   const shortcutByKey = new Map();
   $('.category[data-admin-tab]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.adminTab, b));
