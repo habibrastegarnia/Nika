@@ -142,7 +142,8 @@ R('GET','/api/events',async c=>{
     while(date<end && guard++<5000){
       if(date>=first && (!e.recurrence_until || date<=e.recurrence_until)){
         const ov=await c.db.prepare('SELECT * FROM event_occurrences WHERE event_id=? AND occurrence_date=?').bind(e.id,date).first();
-        if(!ov?.cancelled) out.push({...e,id:e.id,occurrence_date:date,event_date:ov?.event_date||date,event_time:ov?.event_time??e.event_time,title:ov?.title||e.title,body:ov?.body??e.body,recurrence_date:date,occurrence_id:ov?.id||null});
+        const displayDate=ov?.event_date||date;
+        if(!ov?.cancelled && displayDate>=first && displayDate<end) out.push({...e,id:e.id,occurrence_date:date,event_date:displayDate,event_time:ov?.event_time??e.event_time,title:ov?.title||e.title,body:ov?.body??e.body,recurrence_date:date,occurrence_id:ov?.id||null});
       }
       if(e.recurrence==='none')break;
       const nextDate=nextOccurrence(date,e.recurrence);if(!nextDate||nextDate<=date)break;date=nextDate;
