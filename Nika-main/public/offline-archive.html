@@ -96,7 +96,7 @@ function render(){
  document.getElementById('backupDates').textContent='فایل‌های بارگذاری‌شده: '+archive.backups.length+' · جدیدترین نسخه: '+(archive.backups[archive.backups.length-1].exportedAt||'—');
  renderAnnual();renderTransactions();renderExpenses();renderImages();renderUsers();
 }
-function yearOf(row){var p=String(row.period||'');if(/^1[34]\\d{2}/.test(p))return p.slice(0,4);var d=String(row.document_date||row.created_at||'');var m=d.match(/1[34]\\d{2}/);return m?m[0]:'نامشخص';}
+function yearOf(row){var p=String(row.period||'');if(/^1[34]\d{2}/.test(p))return p.slice(0,4);var d=String(row.document_date||row.created_at||'');var m=d.match(/1[34]\\d{2}/);return m?m[0]:'نامشخص';}
 function renderAnnual(){
  var groups={};rows('transactions').forEach(function(x){
   var y=yearOf(x),k=[y,x.fund_id||'',x.kind||'',x.status||''].join('|');
