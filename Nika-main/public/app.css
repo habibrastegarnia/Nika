@@ -550,3 +550,10 @@ html[data-theme="light"] .header .header-logout{background:transparent!important
  .header-copy h1{font-size:15px}
  .header-copy p{font-size:10px}
 }
+
+
+/* Explicit header placement: identity right, stacked controls left */
+.header{direction:ltr!important;display:flex!important;flex-direction:row!important;justify-content:space-between!important}
+.header-user{order:2!important;direction:rtl!important;text-align:right!important}
+.header-tools{order:1!important;direction:rtl!important}
+.header .header-logout,.header .header-logout:hover,.header .header-logout:focus,.header .header-logout:focus-visible,.header .header-logout:active{border:0!important;outline:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
