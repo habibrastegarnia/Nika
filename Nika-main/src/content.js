@@ -116,10 +116,11 @@ R('POST', '/api/messages/:id/read', { perm: 'messages.use' }, async c => {
 // ---------- محتوای ساختمان: CRUD عمومی ----------
 const shortTime = v => { const s = String(v ?? '').trim(); if (!s) return null; const t = s.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw err(400, 'INVALID_TIME', 'ساعت باید به شکل ۱۸:۳۰ باشد'); return t; };
 const httpsUrl = v => { const s = String(v ?? '').trim(); try { const u = new URL(s); if (u.protocol !== 'https:' || s.length > 500) throw 0; return u.href; } catch { throw err(400, 'INVALID_URL', 'نشانی باید با https شروع شود'); } };
+const JALALI_FORMAT = new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'});
 const jalaliParts = value => { const [y,m,d]=String(value).split('-').map(Number); return {y,m,d}; };
 const jalaliToDate = (y,m,d) => {
   const start=Date.UTC(y+621,2,15);
-  for(let i=0;i<370;i++){const dt=new Date(start+i*86400000),p=new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(dt),o=Object.fromEntries(p.map(x=>[x.type,x.value]));if(+o.year===y&&+o.month===m&&+o.day===d)return dt;}
+  for(let i=0;i<370;i++){const dt=new Date(start+i*86400000),p=JALALI_FORMAT.formatToParts(dt),o=Object.fromEntries(p.map(x=>[x.type,x.value]));if(+o.year===y&&+o.month===m&&+o.day===d)return dt;}
   return null;
 };
 const dateToJalali = dt => { const p=new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(dt),o=Object.fromEntries(p.map(x=>[x.type,x.value])); return String(+o.year)+'-'+String(+o.month).padStart(2,'0')+'-'+String(+o.day).padStart(2,'0'); };
