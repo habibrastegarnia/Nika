@@ -113,6 +113,8 @@ async function usersTab() {
       { name: 'gender', label: 'جنسیت', type: 'select', value: 'unspecified', options: [['female','خانم'],['male','آقا'],['unspecified','تمایلی به اعلام ندارم']] },
       { name: 'phone', label: 'شماره تلفن همراه', required: true, inputmode: 'tel', dir: 'ltr' },
       { name: 'secondaryPhone', label: 'شماره تماس پشتیبان', inputmode: 'tel', dir: 'ltr', hint: 'اختیاری؛ برای تماس اضطراری یا مواقع عدم دسترسی به شماره اصلی.' },
+      { name: 'contractStartDate', label: 'تاریخ شروع قرارداد (شمسی)', type: 'date', dateSeparator: '-', dir: 'ltr' },
+      { name: 'contractEndDate', label: 'تاریخ پایان قرارداد (شمسی)', type: 'date', dateSeparator: '-', dir: 'ltr' },
       ...(opts.length ? [{ name: 'roles', label: 'نقش‌های انتخابی', type: 'checks', options: opts, value: [] }] : [])], 'nika')}
       <div class="nika-footnote">برای حساب مالک یا ساکن، گزینه مربوط را انتخاب کنید. تعیین نقش‌های مدیریتی فقط در اختیار رئیس هیئت‌مدیره است.</div>
       <div class="nika-actions"><button class="nika-primary" type="submit">ساخت حساب</button></div></form>`) : '';
@@ -125,7 +127,7 @@ async function usersTab() {
         const accountType = d.owner && d.resident ? 'both' : (d.owner ? 'owner' : (d.resident ? 'resident' : 'staff'));
         if (accountType === 'staff' && !canAssignRoles) throw new Error('ساخت حساب مدیریتی و تعیین نقش فقط در اختیار رئیس هیئت‌مدیره است.');
         if (accountType === 'staff' && !(d.roles || []).length) throw new Error('برای حساب مستقل، حداقل یک نقش انتخاب کنید.');
-        const body = { unit: d.unit, name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone, accountType, roles: d.roles || [] };
+        const body = { unit: d.unit, name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone, contractStartDate: d.contractStartDate, contractEndDate: d.contractEndDate, accountType, roles: d.roles || [] };
         if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران ایجاد می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
         const r = await api('/admin/users', { method: 'POST', body });
         if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
@@ -152,17 +154,19 @@ async function usersTab() {
     }
   };
 }
-const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.secondary_phone ? ' · تماس پشتیبان: ' + u.secondary_phone : ''}</small><div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div>${can('users.manage') ? html`<div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button><button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button>${can('users.delete') && u.id !== S.user.id ? html`<button class="nika-secondary sm danger" data-delete-user="${u.id}">غیرفعال‌سازی</button>` : ''}</div>` : ''}</div>`;
+const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.secondary_phone ? ' · تماس پشتیبان: ' + u.secondary_phone : ''}</small>${u.contract_start_date || u.contract_end_date ? html`<small>قرارداد: ${u.contract_start_date || '—'} تا ${u.contract_end_date || '—'}</small>` : ''}<div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div>${can('users.manage') ? html`<div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button><button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button>${can('users.delete') && u.id !== S.user.id ? html`<button class="nika-secondary sm danger" data-delete-user="${u.id}">غیرفعال‌سازی</button>` : ''}</div>` : ''}</div>`;
 
 function editUser(u, opts) {
   const baseOptions = u.account_type === 'staff' ? [] : [['owner', 'مالک'], ['resident', 'ساکن']].filter(([r]) => !u.roles.includes(r));
   const m = openModal('ویرایش حساب', html`<form class="nika-form" novalidate>${fields([
     { name: 'name', label: 'نام و نام خانوادگی', value: u.name, required: true }, { name: 'gender', label: 'جنسیت', type: 'select', value: u.gender || 'unspecified', options: [['female','خانم'],['male','آقا'],['unspecified','تمایلی به اعلام ندارم']] }, { name: 'phone', label: 'شماره تلفن همراه', value: u.phone, dir: 'ltr', inputmode: 'tel' }, { name: 'secondaryPhone', label: 'شماره تماس پشتیبان', value: u.secondary_phone || '', dir: 'ltr', inputmode: 'tel' },
+    { name: 'contractStartDate', label: 'تاریخ شروع قرارداد (شمسی)', type: 'date', dateSeparator: '-', dir: 'ltr', value: u.contract_start_date || '' },
+    { name: 'contractEndDate', label: 'تاریخ پایان قرارداد (شمسی)', type: 'date', dateSeparator: '-', dir: 'ltr', value: u.contract_end_date || '' },
     ...(baseOptions.length ? [{ name: 'addBaseRoles', label: 'افزودن نقش پایه به همین حساب', type: 'checks', options: baseOptions, value: [] }] : []),
     ...(opts.length ? [{ name: 'roles', label: 'نقش‌های مدیریتی', type: 'checks', options: opts, value: u.roles }] : []),
     { name: 'active', label: 'حساب فعال باشد', type: 'checkbox', value: u.active }], 'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ذخیره</button></div></form>`);
   onSubmit($('form', m), async d => {
-    const body = { name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone };
+    const body = { name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone, contractStartDate: d.contractStartDate, contractEndDate: d.contractEndDate };
     if (baseOptions.length && d.addBaseRoles?.length) body.addBaseRoles = d.addBaseRoles;
     if (opts.length) body.roles = d.roles; if (d.active !== u.active) body.active = d.active;
     if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این اطلاعات را به‌جای مسئول اصلی مدیریت کاربران تغییر می‌دهید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
