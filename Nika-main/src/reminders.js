@@ -144,7 +144,7 @@ export async function runReminders(env,now=new Date()){
  const contracts=await env.DB.prepare("SELECT u.id,u.name,u.contract_end_date,n.unit_number FROM users u LEFT JOIN units n ON n.id=u.unit_id WHERE u.active=1 AND u.contract_end_date IS NOT NULL").all();
  const subtractMonth=date=>{
   const [y,m,d]=date.split('-').map(Number);let yy=y,mm=m-1;if(mm===0){mm=12;yy--;}
-  const max=mm<=6?31:mm<=11?30:29;return String(yy)+'-'+String(mm).padStart(2,'0')+'-'+String(Math.min(d,max)).padStart(2,'0');
+  for(let day=d;day>=28;day--)if(jalaliDate(yy,mm,day))return String(yy)+'-'+String(mm).padStart(2,'0')+'-'+String(day).padStart(2,'0');return String(yy)+'-'+String(mm).padStart(2,'0')+'-28';
  };
  for(const person of contracts.results){
   if(subtractMonth(person.contract_end_date)!==todayJ)continue;
