@@ -341,7 +341,9 @@ test('محتوای ساختمان: قوانین، مصوبات، رویداده�
   assert.equal((await chair.post('/api/resolutions', { title: 'سرویس', body: 'تصویب', decided_on: 'دیروز' })).status, 400);
   assert.equal((await exec.post('/api/events', { title: 'جلسه', body: '', event_date: '1405/09/05', event_time: '۱۸:۳۰' })).status, 201);
   assert.equal((await res1.get('/api/events?month=1405-09')).data.items[0].event_date, '1405-09-05');
-  assert.equal((await res1.get('/api/events?month=1405-10')).data.items.length, 0);
+  assert.ok((await res1.get('/api/events?month=1405-09')).data.items.some(e => e.isHoliday && e.event_date === '1405-09-05' && !e.isOfficialHoliday), 'مناسبت‌های تقویم رسمی نیز نمایش داده می‌شوند');
+  assert.ok((await res1.get('/api/events?month=1405-10')).data.items.some(e => e.isHoliday && e.isOfficialHoliday), 'تعطیلات رسمی در تقویم نمایش داده می‌شوند');
+  assert.equal((await res1.get('/api/events?month=1405-10')).data.items.filter(e => !e.isHoliday).length, 0);
   const recurring = await exec.post('/api/events', { title: 'نظافت هفتگی', event_date: '1405-09-05', recurrence: 'weekly' });
   assert.equal(recurring.status, 201);
   let occurrences = (await res1.get('/api/events?month=1405-09')).data.items.filter(e => e.id === recurring.data.id);
