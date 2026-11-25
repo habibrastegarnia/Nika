@@ -122,7 +122,7 @@ const jalaliToDate = (y,m,d) => {
   return null;
 };
 const dateToJalali = dt => { const p=new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(dt),o=Object.fromEntries(p.map(x=>[x.type,x.value])); return String(+o.year)+'-'+String(+o.month).padStart(2,'0')+'-'+String(+o.day).padStart(2,'0'); };
-const jalaliMonthDay = (y,m,d) => { for(let day=d;day>=28;day--){if(jalaliToDate(y,m,day))return day;} return 28; };
+const jalaliMonthDay = (y,m,d) => { for(let day=d;day>=1;day--){if(jalaliToDate(y,m,day))return day;} return 28; };
 const nextOccurrence = (date, recurrence) => {
   const {y,m,d}=jalaliParts(date);
   if(recurrence==='weekly'){const dt=jalaliToDate(y,m,d);if(!dt)return null;return dateToJalali(new Date(dt.getTime()+7*86400000));}
