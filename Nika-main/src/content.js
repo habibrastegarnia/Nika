@@ -145,7 +145,7 @@ R('GET','/api/events',async c=>{
       if(date>=first && (!e.recurrence_until || date<=e.recurrence_until)){
         const ov=await c.db.prepare('SELECT * FROM event_occurrences WHERE event_id=? AND occurrence_date=?').bind(e.id,date).first();
         const displayDate=ov?.event_date||date;
-        if(!ov?.cancelled && displayDate>=first && displayDate<end) out.push({...e,id:e.id,occurrence_date:date,event_date:displayDate,event_time:ov?.event_time??e.event_time,title:ov?.title||e.title,body:ov?.body??e.body,recurrence_date:date,occurrence_id:ov?.id||null});
+        if(!ov?.cancelled && displayDate>=first && displayDate<end) out.push({...e,id:e.id,series_event_date:e.event_date,series_event_time:e.event_time,series_title:e.title,series_body:e.body,series_recurrence_until:e.recurrence_until,occurrence_date:date,event_date:displayDate,event_time:ov?.event_time??e.event_time,title:ov?.title||e.title,body:ov?.body??e.body,recurrence_date:date,occurrence_id:ov?.id||null});
       }
       if(e.recurrence==='none')break;
       const nextDate=nextOccurrence(date,e.recurrence);if(!nextDate||nextDate<=date)break;date=nextDate;
@@ -154,7 +154,7 @@ R('GET','/api/events',async c=>{
   const moved=await c.db.prepare("SELECT e.*,o.occurrence_date,o.event_date occurrence_display_date,o.event_time occurrence_time,o.title occurrence_title,o.body occurrence_body,o.id occurrence_id,o.cancelled FROM event_occurrences o JOIN events e ON e.id=o.event_id WHERE o.event_date>=? AND o.event_date<? AND o.cancelled=0").bind(first,end).all();
   for(const o of moved.results){
     if(out.some(x=>x.id===o.id&&x.recurrence_date===o.occurrence_date))continue;
-    out.push({...o,event_date:o.occurrence_display_date,event_time:o.occurrence_time??o.event_time,title:o.occurrence_title||o.title,body:o.occurrence_body??o.body,recurrence_date:o.occurrence_date});
+    out.push({...o,series_event_date:o.event_date,series_event_time:o.event_time,series_title:o.title,series_body:o.body,series_recurrence_until:o.recurrence_until,event_date:o.occurrence_display_date,event_time:o.occurrence_time??o.event_time,title:o.occurrence_title||o.title,body:o.occurrence_body??o.body,recurrence_date:o.occurrence_date});
   }
   const holidays=OFFICIAL_CALENDAR.filter(h=>h.date>=first&&h.date<end).map(h=>({id:'holiday:'+h.date,title:h.title,event_date:h.date,event_time:null,body:h.official?'تعطیل رسمی':'مناسبت تقویم رسمی',recurrence:'none',recurrence_date:h.date,isHoliday:true,isOfficialHoliday:h.official}));
   return reply({items:[...out,...holidays].sort((a,b)=>a.event_date.localeCompare(b.event_date)||String(a.event_time||'').localeCompare(String(b.event_time||'')))});
