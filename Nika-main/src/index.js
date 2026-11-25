@@ -6,6 +6,7 @@ import { authenticate } from './auth.js';
 import './admin.js';
 import './finance.js';
 import './expense_requests.js';
+import './backups.js';
 import './delegation.js';
 import './content.js';
 import { runReminders } from './reminders.js';
