@@ -3,7 +3,7 @@ import { api } from './api.js';
 import { S, can, canAny } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, JM, monthStart, monthLen, jToday, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js';
-import { refreshSummary, loadLatestNotice } from './pages.js?v=7';
+import { refreshSummary, loadLatestNotice } from './pages.js?v=8';
 import { applyIcons } from './icons.js?v=2';
 
 const card = (title, body) => html`<div class="nika-admincard"><h3>${title}</h3>${body}</div>`;
@@ -38,7 +38,8 @@ function showManagerShortcuts(show) {
   const technicalOnly = roles.includes('system_admin') && !roles.some(r => ['chair', 'finance', 'board', 'executive'].includes(r));
   document.querySelectorAll('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
   document.querySelectorAll('.category[data-menu]').forEach(el => {
-    el.classList.toggle('nika-hide', show);
+    const isManagerCalendar = el.dataset.menu === 'calendar' && can('events.manage');
+    el.classList.toggle('nika-hide', show ? !isManagerCalendar : false);
   });
   $('#noticeHead')?.classList.toggle('nika-hide', show);
   $('#noticeCard')?.classList.toggle('nika-hide', show);
