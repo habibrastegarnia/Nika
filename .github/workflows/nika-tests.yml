@@ -1,0 +1,21 @@
+name: Nika tests
+
+on:
+  push:
+    branches:
+      - feature/calendar-recurrence-contract-reminders
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run API tests
+        working-directory: Nika-main
+        run: node --no-warnings --test tests/api.test.mjs

@@ -2,6 +2,7 @@
 import { R } from './router.js';
 import { err, reply, readJson, str, optStr, int, jdate, audit } from './lib.js';
 import { can } from './perms.js';
+import { OFFICIAL_CALENDAR } from './holidays.js';
 
 // ---------- اطلاعیه‌ها ----------
 const NOTICE_KINDS = ['اطلاعیه', 'جلسه', 'عمومی', 'فوری'];
@@ -115,10 +116,69 @@ R('POST', '/api/messages/:id/read', { perm: 'messages.use' }, async c => {
 // ---------- محتوای ساختمان: CRUD عمومی ----------
 const shortTime = v => { const s = String(v ?? '').trim(); if (!s) return null; const t = s.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw err(400, 'INVALID_TIME', 'ساعت باید به شکل ۱۸:۳۰ باشد'); return t; };
 const httpsUrl = v => { const s = String(v ?? '').trim(); try { const u = new URL(s); if (u.protocol !== 'https:' || s.length > 500) throw 0; return u.href; } catch { throw err(400, 'INVALID_URL', 'نشانی باید با https شروع شود'); } };
+const JALALI_FORMAT = new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'});
+const jalaliParts = value => { const [y,m,d]=String(value).split('-').map(Number); return {y,m,d}; };
+const jalaliToDate = (y,m,d) => {
+  const start=Date.UTC(y+621,2,15);
+  for(let i=0;i<370;i++){const dt=new Date(start+i*86400000),p=JALALI_FORMAT.formatToParts(dt),o=Object.fromEntries(p.map(x=>[x.type,x.value]));if(+o.year===y&&+o.month===m&&+o.day===d)return dt;}
+  return null;
+};
+const dateToJalali = dt => { const p=new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(dt),o=Object.fromEntries(p.map(x=>[x.type,x.value])); return String(+o.year)+'-'+String(+o.month).padStart(2,'0')+'-'+String(+o.day).padStart(2,'0'); };
+const jalaliMonthDay = (y,m,d) => { for(let day=d;day>=1;day--){if(jalaliToDate(y,m,day))return day;} return 28; };
+const nextOccurrence = (date, recurrence) => {
+  const {y,m,d}=jalaliParts(date);
+  if(recurrence==='weekly'){const dt=jalaliToDate(y,m,d);if(!dt)return null;return dateToJalali(new Date(dt.getTime()+7*86400000));}
+  if(recurrence==='monthly'){const nm=m===12?1:m+1,ny=m===12?y+1:y,day=jalaliMonthDay(ny,nm,d);return String(ny)+'-'+String(nm).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
+  if(recurrence==='yearly'){const ny=y+1,day=jalaliMonthDay(ny,m,d);return String(ny)+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
+  return null;
+};
+R('GET','/api/events',async c=>{
+  const month=c.url.searchParams.get('month');
+  if(!month||!/^1[34]\d{2}-\d{2}$/.test(month)) throw err(400,'INVALID_MONTH','ماه نامعتبر است');
+  const [yy,mm]=month.split('-').map(Number),first=month+'-01',next=mm===12?String(yy+1)+'-01':String(yy)+'-'+String(mm+1).padStart(2,'0');
+  const end=next+'-01';
+  const rows=await c.db.prepare("SELECT * FROM events WHERE event_date<? AND (recurrence='none' OR recurrence_until IS NULL OR recurrence_until>=?) ORDER BY event_date,event_time").bind(end,first).all();
+  const out=[];
+  for(const e of rows.results){
+    let date=e.event_date, guard=0;
+    while(date<end && guard++<5000){
+      if(date>=first && (!e.recurrence_until || date<=e.recurrence_until)){
+        const ov=await c.db.prepare('SELECT * FROM event_occurrences WHERE event_id=? AND occurrence_date=?').bind(e.id,date).first();
+        const displayDate=ov?.event_date||date;
+        if(!ov?.cancelled && displayDate>=first && displayDate<end) out.push({...e,id:e.id,series_event_date:e.event_date,series_event_time:e.event_time,series_title:e.title,series_body:e.body,series_recurrence_until:e.recurrence_until,occurrence_date:date,event_date:displayDate,event_time:ov?.event_time??e.event_time,title:ov?.title||e.title,body:ov?.body??e.body,recurrence_date:date,occurrence_id:ov?.id||null});
+      }
+      if(e.recurrence==='none')break;
+      const nextDate=nextOccurrence(date,e.recurrence);if(!nextDate||nextDate<=date)break;date=nextDate;
+    }
+  }
+  const moved=await c.db.prepare("SELECT e.*,o.occurrence_date,o.event_date occurrence_display_date,o.event_time occurrence_time,o.title occurrence_title,o.body occurrence_body,o.id occurrence_id,o.cancelled FROM event_occurrences o JOIN events e ON e.id=o.event_id WHERE o.event_date>=? AND o.event_date<? AND o.cancelled=0").bind(first,end).all();
+  for(const o of moved.results){
+    if(out.some(x=>x.id===o.id&&x.recurrence_date===o.occurrence_date))continue;
+    out.push({...o,series_event_date:o.event_date,series_event_time:o.event_time,series_title:o.title,series_body:o.body,series_recurrence_until:o.recurrence_until,event_date:o.occurrence_display_date,event_time:o.occurrence_time??o.event_time,title:o.occurrence_title||o.title,body:o.occurrence_body??o.body,recurrence_date:o.occurrence_date});
+  }
+  const holidays=OFFICIAL_CALENDAR.filter(h=>h.date>=first&&h.date<end).map(h=>({id:'holiday:'+h.date,title:h.title,event_date:h.date,event_time:null,body:h.official?'تعطیل رسمی':'مناسبت تقویم رسمی',recurrence:'none',recurrence_date:h.date,isHoliday:true,isOfficialHoliday:h.official}));
+  return reply({items:[...out,...holidays].sort((a,b)=>a.event_date.localeCompare(b.event_date)||String(a.event_time||'').localeCompare(String(b.event_time||'')))});
+});
+R('PATCH','/api/events/:id/occurrences/:date',{perm:'events.manage'},async c=>{
+  const e=await c.db.prepare('SELECT id FROM events WHERE id=?').bind(c.params.id).first();if(!e)throw err(404,'NOT_FOUND','رویداد پیدا نشد');
+  const original=jdate(c.params.date,'-'),x=await readJson(c.request),actual=jdate(x.event_date,'-');
+  const old=await c.db.prepare('SELECT id FROM event_occurrences WHERE event_id=? AND occurrence_date=?').bind(e.id,original).first();
+  const id=old?.id||crypto.randomUUID();
+  await c.db.prepare('INSERT INTO event_occurrences(id,event_id,occurrence_date,event_date,event_time,title,body,cancelled,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,0,?,CURRENT_TIMESTAMP) ON CONFLICT(event_id,occurrence_date) DO UPDATE SET event_date=excluded.event_date,event_time=excluded.event_time,title=excluded.title,body=excluded.body,cancelled=0,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP')
+   .bind(id,e.id,original,actual,x.event_time==null?null:shortTime(x.event_time),x.title==null?null:optStr(x.title,{max:120,field:'عنوان'}),x.body==null?null:optStr(x.body,{max:1000,multiline:true,field:'توضیحات'}),c.user.id).run();
+  await audit(c.db,c.user.id,'event.occurrence.update','event',e.id,{occurrence:original,eventDate:actual});return reply({ok:true});
+});
+R('DELETE','/api/events/:id/occurrences/:date',{perm:'events.manage'},async c=>{
+  const e=await c.db.prepare('SELECT id FROM events WHERE id=?').bind(c.params.id).first();if(!e)throw err(404,'NOT_FOUND','رویداد پیدا نشد');
+  const date=jdate(c.params.date,'-');
+  await c.db.prepare("INSERT INTO event_occurrences(id,event_id,occurrence_date,event_date,cancelled,updated_by,updated_at) VALUES(?,?,?,?,1,?,CURRENT_TIMESTAMP) ON CONFLICT(event_id,occurrence_date) DO UPDATE SET cancelled=1,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP")
+   .bind(crypto.randomUUID(),e.id,date,date,c.user.id).run();
+  await audit(c.db,c.user.id,'event.occurrence.delete','event',e.id,{occurrence:date});return reply({ok:true});
+});
 const CONTENT = {
   rules: { perm: 'rules.manage', order: 'sort_order ASC,created_at ASC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), body: str(x.body, { max: 2000, multiline: true, field: 'متن' }), sort_order: x.sort_order == null || x.sort_order === '' ? 0 : int(x.sort_order, { min: 0, max: 9999 }) }) },
   resolutions: { perm: 'resolutions.manage', order: 'decided_on DESC,created_at DESC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), body: str(x.body, { max: 2000, multiline: true, field: 'متن' }), decided_on: jdate(x.decided_on, '/') }) },
-  events: { perm: 'events.manage', order: 'event_date ASC,event_time ASC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), body: optStr(x.body, { max: 1000, multiline: true, field: 'توضیحات' }), event_date: jdate(x.event_date, '-'), event_time: shortTime(x.event_time) }) },
+  events: { perm: 'events.manage', order: 'event_date ASC,event_time ASC', parse: x => { const recurrence=x.recurrence??'none'; if(!['none','weekly','monthly','yearly'].includes(recurrence)) throw err(400,'INVALID_RECURRENCE','تکرار رویداد نامعتبر است'); const recurrenceUntil=x.recurrenceUntil?jdate(x.recurrenceUntil,'-'):null; const eventDate=jdate(x.event_date,'-'); if(recurrenceUntil&&recurrenceUntil<eventDate) throw err(400,'INVALID_RECURRENCE_END','پایان تکرار نمی‌تواند قبل از شروع باشد'); return {title:str(x.title,{max:120,field:'عنوان'}),body:optStr(x.body,{max:1000,multiline:true,field:'توضیحات'}),event_date:eventDate,event_time:shortTime(x.event_time),recurrence,recurrence_until:recurrenceUntil}; } },
   documents: { perm: 'documents.manage', order: 'created_at DESC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), description: optStr(x.description, { max: 300, field: 'توضیحات' }), url: httpsUrl(x.url) }) }
 };
 for (const [name, def] of Object.entries(CONTENT)) {
@@ -137,8 +197,10 @@ for (const [name, def] of Object.entries(CONTENT)) {
   });
   R('PUT', `/api/${name}/:id`, { perm: def.perm }, async c => {
     const f = def.parse(await readJson(c.request)), keys = Object.keys(f);
+    const previous = name === 'events' ? await c.db.prepare('SELECT event_date,recurrence,recurrence_until FROM events WHERE id=?').bind(c.params.id).first() : null;
     const r = await c.db.prepare(`UPDATE ${name} SET ${keys.map(k => k + '=?').join(',')} WHERE id=?`).bind(...keys.map(k => f[k]), c.params.id).run();
     if (!r.meta.changes) throw err(404, 'NOT_FOUND', 'مورد پیدا نشد');
+    if (name === 'events' && previous && (previous.event_date !== f.event_date || previous.recurrence !== f.recurrence || previous.recurrence_until !== f.recurrence_until)) await c.db.prepare('DELETE FROM event_occurrences WHERE event_id=?').bind(c.params.id).run();
     await audit(c.db, c.user.id, `${name}.update`, name, c.params.id);
     return reply({ ok: true });
   });

@@ -1,6 +1,6 @@
 // مدیریت کاربران، واحدها و گزارش ممیزی
 import { R } from './router.js';
-import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, tempPassword, hashPassword, newSalt, safeEqual, audit } from './lib.js';
+import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, tempPassword, hashPassword, newSalt, safeEqual, audit, jdate } from './lib.js';
 import { can, EXTRA_ROLES, assignableExtraRoles, canManageTarget } from './perms.js';
 
 const rolesOf = async (db, id) => (await db.prepare('SELECT role FROM user_roles WHERE user_id=?').bind(id).all()).results.map(r => r.role);
@@ -18,7 +18,7 @@ const extrasOnly = roles => roles.filter(r => EXTRA_ROLES.includes(r));
 R('GET', '/api/admin/users', { perm: 'users.read' }, async c => {
   const q = (c.url.searchParams.get('q') || '').trim().slice(0, 50), like = `%${q}%`;
   const r = await c.db.prepare(
-    `SELECT u.id,u.name,u.phone,u.secondary_phone,u.account_type,u.active,u.must_change_password,u.created_at,n.unit_number unit,
+    `SELECT u.id,u.name,u.phone,u.secondary_phone,u.account_type,u.active,u.must_change_password,u.contract_start_date,u.contract_end_date,u.created_at,n.unit_number unit,
             (SELECT GROUP_CONCAT(role) FROM user_roles WHERE user_id=u.id) roles
      FROM users u LEFT JOIN units n ON n.id=u.unit_id
      WHERE (?='' OR u.name LIKE ? OR u.phone LIKE ? OR n.unit_number LIKE ?)
@@ -36,6 +36,9 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   const name = str(x.name, { max: 100, field: 'نام' }), phone = phoneOrFail(x.phone), gender = x.gender || 'unspecified';
   if (!['female','male','unspecified'].includes(gender)) throw err(400, 'INVALID_GENDER', 'جنسیت نامعتبر است');
   const secondaryPhone = x.secondaryPhone ? phoneOrFail(x.secondaryPhone) : null;
+  const contractStartDate = x.contractStartDate ? jdate(x.contractStartDate, '-') : null;
+  const contractEndDate = x.contractEndDate ? jdate(x.contractEndDate, '-') : null;
+  if (contractStartDate && contractEndDate && contractEndDate < contractStartDate) throw err(400, 'INVALID_CONTRACT_DATES', 'تاریخ پایان قرارداد نمی‌تواند قبل از تاریخ شروع باشد');
   const extras = validateExtras(c.user, x.roles ?? []);
   if (accountType === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'برای حساب مدیر/کارکنان حداقل یک نقش انتخاب کنید');
   const storedType = accountType === 'both' ? 'owner' : accountType;
@@ -56,7 +59,7 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   }
   const uid = crypto.randomUUID(), initialPassword = accountType === 'staff' ? tempPassword() : phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
-    c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,secondary_phone,gender,password_hash,password_salt,must_change_password) VALUES(?,?,?,?,?,?,?,?,?,1)').bind(uid, unitId, storedType, name, phone, secondaryPhone, gender, ph, salt),
+    c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,secondary_phone,gender,password_hash,password_salt,must_change_password,contract_start_date,contract_end_date) VALUES(?,?,?,?,?,?,?,?,?,1,?,?)').bind(uid, unitId, storedType, name, phone, secondaryPhone, gender, ph, salt, contractStartDate, contractEndDate),
     ...roles.map(r => c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, r))
   ]);
   await audit(c.db, c.user.id, 'user.create', 'user', uid, { accountType, unit: x.unit || null, roles });
@@ -79,6 +82,13 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
   const self = t.id === c.user.id;
   if (self && ('roles' in x || 'active' in x)) throw err(400, 'SELF_CHANGE', 'نقش‌ها یا وضعیت حساب خودتان را نمی‌توانید تغییر دهید');
   if ('name' in x) { sets.push('name=?'); vals.push(str(x.name, { max: 100, field: 'نام' })); }
+  if ('contractStartDate' in x || 'contractEndDate' in x) {
+    const current = await c.db.prepare('SELECT contract_start_date,contract_end_date FROM users WHERE id=?').bind(t.id).first();
+    const start = 'contractStartDate' in x ? (x.contractStartDate ? jdate(x.contractStartDate, '-') : null) : current.contract_start_date;
+    const end = 'contractEndDate' in x ? (x.contractEndDate ? jdate(x.contractEndDate, '-') : null) : current.contract_end_date;
+    if (start && end && end < start) throw err(400, 'INVALID_CONTRACT_DATES', 'تاریخ پایان قرارداد نمی‌تواند قبل از تاریخ شروع باشد');
+    sets.push('contract_start_date=?','contract_end_date=?'); vals.push(start,end);
+  }
   if ('gender' in x) { if (!['female','male','unspecified'].includes(x.gender)) throw err(400, 'INVALID_GENDER', 'جنسیت نامعتبر است'); sets.push('gender=?'); vals.push(x.gender); }
   if ('secondaryPhone' in x) { const p = x.secondaryPhone ? phoneOrFail(x.secondaryPhone) : null; sets.push('secondary_phone=?'); vals.push(p); }
   if ('phone' in x) {
