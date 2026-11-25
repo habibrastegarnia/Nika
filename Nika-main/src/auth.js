@@ -13,7 +13,7 @@ export const sessionCookie = (value, secure, maxAge) =>
 
 export async function loadUser(db, id) {
   const u = await db.prepare(
-    `SELECT u.id,u.unit_id,u.account_type,u.name,u.phone,u.email,u.must_change_password,u.updated_at,
+    `SELECT u.id,u.unit_id,u.account_type,u.name,u.phone,u.email,u.gender,u.must_change_password,u.updated_at,
             (u.avatar_data IS NOT NULL) has_avatar,
             n.unit_number,n.block,n.floor,n.parking,n.notes unit_notes
      FROM users u LEFT JOIN units n ON n.id=u.unit_id WHERE u.id=? AND u.active=1`).bind(id).first();
@@ -34,7 +34,7 @@ export async function loadUser(db, id) {
   return {
     id: u.id, unit_id: u.unit_id, unit_number: u.unit_number || null,
     unit: u.unit_number ? { number: u.unit_number, block: u.block, floor: u.floor, parking: u.parking, notes: u.unit_notes } : null,
-    account_type: u.account_type, name: u.name, phone: u.phone, email: u.email,
+    account_type: u.account_type, name: u.name, phone: u.phone, email: u.email, gender: u.gender || 'unspecified',
     must_change_password: !!u.must_change_password, has_avatar: !!u.has_avatar, avatar_v: u.updated_at,
     roles, delegatedRoles, ownPerms, delegatedPerms: delegated,
     perms: [...new Set([...ownPerms, ...delegated])]
@@ -145,6 +145,7 @@ R('PATCH', '/api/profile', c => updateProfile(c));
 async function updateProfile(c) {
   const x = await readJson(c.request), sets = [], vals = [];
   if ('name' in x) { sets.push('name=?'); vals.push(str(x.name, { max: 100, field: 'نام' })); }
+  if ('gender' in x) { if (!['female','male','unspecified'].includes(x.gender)) throw err(400, 'INVALID_GENDER', 'جنسیت نامعتبر است'); sets.push('gender=?'); vals.push(x.gender); }
   if ('email' in x) {
     const e = optStr(x.email, { max: 120, field: 'ایمیل' });
     if (e && !/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(e)) throw err(400, 'INVALID_EMAIL', 'ایمیل نامعتبر است');
