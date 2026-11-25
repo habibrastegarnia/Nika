@@ -33,8 +33,10 @@
 <main class="phone">
  <header class="header">
   <div class="header-user"><button class="avatar-button" id="hdrAvatar" type="button" aria-label="رفتن به حساب من"></button><div class="header-copy"><h1 id="hdrName"></h1><p id="hdrSub"></p></div></div>
-  <button class="header-action workspace-toggle nika-hide" id="workspaceToggle" aria-label="ورود به فضای مدیریت" title="ورود به فضای مدیریت"><span class="workspace-label workspace-label-left">ساکن</span><span class="workspace-label workspace-label-right">مدیر اجرایی</span><span class="workspace-thumb"></span></button>
-  <button class="header-action header-logout" id="headerLogout" aria-label="خروج از حساب" title="خروج از حساب"><span data-icon="log-out"></span></button>
+  <div class="header-tools">
+   <button class="header-action header-logout" id="headerLogout" type="button" aria-label="خروج از حساب" title="خروج از حساب"><span data-icon="log-out"></span><span class="logout-text">خروج</span></button>
+   <button class="header-action workspace-toggle nika-hide" id="workspaceToggle" type="button" aria-label="تغییر نقش" title="تغییر نقش"><span class="workspace-label workspace-label-left">ساکن</span><span class="workspace-label workspace-label-right">مدیر اجرایی</span><span class="workspace-thumb"></span></button>
+  </div>
  </header>
 
  <section class="panel carousel" id="carousel" aria-label="اسلایدهای داشبورد">
