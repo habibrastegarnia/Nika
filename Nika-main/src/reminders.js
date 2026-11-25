@@ -127,7 +127,7 @@ export async function runReminders(env,now=new Date()){
   while(occurrence<=tomorrowJ&&guard++<5000){
    if(occurrence===tomorrowJ){
     const override=await env.DB.prepare('SELECT event_date,cancelled,title,event_time FROM event_occurrences WHERE event_id=? AND occurrence_date=?').bind(ev.id,occurrence).first();
-    if(!override?.cancelled){
+    if(!override?.cancelled && (override?.event_date||occurrence)===tomorrowJ){
      const shown=override?.event_date||occurrence;
      const title=override?.title||ev.title;
      for(const recipient of managers){
@@ -139,6 +139,12 @@ export async function runReminders(env,now=new Date()){
    if(ev.recurrence==='none')break;
    const n=nextJ(occurrence,ev.recurrence);if(!n||n<=occurrence)break;occurrence=n;
   }
+ }
+ // نوبت‌هایی که از تاریخ اصلی خود به فردا منتقل شده‌اند نیز یادآوری می‌شوند.
+ const movedTomorrow=await env.DB.prepare("SELECT e.id,e.title,e.event_time,o.occurrence_date,o.event_time occurrence_time,o.title occurrence_title FROM event_occurrences o JOIN events e ON e.id=o.event_id WHERE o.event_date=? AND o.occurrence_date!=? AND o.cancelled=0").bind(tomorrowJ,tomorrowJ).all();
+ for(const ev of movedTomorrow.results)for(const recipient of managers){
+  const title=ev.occurrence_title||ev.title;
+  await send(env.DB,sender.id,recipient.id,'یادآوری رویداد فردا: '+title,'رویداد «'+title+'» فردا در تاریخ '+tomorrowJ+(ev.occurrence_time||ev.event_time?'، ساعت '+(ev.occurrence_time||ev.event_time):'')+' برنامه‌ریزی شده است.','info','calendar:'+ev.id+':'+ev.occurrence_date+':'+recipient.id);sent++;
  }
  // یادآوری پایان قرارداد، دقیقاً یک ماه پیش از تاریخ پایان؛ کلید شامل تاریخ است تا با اصلاح قرارداد، یادآوری جدید فعال شود.
  const contracts=await env.DB.prepare("SELECT u.id,u.name,u.contract_end_date,n.unit_number FROM users u LEFT JOIN units n ON n.id=u.unit_id WHERE u.active=1 AND u.contract_end_date IS NOT NULL").all();
