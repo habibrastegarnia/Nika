@@ -79,8 +79,8 @@ function setupNav() {
     shortcutHost.appendChild(b);
   }
   const shortcutByKey = new Map();
-  $('.category[data-admin-tab]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.adminTab, b));
-  $('.category[data-menu]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.menu, b));
+  $$('.category[data-admin-tab]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.adminTab, b));
+  $$('.category[data-menu]', shortcutHost).forEach(b => shortcutByKey.set(b.dataset.menu, b));
   const order = [
     ...(can('finance.settings') ? ['settings'] : []),
     ...(!can('finance.settings') && canAny(['finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']) ? ['finance'] : []),
