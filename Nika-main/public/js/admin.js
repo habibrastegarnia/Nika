@@ -36,7 +36,7 @@ function showManagerShortcuts(show) {
   const technicalOnly = roles.includes('system_admin') && !roles.some(r => ['chair', 'finance', 'board', 'executive'].includes(r));
   $('.category[data-admin-tab]').forEach(el => el.classList.toggle('nika-hide', !show));
   $('.category[data-menu]').forEach(el => {
-    const hidden = show && (el.dataset.menu === 'requests' || technicalOnly);
+    const hidden = show && (el.dataset.menu === 'requests' || el.dataset.menu === 'resolutions' || technicalOnly);
     el.classList.toggle('nika-hide', hidden);
   });
   $('#noticeHead')?.classList.toggle('nika-hide', show);
