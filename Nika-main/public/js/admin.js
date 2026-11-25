@@ -4,6 +4,7 @@ import { S, can, canAny } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, JM, monthStart, monthLen, jToday, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js';
 import { refreshSummary, loadLatestNotice } from './pages.js';
+import { applyIcons } from './icons.js';
 
 const card = (title, body) => html`<div class="nika-admincard"><h3>${title}</h3>${body}</div>`;
 const empty = t => html`<p>${t}</p>`;
@@ -88,14 +89,14 @@ export function showResidentMode() {
 }
 async function loadTab() {
   const box = $('.phone > .page-view');
-  box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>در حال بارگذاری…</h2></div></div>';
+  box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>در حال بارگذاری…</h2></div></div>'; applyIcons(box);
   $('#managerPageBack').onclick = hideAdmin;
   try {
     const out = await RENDER[tab]();
-    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت">‹</button><div class="page-heading"><h2>' + ({settings:'تنظیمات',users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>';
+    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>' + ({settings:'تنظیمات',users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>'; applyIcons(box);
     $('#managerPageBack',box).onclick = hideAdmin;
     out.bind && out.bind(box);
-  } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack">‹</button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); $('#managerPageBack',box).onclick=hideAdmin; }
+  } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack">‹</button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); applyIcons(box); $('#managerPageBack',box).onclick=hideAdmin; }
 }
 const reload = () => loadTab();
 const act = (box, sel, fn) => $$(sel, box).forEach(b => b.onclick = () => fn(b).catch(e => toast(e.message)));
