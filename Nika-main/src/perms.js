@@ -9,13 +9,13 @@ export const ROLE_PERMS = {
 
   // مدیر اجرایی: مدیریت حساب کاربران، مشاهده امور مالی و واحدها،
   // ثبت/پیگیری امور هزینه و مدیریت رویدادهای تقویم.
-  executive: ['users.read', 'users.manage', 'users.delete', 'units.read', 'finance.reports', 'expenses.create', 'requests.manage', 'events.manage', 'audit.read'],
+  executive: ['finance.settings.read', 'users.read', 'users.manage', 'users.delete', 'units.read', 'finance.reports', 'expenses.create', 'requests.manage', 'events.manage', 'audit.read'],
 
   // مدیر مالی: مشاهده کاربران و واحدها، رسیدگی به پرداخت‌ها و گزارش‌گیری؛ بدون تغییر تنظیمات شارژ.
-  finance: ['users.read', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.approve', 'expenses.approve', 'finance.reports', 'audit.read'],
+  finance: ['finance.settings.read', 'users.read', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.approve', 'expenses.approve', 'finance.reports', 'audit.read'],
 
   // عضو هیئت‌مدیره فقط مشاهده‌گر است.
-  board: ['units.read', 'finance.reports', 'reports.read', 'audit.read'],
+  board: ['finance.settings.read', 'units.read', 'finance.reports', 'reports.read', 'audit.read'],
 
   // مدیر سامانه فقط اختیارات فنی و مدیریت حساب‌ها را دارد؛ نه عملیات ساختمان و نه تعیین نقش.
   system_admin: ['users.read', 'users.manage', 'users.delete', 'system.settings', 'system.data.manage', 'backup.manage'],
@@ -26,7 +26,7 @@ export const ROLE_PERMS = {
   chair: [
     'users.read', 'users.manage', 'users.delete', 'roles.assign',
     'units.read', 'units.manage',
-    'finance.settings', 'finance.charge', 'finance.approve', 'expenses.create', 'expenses.approve', 'expenses.finalize',
+    'finance.settings.read', 'finance.settings', 'finance.charge', 'finance.approve', 'expenses.create', 'expenses.approve', 'expenses.finalize',
     'finance.owner.read', 'finance.monthly.read', 'finance.reports',
     'requests.manage', 'messages.manage', 'notices.manage',
     'rules.manage', 'resolutions.manage', 'events.manage', 'documents.manage',
@@ -38,7 +38,7 @@ export const ROLE_PERMS = {
 export const DELEGATE_PERMS = {
   chair: [
     'users.read', 'units.read', 'finance.owner.read', 'finance.monthly.read',
-    'finance.reports', 'finance.approve', 'expenses.approve', 'expenses.finalize',
+    'finance.reports', 'finance.settings.read', 'finance.approve', 'expenses.approve', 'expenses.finalize',
     'reports.read', 'audit.read', 'rules.read', 'resolutions.read', 'events.read'
   ],
   finance: ROLE_PERMS.finance,
