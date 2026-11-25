@@ -492,3 +492,6 @@ html[data-theme="light"] .header-action.header-logout{background:transparent!imp
 .profile-actions .profile-logout{background:#253148;border-color:#ffffff10}
 .profile-logout .profile-action-icon{background:#3a4967;color:#c7d6f3}
 .profile-logout .page-row-main strong,.profile-logout .page-row-tail{color:inherit}
+
+/* Keep Lucide's approved weight consistent across every icon container */
+.cat-icon svg.nika-icon,.nav-item svg.nika-icon,.page-row-icon svg.nika-icon,.profile-action-icon svg.nika-icon,.summary-icon svg.nika-icon,.header-logout svg.nika-icon,.page-back svg.nika-icon,.close svg.nika-icon,.slide-arrow svg.nika-icon{stroke-width:2.1}
