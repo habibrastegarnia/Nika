@@ -18,7 +18,7 @@ export const ROLE_PERMS = {
   board: ['units.read', 'finance.reports', 'reports.read', 'audit.read'],
 
   // مدیر سامانه فقط اختیارات فنی و مدیریت حساب‌ها را دارد؛ نه عملیات ساختمان و نه تعیین نقش.
-  system_admin: ['users.read', 'users.manage', 'users.delete', 'system.settings', 'system.data.manage'],
+  system_admin: ['users.read', 'users.manage', 'users.delete', 'system.settings', 'system.data.manage', 'backup.manage'],
 
   caretaker: [],
 
@@ -30,7 +30,7 @@ export const ROLE_PERMS = {
     'finance.owner.read', 'finance.monthly.read', 'finance.reports',
     'requests.manage', 'messages.manage', 'notices.manage',
     'rules.manage', 'resolutions.manage', 'events.manage', 'documents.manage',
-    'reports.read', 'audit.read'
+    'reports.read', 'audit.read', 'backup.manage'
   ]
 };
 
