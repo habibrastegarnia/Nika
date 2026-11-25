@@ -148,6 +148,11 @@ R('GET','/api/events',async c=>{
       const nextDate=nextOccurrence(date,e.recurrence);if(!nextDate||nextDate<=date)break;date=nextDate;
     }
   }
+  const moved=await c.db.prepare("SELECT e.*,o.occurrence_date,o.event_date occurrence_display_date,o.event_time occurrence_time,o.title occurrence_title,o.body occurrence_body,o.id occurrence_id,o.cancelled FROM event_occurrences o JOIN events e ON e.id=o.event_id WHERE o.event_date>=? AND o.event_date<? AND o.cancelled=0").bind(first,end).all();
+  for(const o of moved.results){
+    if(out.some(x=>x.id===o.id&&x.recurrence_date===o.occurrence_date))continue;
+    out.push({...o,event_date:o.occurrence_display_date,event_time:o.occurrence_time??o.event_time,title:o.occurrence_title||o.title,body:o.occurrence_body??o.body,recurrence_date:o.occurrence_date});
+  }
   return reply({items:out.sort((a,b)=>a.event_date.localeCompare(b.event_date)||String(a.event_time||'').localeCompare(String(b.event_time||'')))});
 });
 R('PATCH','/api/events/:id/occurrences/:date',{perm:'events.manage'},async c=>{
