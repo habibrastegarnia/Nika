@@ -3,7 +3,7 @@ import { api, setHooks } from './api.js';
 import { S, can, canAny, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
-import * as P from './pages.js?v=4';
+import * as P from './pages.js?v=5';
 import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=16';
 
 let managerMode = false;
