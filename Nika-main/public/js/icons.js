@@ -45,6 +45,8 @@ const ICONS = Object.freeze({
   'arrow-right': `<path d="M5 12h14m-7-7 7 7-7 7"/>`,
   'chevron-left': `<path d="m15 18-6-6 6-6"/>`,
   'chevron-right': `<path d="m9 18 6-6-6-6"/>`,
+  sun: `<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-2.93 1.41-1.41M17.66 6.34l1.41-1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>`,
+  moon: `<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>`,
   x: `<path d="M18 6 6 18M6 6l12 12"/>`
 });
 
