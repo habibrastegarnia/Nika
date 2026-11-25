@@ -390,13 +390,14 @@ async function expenseRequestsTab() {
     if (selected.length > 4) { filePreparationError = new Error('حداکثر چهار تصویر قابل ارسال است'); fileInput.value = ''; fileStatus.textContent = filePreparationError.message; return; }
     if (!selected.length) { fileStatus.textContent = 'تصویری انتخاب نشده است.'; return; }
     fileStatus.textContent = 'در حال کاهش حجم و آماده‌سازی تصاویر در همین دستگاه…';
+    fileInput.disabled = true;
     filePreparation = Promise.all(selected.map(toDocumentImage)).then(files => {
      preparedFiles = files;
      const total = files.reduce((sum, f) => sum + f.size, 0);
      fileStatus.textContent = `${files.length} تصویر آماده شد؛ حجم مجموع نسخه‌های فشرده: ${Math.round(total / 1024)} کیلوبایت.`;
     }).catch(error => {
      filePreparationError = error; fileInput.value = ''; fileStatus.textContent = error.message;
-    });
+    }).finally(() => { fileInput.disabled = false; });
    });
    const updateBalance = () => { const f = funds.find(x => x.fund_id === fundSelect.value); balanceLabel.textContent = f ? `موجودی فعلی ${f.title}: ${toman(f.balance)}` : ''; };
    fundSelect.onchange = updateBalance; updateBalance();
@@ -449,10 +450,11 @@ async function editExpenseRequest(q) {
   if (selected.length > 4) { editPreparationError = new Error('حداکثر چهار تصویر قابل ارسال است'); editInput.value = ''; editStatus.textContent = editPreparationError.message; return; }
   if (!selected.length) { editStatus.textContent = 'تصویر جدیدی انتخاب نشده است.'; return; }
   editStatus.textContent = 'در حال کاهش حجم و آماده‌سازی تصاویر در همین دستگاه…';
+  editInput.disabled = true;
   editPreparation = Promise.all(selected.map(toDocumentImage)).then(result => {
    editPreparedFiles = result;
    editStatus.textContent = `${result.length} تصویر آماده شد؛ حجم مجموع نسخه‌های فشرده: ${Math.round(result.reduce((sum, f) => sum + f.size, 0) / 1024)} کیلوبایت.`;
-  }).catch(error => { editPreparationError = error; editInput.value = ''; editStatus.textContent = error.message; });
+  }).catch(error => { editPreparationError = error; editInput.value = ''; editStatus.textContent = error.message; }).finally(() => { editInput.disabled = false; });
  });
  onSubmit($('form',modal), async d => {
   await editPreparation;
