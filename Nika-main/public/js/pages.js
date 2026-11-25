@@ -76,7 +76,15 @@ export async function loadHome() {
 }
 
 // ====================== مقررات و مصوبات ======================
-const ICONS = ['⌂', '◷', '♻', '▣', '☂', '✦'];
+const lineIcon = d => html`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${raw(d)}"/></svg>`;
+const ICONS = [
+  lineIcon('M3 10.5 12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6'),
+  lineIcon('M12 3v9l6 3M21 12a9 9 0 1 1-9-9'),
+  lineIcon('M7 7h10l-2.5-2.5M17 17H7l2.5 2.5M19 7a8 8 0 0 1 1 10M5 17A8 8 0 0 1 4 7'),
+  lineIcon('M5 4h14v16H5zM8 8h8M8 12h8M8 16h5'),
+  lineIcon('M12 3 4 7v5c0 5 3.5 8 8 9 4.5-1 8-4 8-9V7zM9 12l2 2 4-4'),
+  lineIcon('M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4')
+];
 export async function rulesPage() {
   const { items } = await api('/rules');
   route('خانه', 'مقررات ساختمان', 'قوانین و ضوابط مصوب برای همه‌ی ساکنان', html`<div class="page-list">${items.length ? items.map((r, i) => html`<div class="page-card"><div class="page-row" style="background:none;border:0;padding:0"><div class="page-row-icon">${ICONS[i % ICONS.length]}</div><div class="page-row-main"><strong>${r.title}</strong><p>${r.body}</p></div></div></div>`) : html`<div class="page-card"><div class="page-empty">هنوز مقرراتی ثبت نشده است.</div></div>`}</div>`);
@@ -176,7 +184,7 @@ export function composePage(kind = 'request', category = 'عمومی', subject =
 }
 
 // ====================== مالی ======================
-const txRow = (t, mine) => html`<div class="page-row"><div class="page-row-icon">${t.kind === 'payment' ? '↗' : t.kind === 'expense' ? '↘' : '◈'}</div><div class="page-row-main"><strong>${t.title}</strong><small>${KIND_FA[t.kind]}${t.period ? ' · ' + (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) : ''} · ${fdate(t.created_at)}${t.reference ? ' · پیگیری ' + t.reference : ''}${t.unit_number && !mine ? ' · واحد ' + t.unit_number : ''}</small>${t.status === 'rejected' && t.note ? html`<small style="color:#ee9bae">دلیل رد: ${t.note}</small>` : ''}</div><div style="text-align:left"><div class="page-row-tail" style="color:#e6edf9">${toman(t.amount)}</div>${chip(TX_STATUS[t.status] || [t.status, ''])}${mine && t.status === 'pending' && t.created_by === S.user.id ? html`<div><button class="page-btn sm secondary" data-cancel="${t.id}" style="margin-top:5px">لغو</button></div>` : ''}</div></div>`;
+const txRow = (t, mine) => html`<div class="page-row"><div class="page-row-icon">${lineIcon(t.kind === 'payment' ? 'M7 17 17 7M8 7h9v9' : t.kind === 'expense' ? 'M7 7 17 17M8 17h9V8' : 'M12 3 21 12 12 21 3 12z')}</div><div class="page-row-main"><strong>${t.title}</strong><small>${KIND_FA[t.kind]}${t.period ? ' · ' + (t.fund_id === 'owner' ? fa(t.period) : periodLabel(t.period)) : ''} · ${fdate(t.created_at)}${t.reference ? ' · پیگیری ' + t.reference : ''}${t.unit_number && !mine ? ' · واحد ' + t.unit_number : ''}</small>${t.status === 'rejected' && t.note ? html`<small style="color:#ee9bae">دلیل رد: ${t.note}</small>` : ''}</div><div style="text-align:left"><div class="page-row-tail" style="color:#e6edf9">${toman(t.amount)}</div>${chip(TX_STATUS[t.status] || [t.status, ''])}${mine && t.status === 'pending' && t.created_by === S.user.id ? html`<div><button class="page-btn sm secondary" data-cancel="${t.id}" style="margin-top:5px">لغو</button></div>` : ''}</div></div>`;
 
 export async function financePage(fund) {
   const funds = readableFunds();
@@ -214,7 +222,7 @@ export async function messagesPage(box = 'inbox') {
   const mgr = can('messages.manage');
   const v = route('پیام‌ها', 'پیام‌ها', mgr ? 'پیام‌های مدیریت و گفتگو با ساکنان' : 'گفتگو با مدیریت ساختمان', html`<div class="seg"><button class="${box === 'inbox' ? 'on' : ''}" data-box="inbox">دریافتی</button><button class="${box === 'sent' ? 'on' : ''}" data-box="sent">ارسالی</button></div>
     <button class="page-btn full" id="msgNew" style="margin:0 0 12px">+ پیام جدید به مدیریت</button>
-    <div class="page-list">${messages.length ? messages.map((m, i) => html`<div dir="rtl" class="page-row clickable nika-message-row tone-${m.tone || 'info'} ${box === 'inbox' && !m.read_at ? 'unread' : ''}" data-i="${i}"><div class="page-row-icon">✉</div><div class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? 'به: ' + (m.recipient_name || 'مدیریت') : 'از: ' + m.sender_name + (m.sender_unit ? ' (واحد ' + m.sender_unit + ')' : '')} · ${fdt(m.created_at)}</small></div></div>`) : html`<div class="page-card"><div class="page-empty">پیامی وجود ندارد.</div></div>`}</div>`);
+    <div class="page-list">${messages.length ? messages.map((m, i) => html`<div dir="rtl" class="page-row clickable nika-message-row tone-${m.tone || 'info'} ${box === 'inbox' && !m.read_at ? 'unread' : ''}" data-i="${i}"><div class="page-row-icon">${lineIcon("M3 5h18v14H3zM3 6l9 7 9-7")}</div><div class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? 'به: ' + (m.recipient_name || 'مدیریت') : 'از: ' + m.sender_name + (m.sender_unit ? ' (واحد ' + m.sender_unit + ')' : '')} · ${fdt(m.created_at)}</small></div></div>`) : html`<div class="page-card"><div class="page-empty">پیامی وجود ندارد.</div></div>`}</div>`);
   $$('[data-box]', v).forEach(b => b.onclick = () => open(() => messagesPage(b.dataset.box), { replace: true }));
   $('#msgNew', v).onclick = () => open(() => messageComposePage());
   $$('[data-i]', v).forEach(r => r.onclick = async () => {
@@ -250,8 +258,8 @@ export function profilePage() {
       <div class="profile-details">${details.map(([k, val]) => html`<div class="profile-detail"><small>${k}</small><strong>${val}</strong></div>`)}</div>
     </section>
     <div class="profile-actions">
-      <button class="page-row clickable" data-go="edit"><span class="profile-action-icon">✎</span><span class="page-row-main"><strong>ویرایش پروفایل</strong><small>اطلاعات تماس و تصویر</small></span><span class="page-row-tail">←</span></button>
-      <button class="page-row clickable" data-go="set"><span class="profile-action-icon">⚙</span><span class="page-row-main"><strong>تنظیمات و امنیت</strong><small>تغییر رمز عبور</small></span><span class="page-row-tail">←</span></button>
+      <button class="page-row clickable" data-go="edit"><span class="profile-action-icon">${lineIcon("M4 20h4l11-11a2.1 2.1 0 0 0-4-4L4 16zM13.5 6.5l4 4")}</span><span class="page-row-main"><strong>ویرایش پروفایل</strong><small>اطلاعات تماس و تصویر</small></span><span class="page-row-tail">←</span></button>
+      <button class="page-row clickable" data-go="set"><span class="profile-action-icon">${lineIcon("M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1")}</span><span class="page-row-main"><strong>تنظیمات و امنیت</strong><small>تغییر رمز عبور</small></span><span class="page-row-tail">←</span></button>
     </div>`);
   const map = { edit: editProfilePage, set: settingsPage };
   $$('[data-go]', v).forEach(r => r.onclick = () => open(map[r.dataset.go]));
