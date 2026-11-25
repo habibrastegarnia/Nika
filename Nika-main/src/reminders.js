@@ -49,7 +49,6 @@ export async function runReminders(env,now=new Date()){
  const today=pparts(now), period=String(today.y)+'-'+String(today.m).padStart(2,'0'), todayJ=period+'-'+String(today.d).padStart(2,'0');
  const monthlySettings=await env.DB.prepare('SELECT * FROM finance_settings WHERE monthly_effective_from<=? ORDER BY monthly_effective_from DESC,created_at DESC LIMIT 1').bind(todayJ).first();
  const ownerSettings=await env.DB.prepare('SELECT * FROM finance_settings WHERE owner_effective_from<=? ORDER BY owner_effective_from DESC,created_at DESC LIMIT 1').bind(todayJ).first();
- if(!monthlySettings&&!ownerSettings)return {sent:0,reason:'settings_missing'};
  const sender=await env.DB.prepare("SELECT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role='chair' AND u.active=1 LIMIT 1").first()
   || await env.DB.prepare("SELECT id FROM users WHERE account_type='staff' AND active=1 LIMIT 1").first();
  if(!sender)return {sent:0,reason:'sender_missing'};
@@ -107,6 +106,51 @@ export async function runReminders(env,now=new Date()){
      await send(env.DB,sender.id,o.id,title,body,copy[1],'owner:'+o.unit_id+':'+today.y+':'+(ostage==='late7'?'daily:'+keyDate(now):ostage));sent++;
     }
    }
+  }
+ }
+ // یادآوری رویدادهای تقویم: یک روز پیش از هر نوبت برای رئیس و مدیر اجرایی.
+ const managers=await env.DB.prepare("SELECT DISTINCT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role IN ('chair','executive') AND u.active=1").all();
+ const tomorrowDate=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1));
+ const tomorrowJ=(()=>{const p=pparts(tomorrowDate);return String(p.y)+'-'+String(p.m).padStart(2,'0')+'-'+String(p.d).padStart(2,'0');})();
+ const calendarEvents=await env.DB.prepare("SELECT id,title,event_date,event_time,recurrence,recurrence_until FROM events WHERE event_date<=? AND (recurrence='none' OR recurrence_until IS NULL OR recurrence_until>=?)").bind(tomorrowJ,tomorrowJ).all();
+ const nextJ=(date,recurrence)=>{
+  const [y,m,d]=String(date).split('-').map(Number);
+  const toDate=(yy,mm,dd)=>{const start=Date.UTC(yy+621,2,15);for(let i=0;i<370;i++){const dt=new Date(start+i*86400000),p=pparts(dt);if(p.y===yy&&p.m===mm&&p.d===dd)return dt;}return null;};
+  const fromDate=dt=>{const p=pparts(dt);return String(p.y)+'-'+String(p.m).padStart(2,'0')+'-'+String(p.d).padStart(2,'0');};
+  if(recurrence==='weekly'){const dt=toDate(y,m,d);return dt?fromDate(new Date(dt.getTime()+7*86400000)):null;}
+  let yy=y,mm=m;if(recurrence==='monthly'){mm++;if(mm===13){mm=1;yy++;}}else if(recurrence==='yearly')yy++;else return null;
+  for(let day=d;day>=28;day--)if(toDate(yy,mm,day))return String(yy)+'-'+String(mm).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+  return null;
+ };
+ for(const ev of calendarEvents.results){
+  let occurrence=ev.event_date,guard=0;
+  while(occurrence<=tomorrowJ&&guard++<5000){
+   if(occurrence===tomorrowJ){
+    const override=await env.DB.prepare('SELECT event_date,cancelled,title,event_time FROM event_occurrences WHERE event_id=? AND occurrence_date=?').bind(ev.id,occurrence).first();
+    if(!override?.cancelled){
+     const shown=override?.event_date||occurrence;
+     const title=override?.title||ev.title;
+     for(const recipient of managers){
+      await send(env.DB,sender.id,recipient.id,'یادآوری رویداد فردا: '+title,'رویداد «'+title+'» فردا در تاریخ '+shown+(override?.event_time||ev.event_time?'، ساعت '+(override?.event_time||ev.event_time):'')+' برنامه‌ریزی شده است.','info','calendar:'+ev.id+':'+occurrence+':'+recipient.id);sent++;
+     }
+    }
+    break;
+   }
+   if(ev.recurrence==='none')break;
+   const n=nextJ(occurrence,ev.recurrence);if(!n||n<=occurrence)break;occurrence=n;
+  }
+ }
+ // یادآوری پایان قرارداد، دقیقاً یک ماه پیش از تاریخ پایان؛ کلید شامل تاریخ است تا با اصلاح قرارداد، یادآوری جدید فعال شود.
+ const contracts=await env.DB.prepare("SELECT u.id,u.name,u.contract_end_date,n.unit_number FROM users u LEFT JOIN units n ON n.id=u.unit_id WHERE u.active=1 AND u.contract_end_date IS NOT NULL").all();
+ const subtractMonth=date=>{
+  const [y,m,d]=date.split('-').map(Number);let yy=y,mm=m-1;if(mm===0){mm=12;yy--;}
+  const max=mm<=6?31:mm<=11?30:29;return String(yy)+'-'+String(mm).padStart(2,'0')+'-'+String(Math.min(d,max)).padStart(2,'0');
+ };
+ for(const person of contracts.results){
+  if(subtractMonth(person.contract_end_date)!==todayJ)continue;
+  for(const recipient of managers){
+   const unit=person.unit_number?'واحد '+person.unit_number:'';
+   await send(env.DB,sender.id,recipient.id,'یادآوری پایان قرارداد '+unit,'قرارداد '+(person.name||'کاربر')+' '+unit+' در تاریخ '+person.contract_end_date+' به پایان می‌رسد. برای بررسی بدهی و بستانکاری، تسویه‌حساب و برنامه‌ریزی تحویل واحد اقدام کنید.','warning','contract-end:'+person.id+':'+person.contract_end_date+':'+recipient.id);sent++;
   }
  }
  return {sent};
