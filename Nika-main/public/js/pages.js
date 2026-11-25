@@ -154,11 +154,11 @@ export async function boardPage() {
 }
 export async function documentsPage() {
   const { items } = await api('/documents');
-  route('حساب من', 'اسناد و فرم‌ها', 'پیوند اسناد منتشرشده توسط مدیریت', html`<div class="page-list">${items.length ? items.map(d => html`<div class="page-row"><div class="page-row-icon">▤</div><div class="page-row-main"><strong>${d.title}</strong>${d.description ? html`<small>${d.description}</small>` : ''}</div><a class="page-row-tail" href="${d.url}" target="_blank" rel="noopener noreferrer">باز کردن ←</a></div>`) : html`<div class="page-card"><div class="page-empty">سندی ثبت نشده است.</div></div>`}</div>`);
+  route('حساب من', 'اسناد و فرم‌ها', 'پیوند اسناد منتشرشده توسط مدیریت', html`<div class="page-list">${items.length ? items.map(d => html`<div class="page-row"><div class="page-row-icon">${lineIcon("M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7")}</div><div class="page-row-main"><strong>${d.title}</strong>${d.description ? html`<small>${d.description}</small>` : ''}</div><a class="page-row-tail" href="${d.url}" target="_blank" rel="noopener noreferrer">باز کردن ←</a></div>`) : html`<div class="page-card"><div class="page-empty">سندی ثبت نشده است.</div></div>`}</div>`);
 }
 export function facilitiesPage() {
   const items = [['آسانسور', 'تأسیسات و تعمیرات'], ['پارکینگ', 'عمومی'], ['روشنایی مشاعات', 'تأسیسات و تعمیرات'], ['نظافت و پسماند', 'نظافت'], ['امنیت و دوربین‌ها', 'امنیت']];
-  const v = route('حساب من', 'امکانات و تأسیسات', 'برای هر مورد می‌توانید خرابی یا مشکل را گزارش دهید', html`<div class="page-list">${items.map(([n, c], i) => html`<div class="page-row clickable" data-i="${i}"><div class="page-row-icon">${ICONS[i]}</div><div class="page-row-main"><strong>${n}</strong><small>گزارش مشکل یا درخواست رسیدگی</small></div><span class="page-row-tail">گزارش ←</span></div>`)}</div>`);
+  const v = route('حساب من', 'امکانات و تأسیسات', 'برای هر مورد می‌توانید خرابی یا مشکل را گزارش دهید', html`<div class="page-list">${items.map(([n, c], i) => html`<div class="page-row clickable" data-i="${i}"><div class="page-row-icon">${ICONS[i % ICONS.length]}</div><div class="page-row-main"><strong>${n}</strong><small>گزارش مشکل یا درخواست رسیدگی</small></div><span class="page-row-tail">گزارش ←</span></div>`)}</div>`);
   $$('[data-i]', v).forEach(r => r.onclick = () => open(() => composePage('issue', items[r.dataset.i][1], items[r.dataset.i][0])));
 }
 
