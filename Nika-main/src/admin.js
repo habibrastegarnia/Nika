@@ -33,7 +33,8 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   const x = await readJson(c.request);
   const accountType = x.accountType;
   if (!['owner', 'resident', 'both', 'staff'].includes(accountType)) throw err(400, 'INVALID_INPUT', 'نوع حساب نامعتبر است');
-  const name = str(x.name, { max: 100, field: 'نام' }), phone = phoneOrFail(x.phone);
+  const name = str(x.name, { max: 100, field: 'نام' }), phone = phoneOrFail(x.phone), gender = x.gender || 'unspecified';
+  if (!['female','male','unspecified'].includes(gender)) throw err(400, 'INVALID_GENDER', 'جنسیت نامعتبر است');
   const secondaryPhone = x.secondaryPhone ? phoneOrFail(x.secondaryPhone) : null;
   const extras = validateExtras(c.user, x.roles ?? []);
   if (accountType === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'برای حساب مدیر/کارکنان حداقل یک نقش انتخاب کنید');
@@ -55,7 +56,7 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   }
   const uid = crypto.randomUUID(), initialPassword = accountType === 'staff' ? tempPassword() : phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
-    c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,secondary_phone,password_hash,password_salt,must_change_password) VALUES(?,?,?,?,?,?,?,?,1)').bind(uid, unitId, storedType, name, phone, secondaryPhone, ph, salt),
+    c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,secondary_phone,gender,password_hash,password_salt,must_change_password) VALUES(?,?,?,?,?,?,?,?,?,1)').bind(uid, unitId, storedType, name, phone, secondaryPhone, gender, ph, salt),
     ...roles.map(r => c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, r))
   ]);
   await audit(c.db, c.user.id, 'user.create', 'user', uid, { accountType, unit: x.unit || null, roles });
@@ -78,6 +79,7 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
   const self = t.id === c.user.id;
   if (self && ('roles' in x || 'active' in x)) throw err(400, 'SELF_CHANGE', 'نقش‌ها یا وضعیت حساب خودتان را نمی‌توانید تغییر دهید');
   if ('name' in x) { sets.push('name=?'); vals.push(str(x.name, { max: 100, field: 'نام' })); }
+  if ('gender' in x) { if (!['female','male','unspecified'].includes(x.gender)) throw err(400, 'INVALID_GENDER', 'جنسیت نامعتبر است'); sets.push('gender=?'); vals.push(x.gender); }
   if ('secondaryPhone' in x) { const p = x.secondaryPhone ? phoneOrFail(x.secondaryPhone) : null; sets.push('secondary_phone=?'); vals.push(p); }
   if ('phone' in x) {
     const phone = phoneOrFail(x.phone);
