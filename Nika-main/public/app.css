@@ -498,3 +498,30 @@ html[data-theme="light"] .header-action.header-logout{background:transparent!imp
 
 .theme-switch .nika-icon{width:17px;height:17px}
 .jalali-calendar-head button .nika-icon{width:16px;height:16px}
+
+/* Header alignment: the workspace switch sits on the exact horizontal center */
+.header{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 136px minmax(0,1fr);align-items:center;gap:8px}
+.header-user{grid-column:1;display:flex;align-items:center;gap:10px;min-width:0}
+.header-copy{min-width:0;flex:1}
+.header .workspace-toggle{grid-column:2;justify-self:center;position:relative;margin:0;transform:none}
+.header .header-logout{grid-column:3;justify-self:end;min-width:22px!important;width:22px!important;flex:0 0 22px!important;padding:4px 0!important}
+.header .header-logout .nika-icon{width:22px;height:22px}
+.header .header-logout span:not(.nika-icon){display:none!important}
+.header:not(.has-workspace){grid-template-columns:minmax(0,1fr) auto}
+.header:not(.has-workspace) .header-user{grid-column:1}
+.header:not(.has-workspace) .header-logout{grid-column:2}
+.avatar-button{width:46px;height:46px;flex:0 0 46px;padding:0;border:0;border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;overflow:hidden}
+.avatar-button:focus-visible{outline:2px solid #91a5f1;outline-offset:3px}
+.avatar-button img{width:100%;height:100%;display:block;object-fit:cover;border-radius:50%}
+.nika-avatar{position:relative;width:100%;height:100%;display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#435474,#29364c);border:1px solid #ffffff25;color:#cbd8f2;box-sizing:border-box}
+.nika-avatar>svg{width:65%;height:65%;stroke:currentColor;stroke-width:2.1;fill:none}
+.nika-avatar>i{position:absolute;right:-1px;bottom:-1px;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;background:#5b719e;border:1px solid #29364c;color:#fff;font-style:normal}
+.nika-avatar>i svg{width:11px;height:11px;stroke:currentColor;stroke-width:2;fill:none}
+.header-user .nika-avatar{width:46px;height:46px}
+.profile-cover .profile-avatar{width:62px;height:62px;flex:0 0 62px;border-radius:50%;border:2px solid #ffffff26;object-fit:cover}
+.profile-cover .nika-avatar{width:62px;height:62px;flex:0 0 62px}
+@media(max-width:480px){.header{grid-template-columns:minmax(0,1fr) 136px minmax(0,1fr);padding-inline:12px}.header:not(.has-workspace){grid-template-columns:minmax(0,1fr) auto}.header-user{gap:7px}.header .workspace-toggle:not(.nika-hide){display:flex!important;width:136px;height:36px;min-width:136px;flex:0 0 136px}.header .header-logout{width:22px!important;height:auto!important;min-height:0!important;flex-basis:22px!important}}
+@media(max-width:360px){.header{gap:5px}.header-user{gap:5px}.header-user .nika-avatar,.avatar-button{width:42px;height:42px;flex-basis:42px}.header-copy h1{font-size:15px}.header-copy p{font-size:10px}}
+/* Header logout: icon only, neutral and same scale as navigation icons */
+.header .header-logout{color:#c8d4ea!important}
+html[data-theme="light"] .header .header-logout{color:#52627e!important}
