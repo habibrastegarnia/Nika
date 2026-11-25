@@ -495,3 +495,6 @@ html[data-theme="light"] .header-action.header-logout{background:transparent!imp
 
 /* Keep Lucide's approved weight consistent across every icon container */
 .cat-icon svg.nika-icon,.nav-item svg.nika-icon,.page-row-icon svg.nika-icon,.profile-action-icon svg.nika-icon,.summary-icon svg.nika-icon,.header-logout svg.nika-icon,.page-back svg.nika-icon,.close svg.nika-icon,.slide-arrow svg.nika-icon{stroke-width:2.1}
+
+.theme-switch .nika-icon{width:17px;height:17px}
+.jalali-calendar-head button .nika-icon{width:16px;height:16px}
