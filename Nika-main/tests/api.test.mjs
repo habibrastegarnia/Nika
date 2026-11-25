@@ -242,6 +242,11 @@ test('درخواست پرداخت: ثبت، تأیید دومرحله‌ای، �
   assert.equal((await fin.get('/api/transactions?fund=monthly&scope=all&status=pending')).status, 200);
   assert.equal((await res1.get('/api/transactions?fund=monthly&scope=all')).status, 403);
   assert.equal(typeof (await fin.get('/api/summary')).data.pendingApprovals, 'number');
+  const noImage = await exec.post('/api/expense-requests', {
+    fund: 'monthly', amount: 1000, documentTitle: 'هزینه بدون تصویر',
+    documentDate: '1405-09-02', description: 'ثبت درخواست بدون پیوست', files: []
+  });
+  assert.equal(noImage.status, 201, 'تصویر فاکتور اختیاری است');
 });
 
 test('پشتیبان‌گیری آفلاین: صحت فایل، حذف تصاویر و حفظ سوابق آنلاین', async () => {
