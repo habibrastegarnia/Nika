@@ -24,6 +24,3 @@ ALLOW_SELF_APPROVAL = "false"
 [observability]
 enabled = true
 
-[[r2_buckets]]
-binding = "FILES"
-bucket_name = "nika-expense-documents"
