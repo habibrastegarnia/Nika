@@ -48,6 +48,7 @@ function setupNav() {
   const hasAdminWorkspace = isManager() && adminAvailable();
   const workspaceToggle = $('#workspaceToggle');
   workspaceToggle.classList.toggle('nika-hide', !hasAdminWorkspace);
+  $('.header').classList.toggle('has-workspace', hasAdminWorkspace);
   workspaceToggle.classList.remove('is-admin');
   workspaceToggle.onclick = () => {
     managerMode = !managerMode;
@@ -104,6 +105,7 @@ function initNav() {
     else if (n === 'پیام‌ها') open(() => P.messagesPage(), { root: true });
   }; });
   $('#headerLogout').onclick = logout;
+  $('#hdrAvatar').onclick = () => open(P.profilePage, { root: true });
   $$('.category[data-menu]').forEach(b => b.onclick = () => {
     if (managerMode) { hideAdmin(); $('#pageView').classList.remove('nika-dashboard-hidden'); }
     const m = b.dataset.menu;
