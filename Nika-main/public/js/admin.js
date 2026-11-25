@@ -30,6 +30,7 @@ function updateWorkspaceToggle(manager) {
   toggle.querySelector('.workspace-label-right').textContent = 'مدیر';
 }
 function showManagerShortcuts(show) {
+  $('.phone').classList.toggle('is-manager-home', show);
   $('.categories').classList.toggle('is-manager', show);
   const roles = [...(S.user?.roles || []), ...(S.user?.delegatedRoles || [])];
   const technicalOnly = roles.includes('system_admin') && !roles.some(r => ['chair', 'finance', 'board', 'executive'].includes(r));
