@@ -40,7 +40,7 @@ function showJalaliPicker(display) {
       const active = year===selected.y && month===selected.m && day===selected.d;
       cells += `<button type="button" data-jcal-day="${day}" class="${active?'selected':''}">${fa(day)}</button>`;
     }
-    modal.innerHTML = `<div class="jalali-calendar-head"><button type="button" data-jcal-prev aria-label="ماه قبل">›</button><strong>${JM[month-1]} ${fa(year)}</strong><button type="button" data-jcal-next aria-label="ماه بعد">‹</button></div><div class="jalali-calendar-grid">${weekdays.map(x=>`<span>${x}</span>`).join('')}${cells}</div>`;
+    modal.innerHTML = `<div class="jalali-calendar-head"><button type="button" data-jcal-prev aria-label="ماه قبل">${iconMarkup('chevron-right')}</button><strong>${JM[month-1]} ${fa(year)}</strong><button type="button" data-jcal-next aria-label="ماه بعد">${iconMarkup('chevron-left')}</button></div><div class="jalali-calendar-grid">${weekdays.map(x=>`<span>${x}</span>`).join('')}${cells}</div>`;
   };
   modal.onclick = e => {
     const b=e.target.closest('button');
