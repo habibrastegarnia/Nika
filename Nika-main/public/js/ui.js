@@ -1,5 +1,6 @@
 // عناصر مشترک رابط: اعلان، پنجره، مسیریابی صفحه‌ها، ساخت فرم
-import { html, esc, raw, $, $$, normDigits, JM, fa, jToday, monthStart, monthLen } from './util.js';
+import { html, esc, raw, $, $, normDigits, JM, fa, jToday, monthStart, monthLen } from './util.js';
+import { iconMarkup } from './icons.js';
 
 // ---------- اعلان و پنجره ----------
 let toastTimer;
@@ -87,7 +88,7 @@ export function showSecret(title, note, secret) {
 }
 
 // ---------- مسیریابی صفحه‌های داخلی ----------
-const BACK = html`<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>`;
+const BACK = raw(iconMarkup('chevron-right'));
 let hist = [];
 const homeParts = () => $$('.phone > header, .phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice');
 export function setNav(name) { $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name)); }
