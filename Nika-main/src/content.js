@@ -2,6 +2,7 @@
 import { R } from './router.js';
 import { err, reply, readJson, str, optStr, int, jdate, audit } from './lib.js';
 import { can } from './perms.js';
+import { OFFICIAL_CALENDAR } from './holidays.js';
 
 // ---------- اطلاعیه‌ها ----------
 const NOTICE_KINDS = ['اطلاعیه', 'جلسه', 'عمومی', 'فوری'];
@@ -154,7 +155,8 @@ R('GET','/api/events',async c=>{
     if(out.some(x=>x.id===o.id&&x.recurrence_date===o.occurrence_date))continue;
     out.push({...o,event_date:o.occurrence_display_date,event_time:o.occurrence_time??o.event_time,title:o.occurrence_title||o.title,body:o.occurrence_body??o.body,recurrence_date:o.occurrence_date});
   }
-  return reply({items:out.sort((a,b)=>a.event_date.localeCompare(b.event_date)||String(a.event_time||'').localeCompare(String(b.event_time||'')))});
+  const holidays=OFFICIAL_CALENDAR.filter(h=>h.date>=first&&h.date<end).map(h=>({id:'holiday:'+h.date,title:h.title,event_date:h.date,event_time:null,body:h.official?'تعطیل رسمی':'مناسبت تقویم رسمی',recurrence:'none',recurrence_date:h.date,isHoliday:true,isOfficialHoliday:h.official}));
+  return reply({items:[...out,...holidays].sort((a,b)=>a.event_date.localeCompare(b.event_date)||String(a.event_time||'').localeCompare(String(b.event_time||'')))});
 });
 R('PATCH','/api/events/:id/occurrences/:date',{perm:'events.manage'},async c=>{
   const e=await c.db.prepare('SELECT id FROM events WHERE id=?').bind(c.params.id).first();if(!e)throw err(404,'NOT_FOUND','رویداد پیدا نشد');
