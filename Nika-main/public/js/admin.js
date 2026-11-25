@@ -552,6 +552,7 @@ async function archiveTab() {
     <small id="backupSummary">تصاویر آماده بایگانی: ${fa(status.pendingImages)} · آخرین پشتیبان تأییدشده: ${status.lastConfirmedAt ? fdt(status.lastConfirmedAt) : 'هنوز تهیه نشده است'}</small>
    </div>
    <div class="nika-footnote">فایل را روی رایانه و ترجیحاً یک حافظه جداگانه ذخیره کنید. پس از دانلود، فایل را نگه دارید و فقط در صورت اطمینان از ذخیره‌شدن آن، پاک‌سازی تصاویر آنلاین را تأیید کنید. تمام سوابق متنی و مالی در سامانه باقی می‌مانند.</div>
+   <div class="nika-actions"><a class="page-btn sm secondary" href="/offline-archive.html" download>دانلود برنامه دسکتاپ آفلاین</a></div>
    <div class="nika-actions"><button class="nika-primary" type="button" data-backup-download>تهیه و دانلود فایل پشتیبان</button>
     <button class="nika-secondary" type="button" data-backup-confirm hidden>فایل ذخیره شد؛ تأیید و پاک‌سازی تصاویر</button></div>
    <p class="nika-footnote" id="backupMessage">تهیه فایل به‌صورت دستی انجام می‌شود تا بتوانید نسخه آن را روی رایانه خود نگهداری کنید.</p>
