@@ -4,9 +4,7 @@ import worker from '../src/index.js';
 import { createDB } from './d1-shim.mjs';
 
 const BASE = 'https://nika.test';
-const storedFiles = new Map();
-const FILES = { async put(key, value) { storedFiles.set(key, new Uint8Array(value)); }, async get(key) { const value = storedFiles.get(key); return value ? { body: value } : null; }, async delete(key) { storedFiles.delete(key); } };
-const env = { FILES, DB: createDB(), JWT_SECRET: 'x'.repeat(40), BOOTSTRAP_KEY: 'setup-key-123', ENVIRONMENT: 'production', ALLOW_SELF_APPROVAL: 'false', ASSETS: { fetch: () => new Response('asset') } };
+const env = { DB: createDB(), JWT_SECRET: 'x'.repeat(40), BOOTSTRAP_KEY: 'setup-key-123', ENVIRONMENT: 'production', ALLOW_SELF_APPROVAL: 'false', ASSETS: { fetch: () => new Response('asset') } };
 
 class Client {
   constructor(label) { this.label = label; this.cookie = ''; this.ip = '1.1.1.' + Math.floor(Math.random() * 250); }
@@ -244,6 +242,49 @@ test('درخواست پرداخت: ثبت، تأیید دومرحله‌ای، �
   assert.equal((await fin.get('/api/transactions?fund=monthly&scope=all&status=pending')).status, 200);
   assert.equal((await res1.get('/api/transactions?fund=monthly&scope=all')).status, 403);
   assert.equal(typeof (await fin.get('/api/summary')).data.pendingApprovals, 'number');
+});
+
+test('پشتیبان‌گیری آفلاین: صحت فایل، حذف تصاویر و حفظ سوابق آنلاین', async () => {
+  assert.equal((await exec.get('/api/backups/status')).status, 403, 'مدیر اجرایی اجازه بایگانی کامل ندارد');
+  assert.equal((await fin.get('/api/backups/export')).status, 403, 'مدیر مالی اجازه بایگانی کامل ندارد');
+  const status = await chair.get('/api/backups/status');
+  assert.equal(status.status, 200);
+  assert.equal(status.data.pendingImages, 2);
+
+  const exported = await chair.get('/api/backups/export');
+  assert.equal(exported.status, 200);
+  const raw = await exported.res.text();
+  const archive = JSON.parse(raw);
+  assert.equal(archive.format, 'nika-offline-archive');
+  assert.ok(archive.tables.transactions.length > 0);
+  assert.ok(archive.tables.expense_requests.length >= 2);
+  assert.ok(archive.tables.expense_request_files.some(f => f.data_base64));
+  assert.ok(archive.tables.users.every(u => !('password_hash' in u) && !('password_salt' in u)));
+  const backupId = exported.res.headers.get('X-Nika-Backup-Id');
+  const checksum = exported.res.headers.get('X-Nika-Backup-SHA256');
+  assert.ok(backupId && /^[a-f0-9]{64}$/.test(checksum));
+
+  const firstFile = archive.tables.expense_request_files.find(f => f.data_base64);
+  const details = await chair.get(`/api/expense-requests/${firstFile.request_id}`);
+  assert.equal(details.status, 200);
+  assert.ok(details.data.files.some(f => f.id === firstFile.id && f.has_data));
+
+  assert.equal((await chair.post(`/api/backups/${backupId}/confirm`, { checksum: '0'.repeat(64) })).status, 400);
+  assert.equal((await chair.get('/api/backups/status')).data.pendingImages, 2, 'با checksum نادرست هیچ تصویری پاک نمی‌شود');
+
+  const beforeRequests = (await chair.get('/api/expense-requests?scope=final')).data.requests.length;
+  const confirmed = await chair.post(`/api/backups/${backupId}/confirm`, { checksum });
+  assert.equal(confirmed.status, 200, JSON.stringify(confirmed.data));
+  assert.equal(confirmed.data.archivedImages, 2);
+  assert.equal(confirmed.data.retainedRecords, true);
+  assert.equal((await chair.get('/api/backups/status')).data.pendingImages, 0);
+
+  const archivedDetails = await chair.get(`/api/expense-requests/${firstFile.request_id}`);
+  const archivedFile = archivedDetails.data.files.find(f => f.id === firstFile.id);
+  assert.equal(archivedFile.has_data, false);
+  assert.equal((await chair.get(archivedFile.url || `/api/expense-requests/${firstFile.request_id}/files/${firstFile.id}`)).status, 410);
+  assert.equal((await chair.get('/api/expense-requests?scope=final')).data.requests.length, beforeRequests);
+  assert.equal((await chair.post(`/api/backups/${backupId}/confirm`, { checksum })).status, 409);
 });
 
 test('اطلاعیه، درخواست، پیام و اتصال بین آن‌ها', async () => {
