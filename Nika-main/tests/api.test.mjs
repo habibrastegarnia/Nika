@@ -264,6 +264,7 @@ test('پشتیبان‌گیری آفلاین: صحت فایل، حذف تصاو�
   assert.ok(archive.tables.transactions.length > 0);
   assert.ok(archive.tables.expense_requests.length >= 2);
   assert.ok(archive.tables.expense_request_files.some(f => f.data_base64));
+  assert.ok(Array.isArray(archive.tables.backup_runs), 'سوابق اجرای پشتیبان‌گیری نیز در آرشیو نگهداری می‌شوند');
   assert.ok(archive.tables.users.every(u => !('password_hash' in u) && !('password_salt' in u)));
   const backupId = exported.res.headers.get('X-Nika-Backup-Id');
   const checksum = exported.res.headers.get('X-Nika-Backup-SHA256');
