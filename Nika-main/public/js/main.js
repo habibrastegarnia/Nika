@@ -88,7 +88,6 @@ function setupNav() {
     ...(can('units.read') ? ['units'] : []),
     ...(can('audit.read') ? ['reports'] : []),
     ...(can('backup.manage') ? ['archive'] : []),
-    ...['calendar', 'resolutions', 'rules']
   ];
   order.forEach(key => { const b = shortcutByKey.get(key); if (b) shortcutHost.appendChild(b); });
   $('#admNavBtn')?.remove();
