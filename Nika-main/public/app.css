@@ -473,3 +473,22 @@ html[data-theme="light"] .jalali-calendar-grid button.selected{background:#657bb
 .page-row-icon svg,.profile-action-icon svg,.summary-icon svg{width:20px;height:20px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .page-row-icon{color:#92a7ed}
 .profile-action-icon{display:grid;place-items:center}
+
+
+/* Lucide icon system — local SVG registry, consistent 2px outline */
+.nika-icon{width:22px;height:22px;display:block;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cat-icon .nika-icon{width:25px;height:25px}
+.nav-item .nika-icon{width:21px;height:21px}
+.page-row-icon .nika-icon,.profile-action-icon .nika-icon,.summary-icon .nika-icon{width:20px;height:20px}
+.page-back .nika-icon,.close .nika-icon,.slide-arrow .nika-icon{width:18px;height:18px}
+.header-action.header-logout{width:auto!important;height:auto!important;min-height:0!important;flex:0 0 auto!important;padding:5px 0!important;display:inline-flex!important;flex-direction:row!important;align-items:center;justify-content:center;gap:6px;border:0!important;border-radius:0!important;background:transparent!important;color:#c8d4ea!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition:color .18s ease!important}
+.header-action.header-logout .nika-icon{width:19px;height:19px}
+.header-action.header-logout span{font:600 10px Vazirmatn,Tahoma,sans-serif;line-height:1;color:inherit}
+.header-action.header-logout:hover,.header-action.header-logout:focus-visible,.header-action.header-logout:active{background:transparent!important;box-shadow:none!important;outline:none}
+html[data-theme="light"] .header-action.header-logout{background:transparent!important;border:0!important;box-shadow:none!important;color:#52627e!important}
+.header .header-logout{width:auto!important;height:auto!important;min-height:0!important;flex:0 0 auto!important}
+.nika-actions .logout-action{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.nika-actions .logout-action .nika-icon{width:17px;height:17px}
+.profile-actions .profile-logout{background:#253148;border-color:#ffffff10}
+.profile-logout .profile-action-icon{background:#3a4967;color:#c7d6f3}
+.profile-logout .page-row-main strong,.profile-logout .page-row-tail{color:inherit}
