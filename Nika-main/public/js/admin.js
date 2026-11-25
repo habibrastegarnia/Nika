@@ -110,6 +110,7 @@ async function usersTab() {
   const canAssignRoles = can('roles.assign');
   const createCard = canManageUsers ? card('حساب جدید', html`<form id="uNew" novalidate><div class="nika-user-unit-row"><div class="nika-user-unit-select">${fields([{ name: 'unit', label: 'انتخاب واحد', type: 'select', value: '101', options: UNIT_OPTIONS }], 'nika')}</div><div class="nika-user-unit-checks">${fields([{ name: 'owner', label: 'مالک', type: 'checkbox', value: false }, { name: 'resident', label: 'ساکن', type: 'checkbox', value: false }], 'nika')}</div></div>${fields([
       { name: 'name', label: 'نام و نام خانوادگی', required: true },
+      { name: 'gender', label: 'جنسیت', type: 'select', value: 'unspecified', options: [['female','خانم'],['male','آقا'],['unspecified','تمایلی به اعلام ندارم']] },
       { name: 'phone', label: 'شماره تلفن همراه', required: true, inputmode: 'tel', dir: 'ltr' },
       { name: 'secondaryPhone', label: 'شماره تماس پشتیبان', inputmode: 'tel', dir: 'ltr', hint: 'اختیاری؛ برای تماس اضطراری یا مواقع عدم دسترسی به شماره اصلی.' },
       ...(opts.length ? [{ name: 'roles', label: 'نقش‌های انتخابی', type: 'checks', options: opts, value: [] }] : [])], 'nika')}
@@ -124,7 +125,7 @@ async function usersTab() {
         const accountType = d.owner && d.resident ? 'both' : (d.owner ? 'owner' : (d.resident ? 'resident' : 'staff'));
         if (accountType === 'staff' && !canAssignRoles) throw new Error('ساخت حساب مدیریتی و تعیین نقش فقط در اختیار رئیس هیئت‌مدیره است.');
         if (accountType === 'staff' && !(d.roles || []).length) throw new Error('برای حساب مستقل، حداقل یک نقش انتخاب کنید.');
-        const body = { unit: d.unit, name: d.name, phone: d.phone, secondaryPhone: d.secondaryPhone, accountType, roles: d.roles || [] };
+        const body = { unit: d.unit, name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone, accountType, roles: d.roles || [] };
         if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران ایجاد می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
         const r = await api('/admin/users', { method: 'POST', body });
         if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
@@ -156,12 +157,12 @@ const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.
 function editUser(u, opts) {
   const baseOptions = u.account_type === 'staff' ? [] : [['owner', 'مالک'], ['resident', 'ساکن']].filter(([r]) => !u.roles.includes(r));
   const m = openModal('ویرایش حساب', html`<form class="nika-form" novalidate>${fields([
-    { name: 'name', label: 'نام و نام خانوادگی', value: u.name, required: true }, { name: 'phone', label: 'شماره تلفن همراه', value: u.phone, dir: 'ltr', inputmode: 'tel' }, { name: 'secondaryPhone', label: 'شماره تماس پشتیبان', value: u.secondary_phone || '', dir: 'ltr', inputmode: 'tel' },
+    { name: 'name', label: 'نام و نام خانوادگی', value: u.name, required: true }, { name: 'gender', label: 'جنسیت', type: 'select', value: u.gender || 'unspecified', options: [['female','خانم'],['male','آقا'],['unspecified','تمایلی به اعلام ندارم']] }, { name: 'phone', label: 'شماره تلفن همراه', value: u.phone, dir: 'ltr', inputmode: 'tel' }, { name: 'secondaryPhone', label: 'شماره تماس پشتیبان', value: u.secondary_phone || '', dir: 'ltr', inputmode: 'tel' },
     ...(baseOptions.length ? [{ name: 'addBaseRoles', label: 'افزودن نقش پایه به همین حساب', type: 'checks', options: baseOptions, value: [] }] : []),
     ...(opts.length ? [{ name: 'roles', label: 'نقش‌های مدیریتی', type: 'checks', options: opts, value: u.roles }] : []),
     { name: 'active', label: 'حساب فعال باشد', type: 'checkbox', value: u.active }], 'nika')}<div class="nika-actions"><button class="nika-primary" type="submit">ذخیره</button></div></form>`);
   onSubmit($('form', m), async d => {
-    const body = { name: d.name, phone: d.phone, secondaryPhone: d.secondaryPhone };
+    const body = { name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone };
     if (baseOptions.length && d.addBaseRoles?.length) body.addBaseRoles = d.addBaseRoles;
     if (opts.length) body.roles = d.roles; if (d.active !== u.active) body.active = d.active;
     if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این اطلاعات را به‌جای مسئول اصلی مدیریت کاربران تغییر می‌دهید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
