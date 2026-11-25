@@ -1,10 +1,11 @@
 // راه‌اندازی برنامه: ورود، تغییر رمز اجباری، ناوبری اصلی، اسلایدر خانه
 import { api, setHooks } from './api.js';
 import { S, can, canAny, isManager } from './state.js';
-import { $, $$, normDigits, fa } from './util.js';
+import { $, $, normDigits, fa } from './util.js';
+import { iconMarkup, applyIcons } from './icons.js';
 import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
-import * as P from './pages.js?v=5';
-import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=17';
+import * as P from './pages.js?v=6';
+import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=18';
 
 let managerMode = false;
 const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList.toggle('nika-hide', s !== id); $('.phone').classList.toggle('nika-hide', id !== '#app'); $('#nikaAdmin').classList.add('nika-hide'); };
@@ -63,18 +64,18 @@ function setupNav() {
   const shortcutHost = $('.categories');
   $$('.category[data-admin-tab]', shortcutHost).forEach(el => el.remove());
   const adminShortcuts = [
-    ['settings', 'تنظیمات', canAny(['finance.settings.read', 'finance.settings']), '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/>'],
-    ['finance', 'مالی', canAny(['finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']), '<rect x="3" y="6" width="26" height="20" rx="3"/><path d="M3 12h26M8 19h7"/>'],
-    ['users', 'کاربران', can('users.read'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>'],
-    ['units', 'واحدها', can('units.read'), '<path d="M4 27V5h24v22"/><path d="M9 10h4v4H9zM19 10h4v4h-4zM9 19h4v4H9zM19 19h4v4h-4z"/>'],
-    ['reports', 'گزارش عملکرد', can('audit.read'), '<path d="M5 27V5M5 27h23M10 21v-6M16 21V9M22 21v-9"/>'],
-    ['archive', 'پشتیبان‌گیری', can('backup.manage'), '<path d="M4 8h24v19H4zM3 4h26v4H3zM12 15h8M16 11v8"/>']
+    ['settings', 'تنظیمات', canAny(['finance.settings.read', 'finance.settings']), 'sliders-horizontal'],
+    ['finance', 'مالی', canAny(['finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports']), 'chart-no-axes-combined'],
+    ['users', 'کاربران', can('users.read'), 'users'],
+    ['units', 'واحدها', can('units.read'), 'building-2'],
+    ['reports', 'گزارش عملکرد', can('audit.read'), 'chart-no-axes-column-increasing'],
+    ['archive', 'پشتیبان‌گیری', can('backup.manage'), 'database-backup']
   ];
-  for (const [key, label, allowed, path] of adminShortcuts) {
+  for (const [key, label, allowed, iconName] of adminShortcuts) {
     if (!allowed) continue;
     const b = document.createElement('button');
     b.className = 'category nika-manager-shortcut nika-hide'; b.dataset.adminTab = key;
-    b.innerHTML = '<span class="cat-icon"><svg viewBox="0 0 32 32">' + path + '</svg></span><span>' + label + '</span>';
+    b.innerHTML = '<span class="cat-icon">' + iconMarkup(iconName) + '</span><span>' + label + '</span>';
     b.onclick = () => showAdmin(key);
     shortcutHost.appendChild(b);
   }
@@ -133,6 +134,7 @@ function applySavedTheme() {
 }
 async function boot() {
   applySavedTheme();
+  applyIcons(document);
   initModal(); initRouter(); initGate(); initNav(); initCarousel();
   setHooks({
     authLost: () => { if (S.user) { S.user = null; resetRouter(); show('#nikaGate'); $('#loginError').textContent = 'نشست شما پایان یافت؛ دوباره وارد شوید.'; } },
