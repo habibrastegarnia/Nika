@@ -122,11 +122,12 @@ const jalaliToDate = (y,m,d) => {
   return null;
 };
 const dateToJalali = dt => { const p=new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(dt),o=Object.fromEntries(p.map(x=>[x.type,x.value])); return String(+o.year)+'-'+String(+o.month).padStart(2,'0')+'-'+String(+o.day).padStart(2,'0'); };
+const jalaliMonthDay = (y,m,d) => { for(let day=d;day>=28;day--){if(jalaliToDate(y,m,day))return day;} return 28; };
 const nextOccurrence = (date, recurrence) => {
   const {y,m,d}=jalaliParts(date);
   if(recurrence==='weekly'){const dt=jalaliToDate(y,m,d);if(!dt)return null;return dateToJalali(new Date(dt.getTime()+7*86400000));}
-  if(recurrence==='monthly'){const nm=m===12?1:m+1,ny=m===12?y+1:y,md=nm<=6?31:nm<=11?30:30;return String(ny)+'-'+String(nm).padStart(2,'0')+'-'+String(Math.min(d,md)).padStart(2,'0');}
-  if(recurrence==='yearly'){const ny=y+1,md=m<=6?31:m<=11?30:29;return String(ny)+'-'+String(m).padStart(2,'0')+'-'+String(Math.min(d,md)).padStart(2,'0');}
+  if(recurrence==='monthly'){const nm=m===12?1:m+1,ny=m===12?y+1:y,day=jalaliMonthDay(ny,nm,d);return String(ny)+'-'+String(nm).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
+  if(recurrence==='yearly'){const ny=y+1,day=jalaliMonthDay(ny,m,d);return String(ny)+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
   return null;
 };
 R('GET','/api/events',async c=>{
