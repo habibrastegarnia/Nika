@@ -12,7 +12,7 @@ R('GET', '/api/public/user-submissions/export', { perm: 'users.read' }, async c 
   const headers = ['شماره واحد','نوع کاربر','نام و نام خانوادگی','جنسیت','شماره تماس','شماره تماس پشتیبان','تاریخ شروع قرارداد','تاریخ اتمام قرارداد'];
   const safe = value => {
     let text = String(value ?? '');
-    if (/^[=+@\\-\\t\\r]/.test(text)) text = "'" + text;
+    if (/^[=+@\-\t\r]/.test(text)) text = "'" + text;
     return '"' + text.replace(/"/g, '""') + '"';
   };
   const rows = (result.results || []).map(row => [
@@ -25,7 +25,7 @@ R('GET', '/api/public/user-submissions/export', { perm: 'users.read' }, async c 
     row.contract_start_date,
     row.contract_end_date
   ]);
-  const csv = '\\uFEFF' + [headers, ...rows].map(row => row.map(safe).join(',')).join('\\r\\n');
+  const csv = '\uFEFF' + [headers, ...rows].map(row => row.map(safe).join(',')).join('\r\n');
   return new Response(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
