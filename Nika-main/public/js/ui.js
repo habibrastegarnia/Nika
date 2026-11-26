@@ -170,7 +170,8 @@ export function readForm(form) {
 }
 // ثبت فرم با نمایش خطا زیر فرم و جلوگیری از ارسال دوباره
 export function onSubmit(form, fn) {
-  $$('input[name="amount"], input[data-money="true"]', form).forEach(input => { formatMoneyInput(input); input.addEventListener('input', () => formatMoneyInput(input)); });
+  if (!form) { console.warn('Nika: فرم موردنظر پیدا نشد؛ ثبت رویداد ارسال فرم رد شد.'); return; }
+  $('input[name="amount"], input[data-money="true"]', form).forEach(input => { formatMoneyInput(input); input.addEventListener('input', () => formatMoneyInput(input)); });
   form.addEventListener('submit', async e => {
     e.preventDefault();
     let box = form.querySelector('.form-error');
