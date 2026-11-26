@@ -44,6 +44,33 @@
 <div class="calendar-days" id="calendarDays"></div>
 <div class="cal-actions"><button type="button" id="todayBtn">رفتن به امروز</button><button type="button" id="cancelCalendar">انصراف</button></div><div class="cal-note">برای انتخاب، روی روز موردنظر بزنید.</div></div></div>
 <script>
+/* کنترل مستقل فعال‌سازی تاریخ قرارداد بر اساس نوع کاربر */
+(function(){
+  const type=document.getElementById('userType');
+  const start=document.getElementById('contractStartDate');
+  const end=document.getElementById('contractEndDate');
+  const hint=document.getElementById('contractHint');
+  if(!type||!start||!end)return;
+  function syncContractAvailability(){
+    const resident=type.value==='resident';
+    [start,end].forEach(function(button){
+      button.disabled=!resident;
+      if(!resident){
+        delete button.dataset.jdate;
+        button.textContent='فقط ویژه ساکنان';
+      }else{
+        button.textContent='انتخاب تاریخ شمسی';
+      }
+    });
+    if(hint)hint.textContent=resident
+      ?'لطفاً تاریخ شروع و اتمام قرارداد را از تقویم شمسی انتخاب کنید.'
+      :'تاریخ شروع و اتمام قرارداد فقط برای ساکنان دریافت می‌شود.';
+  }
+  type.addEventListener('change',syncContractAvailability);
+  syncContractAvailability();
+})();
+</script>
+<script>
 const $=id=>document.getElementById(id), faDigits=s=>String(s).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
 const months=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const fmt=new Intl.DateTimeFormat('en-u-ca-persian-nu-latn',{year:'numeric',month:'2-digit',day:'2-digit'});
