@@ -19,14 +19,11 @@ R('POST', '/api/public/user-submissions', { public: true }, async c => {
   const phone = phoneOrFail(x.phone);
   const secondaryPhone = x.secondaryPhone ? phoneOrFail(x.secondaryPhone) : null;
 
-  let contractStartDate = null;
-  let contractEndDate = null;
-  if (x.userType === 'resident') {
-    contractStartDate = jdate(x.contractStartDate, '/');
-    contractEndDate = jdate(x.contractEndDate, '/');
-    if (contractEndDate < contractStartDate) {
-      throw err(400, 'INVALID_CONTRACT_RANGE', 'تاریخ اتمام قرارداد نمی‌تواند پیش از تاریخ شروع باشد');
-    }
+  // تاریخ‌های قرارداد برای مالک و ساکن هر دو دریافت و در رکورد اولیه نگهداری می‌شوند.
+  const contractStartDate = jdate(x.contractStartDate, '/');
+  const contractEndDate = jdate(x.contractEndDate, '/');
+  if (contractEndDate < contractStartDate) {
+    throw err(400, 'INVALID_CONTRACT_RANGE', 'تاریخ اتمام قرارداد نمی‌تواند پیش از تاریخ شروع باشد');
   }
 
   const id = crypto.randomUUID();
