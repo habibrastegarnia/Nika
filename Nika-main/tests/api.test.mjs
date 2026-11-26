@@ -207,6 +207,14 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
   r = await res1.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 500000 }); ids.pay2 = r.data.id;
   assert.equal((await res2.del(`/api/transactions/${ids.pay2}`)).status, 404);
   assert.equal((await res1.del(`/api/transactions/${ids.pay2}`)).status, 200);
+  // دو تأیید هم‌زمان نباید یک پرداخت را دوبار نهایی کنند.
+  const concurrent = await res1.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 1234 });
+  const decisions = await Promise.all([
+    fin.post(`/api/transactions/${concurrent.data.id}/decision`, { status: 'rejected', note: 'آزمون هم‌زمانی اول' }),
+    fin.post(`/api/transactions/${concurrent.data.id}/decision`, { status: 'rejected', note: 'آزمون هم‌زمانی دوم' })
+  ]);
+  assert.deepEqual(decisions.map(x => x.status).sort(), [200, 409]);
+  assert.equal((await res1.get('/api/finance/my?fund=monthly')).data.balance, 1000000, 'رد هم‌زمان نباید مانده مالی را تغییر دهد');
   // رد با دلیل
   r = await res1.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 700000 });
   assert.equal((await fin.post(`/api/transactions/${r.data.id}/decision`, { status: 'rejected', note: 'رسید ناخوانا' })).status, 200);
