@@ -5,7 +5,7 @@ import { $, $$, normDigits, fa } from './util.js';
 import { iconMarkup, applyIcons } from './icons.js?v=2';
 import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
 import * as P from './pages.js?v=15';
-import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=21';
+import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=22';
 
 let managerMode = false;
 const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList.toggle('nika-hide', s !== id); $('.phone').classList.toggle('nika-hide', id !== '#app'); $('#nikaAdmin').classList.add('nika-hide'); };
