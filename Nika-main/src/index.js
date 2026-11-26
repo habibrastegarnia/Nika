@@ -9,6 +9,7 @@ import './expense_requests.js';
 import './backups.js';
 import './delegation.js';
 import './content.js';
+import './registration.js';
 import { runReminders } from './reminders.js';
 
 const ALLOWED_WHILE_FORCED = ['/api/me', '/api/password', '/api/logout'];
