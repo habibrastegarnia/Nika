@@ -334,304 +334,70 @@ async function settingsTab() {
  };
 }
 function financeSection(id, title, content) {
- return html`<section class="nika-admincard" style="margin-top:12px">
-  <button type="button" class="nika-secondary" data-finance-toggle="${id}" aria-expanded="false" style="width:100%;display:flex;justify-content:space-between;align-items:center;text-align:right;padding:14px">
-   <strong>${title}</strong><span data-finance-mark="${id}">＋</span>
-  </button>
-  <div data-finance-panel="${id}" hidden style="padding-top:12px">${content}</div>
+ return html`<section class="nika-admincard" data-finance-panel="${id}" hidden style="margin-top:14px">
+  <h3>${title}</h3>
+  <div style="padding-top:8px">${content}</div>
  </section>`;
 }
 async function financeTab() {
  const approvalsAllowed = canAny(['finance.approve','expenses.approve']);
  const expenseAllowed = can('expenses.create');
  const reportsAllowed = can('finance.reports');
- const parts = [], sections = [];
+ const shortcuts = [], panels = [];
  let paymentOut = null, approvalsOut = null, expenseOut = null, reviewOut = null, finalOut = null;
  if (reportsAllowed) {
   const { funds } = await api('/finance/funds');
-  parts.push(card('موجودی صندوق‌ها', html`<div class="nika-users">${funds.map(f => html`<div class="nika-usercard"><strong>${f.title}</strong><div class="page-stat-grid"><div class="page-stat"><small>موجودی فعلی</small><strong class="${f.balance < 0 ? 'debt-text' : 'credit-text'}">${toman(f.balance)}</strong></div><div class="page-stat"><small>دریافتی تأییدشده</small><strong>${toman(f.incoming)}</strong></div><div class="page-stat"><small>هزینه قطعی‌شده</small><strong>${toman(f.outgoing)}</strong></div></div></div>` )}</div>`));
+  panels.push(card('موجودی صندوق‌ها', html`<div class="nika-users">${funds.map(f => html`<div class="nika-usercard"><strong>${f.title}</strong><div class="page-stat-grid"><div class="page-stat"><small>موجودی فعلی</small><strong class="${f.balance < 0 ? 'debt-text' : 'credit-text'}">${toman(f.balance)}</strong></div><div class="page-stat"><small>دریافتی تأییدشده</small><strong>${toman(f.incoming)}</strong></div><div class="page-stat"><small>هزینه قطعی‌شده</small><strong>${toman(f.outgoing)}</strong></div></div></div>` )}</div>`));
  }
+ const addShortcut = (id, title, symbol) => shortcuts.push(html`<button type="button" class="nika-secondary" data-finance-toggle="${id}" aria-expanded="false" style="min-height:86px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;text-align:center;border-radius:12px"><span aria-hidden="true" style="font-size:23px;line-height:1">${symbol}</span><strong>${title}</strong></button>`);
  if (can('finance.approve')) {
   paymentOut = await registerUnitPaymentTab();
-  sections.push(financeSection('unit-payment', 'ثبت شارژ واحدها', paymentOut.html));
+  addShortcut('unit-payment', 'ثبت شارژ واحدها', '＋');
+  panels.push(financeSection('unit-payment', 'ثبت شارژ واحدها', paymentOut.html));
  }
  if (approvalsAllowed) {
   approvalsOut = await financeApprovalsTab();
-  sections.push(financeSection('payment-approvals', 'تأیید پرداخت‌ها', approvalsOut.html));
+  addShortcut('payment-approvals', 'تأیید پرداخت‌ها', '✓');
+  panels.push(financeSection('payment-approvals', 'تأیید پرداخت‌ها', approvalsOut.html));
  }
  if (expenseAllowed) {
   expenseOut = await expenseRequestsTab();
-  sections.push(financeSection('expense-create', 'ثبت هزینه', expenseOut.html));
+  addShortcut('expense-create', 'ثبت هزینه', '▤');
+  panels.push(financeSection('expense-create', 'ثبت هزینه', expenseOut.html));
  }
  if (can('expenses.approve')) {
   reviewOut = await expenseReviewTab();
-  sections.push(financeSection('expense-review', 'بررسی درخواست‌های هزینه', reviewOut.html));
+  addShortcut('expense-review', 'بررسی درخواست‌های هزینه', '⌕');
+  panels.push(financeSection('expense-review', 'بررسی درخواست‌های هزینه', reviewOut.html));
  }
  if (can('expenses.finalize')) {
   finalOut = await chairFinalReviewTab();
-  sections.push(financeSection('expense-finalize', 'تأیید نهایی هزینه‌ها', finalOut.html));
+  addShortcut('expense-finalize', 'تأیید نهایی هزینه‌ها', '✓');
+  panels.push(financeSection('expense-finalize', 'تأیید نهایی هزینه‌ها', finalOut.html));
  }
- if (!parts.length && !sections.length) return {html:empty('امکان مشاهده بخش مالی برای شما فعال نیست.')};
+ if (!panels.length) return {html:empty('امکان مشاهده بخش مالی برای شما فعال نیست.')};
  return {
-  html:html`<div class="manager-finance-page">${parts.map(x=>x)}${sections.map(x=>x)}</div>`,
+  html:html`<div class="manager-finance-page">${panels.length && reportsAllowed ? panels.shift() : ''}<div class="nika-finance-shortcuts" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px">${shortcuts.join('')}</div>${panels.join('')}</div>`,
   bind(box){
    const toggles = $$('[data-finance-toggle]', box);
    toggles.forEach(button => button.addEventListener('click', () => {
     const id = button.dataset.financeToggle;
-    const target = $(`[data-finance-panel="${id}"]`, box), opening = target.hidden;
+    const target = `[data-finance-panel="${id}"]`;
+    const opening = $(target, box).hidden;
     $$('[data-finance-panel]', box).forEach(panel => { panel.hidden = true; });
     toggles.forEach(b => {
      b.setAttribute('aria-expanded', 'false');
-     const mark = $(`[data-finance-mark="${b.dataset.financeToggle}"]`, box);
-     if (mark) mark.textContent = '＋';
+     b.classList.remove('nika-primary');
+     b.classList.add('nika-secondary');
     });
     if (opening) {
-     target.hidden = false;
+     $(target, box).hidden = false;
      button.setAttribute('aria-expanded', 'true');
-     const mark = $(`[data-finance-mark="${id}"]`, box);
-     if (mark) mark.textContent = '－';
+     button.classList.remove('nika-secondary');
+     button.classList.add('nika-primary');
     }
    }));
    paymentOut?.bind?.(box); approvalsOut?.bind?.(box); expenseOut?.bind?.(box); reviewOut?.bind?.(box); finalOut?.bind?.(box);
-  }
- };
-}
-async function registerUnitPaymentTab() {
- const { units } = await api('/admin/units');
- const options = units.map(u => [u.unit_number, 'واحد ' + u.unit_number]);
- if (!options.length) return { html: card('ثبت پرداخت واحد', empty('ابتدا واحدهای ساختمان را ثبت کنید.')) };
- return {
-  html: card('ثبت پرداخت به‌جای واحد', html`<form id="unitPaymentNew" novalidate>
-   ${fields([
-    { name:'unitNumber', label:'انتخاب واحد', type:'select', value:options[0][0], options },
-    { name:'fund', label:'نوع شارژ', type:'select', value:'monthly', options:[['monthly','شارژ ماهیانه'],['owner','شارژ مالکانه']] },
-    { name:'amount', label:'مبلغ پرداخت (تومان)', inputmode:'numeric', dir:'ltr', required:true },
-    { name:'period', label:'دوره / سال شارژ (شمسی)', value:curPeriod(), required:true, dir:'ltr' },
-    { name:'reference', label:'شماره پیگیری / توضیحات بانکی', dir:'ltr' },
-    { name:'note', label:'توضیحات (اختیاری)', type:'textarea', rows:2 }
-   ], 'nika')}
-   <p class="nika-footnote">پرداخت پس از ثبت، در فهرست تأیید پرداخت‌ها قرار می‌گیرد و تا زمان تأیید در مانده صندوق منظور نمی‌شود.</p>
-   <div class="nika-actions"><button class="nika-primary" type="submit">ثبت پرداخت واحد</button></div>
-  </form>`)
- ,
-  bind(box) {
-   const form = $('#unitPaymentNew', box), fund = $('select[name="fund"]', form), periodField = $('input[name="period"]', form);
-   fund.addEventListener('change', () => { periodField.value = fund.value === 'owner' ? String(jToday().y) : curPeriod(); });
-   onSubmit(form, async d => {
-    const body = { kind:'payment', unitNumber:d.unitNumber, fund:d.fund, amount:parseAmount(d.amount), period:d.period, reference:d.reference, note:d.note };
-    if (!body.amount) throw new Error('مبلغ را به‌صورت عدد وارد کنید');
-    const financeRole = S.user.roles.includes('finance') || (S.user.delegatedRoles || []).includes('finance');
-    if (!financeRole) {
-     const reason = await promptText('دلیل ثبت خارج از مسئولیت', 'چرا این پرداخت را به‌جای مدیر مالی ثبت می‌کنید؟', 'ثبت دلیل');
-     if (!reason) return;
-     body.reason = reason;
-    }
-    await api('/transactions', { method:'POST', body });
-    toast('پرداخت واحد ثبت شد و برای تأیید ارسال شد');
-    reload();
-   });
-  }
- };
-}
-async function financeApprovalsTab() {
- const pend=await api('/transactions?fund=monthly&scope=all&status=pending').then(a=>api('/transactions?fund=owner&scope=all&status=pending').then(b=>[...a.transactions,...b.transactions]));
- const pending=pend.filter(t=>t.kind==='payment' && can('finance.approve'));
- return {
-  html:card('در انتظار تأیید',pending.length?html`<div class="nika-users">${pending.map(t=>html`<div class="nika-usercard"><strong>${t.title} · ${toman(t.amount)}</strong><small>${KIND_FA[t.kind]} · ${FUND_FA[t.fund_id]}${t.unit_number?' · واحد '+t.unit_number:''}${t.category?' · '+t.category:''}${t.period?' · '+(t.fund_id==='owner'?fa(t.period):periodLabel(t.period)):''}${t.reference?' · پیگیری '+t.reference:''} · ثبت: ${t.created_name} · ${fdt(t.created_at)}${t.note?' · '+t.note:''}</small><div class="row-actions"><button class="page-btn sm ok" data-ok="${t.id}">تأیید</button><button class="page-btn sm danger" data-no="${t.id}">رد</button></div></div>` )}</div>`:empty('موردی در انتظار تأیید وجود ندارد.')),
-  bind(box){
-   act(box,'[data-ok]',async b=>{await api(`/transactions/${b.dataset.ok}/decision`,{method:'POST',body:{status:'approved'}});toast('تأیید شد');reload();});
-   act(box,'[data-no]',async b=>{const note=await promptText('رد مورد','دلیل رد را بنویسید (برای کاربر نمایش داده می‌شود)','ثبت رد');if(!note)return;await api(`/transactions/${b.dataset.no}/decision`,{method:'POST',body:{status:'rejected',note}});toast('رد شد');reload();});
-  }
- };
-}
-async function toDocumentImage(file) {
- if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود');
- const bitmap = await createImageBitmap(file);
- let scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
- const canvas = document.createElement('canvas');
- const ctx = canvas.getContext('2d');
- const qualities = [0.76, 0.68, 0.60, 0.52];
- for (let pass = 0; pass < 4; pass++) {
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  for (const quality of qualities) {
-   const data = canvas.toDataURL('image/jpeg', quality);
-   const base64 = data.slice(data.indexOf(',') + 1);
-   const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
-   const size = Math.floor(base64.length * 3 / 4) - padding;
-   if (size <= 280000) {
-    if (bitmap.close) bitmap.close();
-    const stem = (file.name || 'document').replace(/\.[^.]+$/, '');
-    return { name: stem + '.jpg', data, size, width: canvas.width, height: canvas.height };
-   }
-  }
-  scale *= 0.82;
- }
- if (bitmap.close) bitmap.close();
- throw new Error('حجم تصویر پس از فشرده‌سازی هنوز زیاد است؛ تصویر دیگری انتخاب کنید');
-}
-
-async function expenseRequestsTab() {
- const [{ funds }, { requests }] = await Promise.all([api('/finance/funds'), api('/expense-requests?scope=mine')]);
- const fundOptions = funds.map(f => [f.fund_id, f.title]);
- const statusClass = s => s === 'finalized' ? 'green' : s.startsWith('revision') ? 'amber' : s === 'cancelled' ? 'red' : 'blue';
- return {
-  html: html`<div class="manager-finance-page">
-   ${card('ثبت درخواست پرداخت', html`<form id="expenseRequestNew" novalidate>${fields([
-     { name: 'fund', label: 'صندوق پرداخت', type: 'select', value: 'monthly', options: fundOptions },
-     { name: 'amount', label: 'مبلغ درخواست (تومان)', inputmode: 'numeric', dir: 'ltr', required: true },
-     { name: 'documentTitle', label: 'عنوان سند', required: true },
-     { name: 'documentDate', label: 'تاریخ سند', type: 'date', dateSeparator: '-', required: true },
-     { name: 'description', label: 'شرح درخواست', type: 'textarea', rows: 3, required: true }
-   ], 'nika')}
-   <div class="nika-footnote" id="expenseFundBalance"></div>
-   <label class="nika-label">تصویر فاکتور، پیش‌فاکتور یا مدارک پشتیبان (اختیاری)</label>
-   <input class="nika-input" type="file" id="expenseFiles" accept="image/jpeg,image/png,image/webp" multiple>
-   <div class="nika-footnote" id="expenseFilesStatus">تصاویر هنگام انتخاب، در همین دستگاه کوچک و فشرده می‌شوند؛ حداکثر ۴ تصویر.</div>
-   <div class="nika-footnote">نسخه اصلی تصویر ارسال نمی‌شود؛ نسخه فشرده پس از ثبت در دیتابیس ذخیره خواهد شد و پس از پشتیبان‌گیری آفلاین قابل پاک‌سازی است.</div>
-   <div class="nika-actions"><button class="nika-primary" type="submit">ثبت و ارسال برای مدیر مالی</button></div></form>`)}
-   ${card('پیگیری درخواست‌ها', requests.length ? html`<div class="nika-users">${requests.map(q => html`<div class="nika-usercard">
-     <strong>${q.reference_no} · ${q.document_title}</strong>
-     <small>${q.fund_title} · ${toman(q.amount)} · ${q.document_date} · ${fdt(q.created_at)}</small>
-     <div class="row-actions"><span class="page-chip ${statusClass(q.status)}">${q.statusLabel}</span><button class="nika-secondary sm" data-request-open="${q.id}">جزئیات و سوابق</button>
-       ${['revision_finance','revision_chair'].includes(q.status) ? html`<button class="nika-secondary sm" data-request-edit="${q.id}">اصلاح درخواست</button><button class="nika-secondary sm danger" data-request-cancel="${q.id}">منتفی‌کردن</button>` : ''}
-     </div>
-   </div>`)}</div>` : empty('هنوز درخواستی ثبت نشده است.'))}
-  </div>`,
-  bind(box) {
-   const form = $('#expenseRequestNew', box), fundSelect = $('select[name="fund"]', box), balanceLabel = $('#expenseFundBalance', box);
-   const fileInput = $('#expenseFiles', box), fileStatus = $('#expenseFilesStatus', box);
-   let preparedFiles = [], filePreparation = Promise.resolve(), filePreparationError = null;
-   fileInput.addEventListener('change', () => {
-    preparedFiles = []; filePreparationError = null;
-    const selected = Array.from(fileInput.files || []);
-    if (selected.length > 4) { filePreparationError = new Error('حداکثر چهار تصویر قابل ارسال است'); fileInput.value = ''; fileStatus.textContent = filePreparationError.message; return; }
-    if (!selected.length) { fileStatus.textContent = 'تصویری انتخاب نشده است.'; return; }
-    fileStatus.textContent = 'در حال کاهش حجم و آماده‌سازی تصاویر در همین دستگاه…';
-    fileInput.disabled = true;
-    filePreparation = Promise.all(selected.map(toDocumentImage)).then(files => {
-     preparedFiles = files;
-     const total = files.reduce((sum, f) => sum + f.size, 0);
-     fileStatus.textContent = `${files.length} تصویر آماده شد؛ حجم مجموع نسخه‌های فشرده: ${Math.round(total / 1024)} کیلوبایت.`;
-    }).catch(error => {
-     filePreparationError = error; fileInput.value = ''; fileStatus.textContent = error.message;
-    }).finally(() => { fileInput.disabled = false; });
-   });
-   const updateBalance = () => { const f = funds.find(x => x.fund_id === fundSelect.value); balanceLabel.textContent = f ? `موجودی فعلی ${f.title}: ${toman(f.balance)}` : ''; };
-   fundSelect.onchange = updateBalance; updateBalance();
-   onSubmit(form, async d => {
-    await filePreparation;
-    if (filePreparationError) throw filePreparationError;
-    const files = preparedFiles;
-    const body = { ...d, files };
-    if (!S.user.roles.includes('executive')) { const reason = await promptText('دلیل انجام خارج از مسئولیت', 'چرا این درخواست را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
-    const result = await api('/expense-requests', { method: 'POST', body });
-    toast(`درخواست ${result.referenceNo} ثبت و برای مدیر مالی ارسال شد`); reload();
-   });
-   act(box, '[data-request-open]', async b => showExpenseRequestDetails(b.dataset.requestOpen));
-   act(box, '[data-request-edit]', async b => editExpenseRequest(requests.find(q => q.id === b.dataset.requestEdit)));
-   act(box, '[data-request-cancel]', async b => {
-    const q = requests.find(x => x.id === b.dataset.requestCancel);
-    if (!await ask('منتفی‌کردن درخواست', `درخواست ${q.reference_no} منتفی شود؟ سوابق آن حفظ خواهد شد.`, 'منتفی‌کردن', true)) return;
-    const body = {};
-    if (!S.user.roles.includes('executive')) { const reason = await promptText('دلیل منتفی‌کردن', 'چرا این درخواست را به‌جای مدیر اجرایی منتفی می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
-    await api(`/expense-requests/${q.id}/cancel`, { method: 'POST', body }); toast('درخواست منتفی شد'); reload();
-   });
-  }
- };
-}
-
-async function showExpenseRequestDetails(id) {
- const data = await api(`/expense-requests/${id}`), q = data.request;
- const actionFa = { created:'ثبت اولیه',approved:'تأیید مرحله مالی',revision:'درخواست اصلاح',resubmitted:'ارسال مجدد',finalized:'تأیید نهایی و قطعی‌شدن',cancelled:'منتفی‌شدن' };
- const stageFa = { executive:'مدیر اجرایی',finance:'مدیر مالی',chair:'رئیس هیئت‌مدیره' };
- openModal(`درخواست ${q.reference_no}`, html`<div class="nika-users">
-  <div class="nika-usercard"><strong>${q.document_title}</strong><small>${q.fund_title} · ${toman(q.amount)} · ${q.document_date}</small><p>${q.description}</p><span class="page-chip ${q.status === 'finalized' ? 'green' : q.status.startsWith('revision') ? 'amber' : 'blue'}">${q.statusLabel}</span></div>
-  <div class="nika-usercard"><strong>تصاویر اسناد</strong>${data.files.length ? html`<div class="row-actions">${data.files.map(f => f.has_data ? html`<a class="page-btn sm secondary" href="${f.url}" target="_blank" rel="noopener">${f.filename} · نسخه ${f.version_no}</a>` : html`<span class="page-chip">${f.filename} · نسخه ${f.version_no} · در بایگانی آفلاین</span>`)}</div>` : empty('تصویری ثبت نشده است.')}</div>
-  <div class="nika-usercard"><strong>سوابق بررسی و اصلاح</strong>${data.history.length ? data.history.map(h => html`<div class="page-event"><strong>${stageFa[h.stage] || h.stage} · ${actionFa[h.action] || h.action}</strong><small>${h.actor || 'سامانه'} · ${fdt(h.created_at)}</small>${h.reason ? html`<p>دلیل: ${h.reason}</p>` : ''}</div>`) : empty('سابقه‌ای ثبت نشده است.')}</div>
-  <div class="nika-usercard"><strong>نسخه‌های سند</strong>${data.versions.map(v => html`<div class="page-event"><strong>نسخه ${v.version_no}</strong><small>${fdt(v.created_at)}</small>${v.reason ? html`<p>${v.reason}</p>` : ''}</div>`)}</div>
- </div>`);
-}
-
-async function editExpenseRequest(q) {
- const files = [{ name:'fund',label:'صندوق پرداخت',type:'select',value:q.fund_id,options:[['monthly','صندوق شارژ ماهیانه'],['owner','صندوق مالکانه']] },
-  { name:'amount',label:'مبلغ درخواست (تومان)',value:q.amount,inputmode:'numeric',dir:'ltr',required:true },
-  { name:'documentTitle',label:'عنوان سند',value:q.document_title,required:true },
-  { name:'documentDate',label:'تاریخ سند',type:'date',dateSeparator:'-',value:q.document_date,required:true },
-  { name:'description',label:'شرح درخواست',type:'textarea',rows:3,value:q.description,required:true }];
- const modal = openModal(`اصلاح درخواست ${q.reference_no}`, html`<form class="nika-form" novalidate>${fields(files,'nika')}<label class="nika-label">تصاویر جدید (اختیاری)</label><input class="nika-input" id="expenseEditFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple><div class="nika-footnote" id="expenseEditFilesStatus">تصاویر هنگام انتخاب، در همین دستگاه کوچک و فشرده می‌شوند؛ حداکثر ۴ تصویر.</div><div class="nika-actions"><button class="nika-primary" type="submit">اصلاح و ارسال مجدد</button></div></form>`);
- const editInput = $('#expenseEditFiles', modal), editStatus = $('#expenseEditFilesStatus', modal);
- let editPreparedFiles = [], editPreparation = Promise.resolve(), editPreparationError = null;
- editInput.addEventListener('change', () => {
-  editPreparedFiles = []; editPreparationError = null;
-  const selected = Array.from(editInput.files || []);
-  if (selected.length > 4) { editPreparationError = new Error('حداکثر چهار تصویر قابل ارسال است'); editInput.value = ''; editStatus.textContent = editPreparationError.message; return; }
-  if (!selected.length) { editStatus.textContent = 'تصویر جدیدی انتخاب نشده است.'; return; }
-  editStatus.textContent = 'در حال کاهش حجم و آماده‌سازی تصاویر در همین دستگاه…';
-  editInput.disabled = true;
-  editPreparation = Promise.all(selected.map(toDocumentImage)).then(result => {
-   editPreparedFiles = result;
-   editStatus.textContent = `${result.length} تصویر آماده شد؛ حجم مجموع نسخه‌های فشرده: ${Math.round(result.reduce((sum, f) => sum + f.size, 0) / 1024)} کیلوبایت.`;
-  }).catch(error => { editPreparationError = error; editInput.value = ''; editStatus.textContent = error.message; }).finally(() => { editInput.disabled = false; });
- });
- onSubmit($('form',modal), async d => {
-  await editPreparation;
-  if (editPreparationError) throw editPreparationError;
-  const body={...d,files:editPreparedFiles};
-  if(!S.user.roles.includes('executive')) { const reason=await promptText('دلیل اصلاح خارج از مسئولیت','چرا این درخواست را به‌جای مدیر اجرایی اصلاح می‌کنید؟','ثبت دلیل'); if(!reason)return; body.reason=reason; }
-  await api(`/expense-requests/${q.id}`,{method:'PATCH',body}); closeModal(); toast('درخواست اصلاح و دوباره برای مدیر مالی ارسال شد'); reload();
- });
-}
-
-async function expenseReviewTab() {
- const { requests } = await api('/expense-requests?scope=review');
- return {
-  html: card('درخواست‌های در انتظار بررسی مدیر مالی', requests.length ? html`<div class="nika-users">${requests.map(q => html`<div class="nika-usercard">
-   <strong>${q.reference_no} · ${q.document_title}</strong><small>${q.fund_title} · ${toman(q.amount)} · موجودی فعلی صندوق: ${toman(q.cash_balance)} · ثبت‌کننده: ${q.creator_name}</small>
-   <p>${q.description}</p><div class="row-actions"><button class="nika-secondary sm" data-exp-open="${q.id}">مشاهده اسناد</button><button class="nika-primary sm" data-exp-finance-ok="${q.id}">تأیید و ارجاع به رئیس</button><button class="nika-secondary sm danger" data-exp-finance-revision="${q.id}">نیازمند اصلاح</button></div>
-  </div>`)}</div>` : empty('درخواستی در انتظار بررسی مدیر مالی نیست.')),
-  bind(box) {
-   act(box,'[data-exp-open]',async b=>showExpenseRequestDetails(b.dataset.expOpen));
-   act(box,'[data-exp-finance-ok]',async b=>{
-    const body={status:'approved'};
-    if(!S.user.roles.includes('finance')){const reason=await promptText('دلیل انجام خارج از مسئولیت','چرا این درخواست را به‌جای مدیر مالی تأیید می‌کنید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
-    await api(`/expense-requests/${b.dataset.expFinanceOk}/finance-decision`,{method:'POST',body});toast('درخواست برای تأیید نهایی به رئیس هیئت‌مدیره ارجاع شد');reload();
-   });
-   act(box,'[data-exp-finance-revision]',async b=>{
-    const reason=await promptText('درخواست اصلاح','دلیل نیاز به اصلاح سند را بنویسید','ثبت دلیل');if(!reason)return;
-    await api(`/expense-requests/${b.dataset.expFinanceRevision}/finance-decision`,{method:'POST',body:{status:'revision',reason}});toast('درخواست برای اصلاح به مدیر اجرایی بازگشت');reload();
-   });
-  }
- };
-}
-
-async function chairFinalReviewTab() {
- const { requests } = await api('/expense-requests?scope=final');
- return {
-  html: card('درخواست‌های در انتظار تأیید نهایی رئیس هیئت‌مدیره', requests.length ? html`<div class="nika-users">${requests.map(q => {
-   const enough = Number(q.cash_balance) >= Number(q.amount);
-   return html`<div class="nika-usercard">
-    <strong>${q.reference_no} · ${q.document_title}</strong><small>${q.fund_title} · ${toman(q.amount)} · موجودی فعلی صندوق: ${toman(q.cash_balance)} · ثبت‌کننده: ${q.creator_name}</small>
-    <p>${q.description}</p>
-    ${!enough ? html`<div class="page-chip red">هشدار: موجودی صندوق برای این پرداخت کافی نیست.</div>` : ''}
-    <div class="row-actions"><button class="nika-secondary sm" data-chair-open="${q.id}">مشاهده اسناد</button><button class="nika-primary sm" data-chair-final="${q.id}" ${enough ? '' : raw('disabled')}>تأیید نهایی و برداشت</button><button class="nika-secondary sm danger" data-chair-revision="${q.id}">نیازمند اصلاح</button></div>
-   </div>`;
-  })}</div>` : empty('درخواستی در انتظار تأیید نهایی نیست.')),
-  bind(box) {
-   act(box,'[data-chair-open]',async b=>showExpenseRequestDetails(b.dataset.chairOpen));
-   act(box,'[data-chair-final]',async b=>{
-    const body={status:'approved'};
-    if(!S.user.roles.includes('chair')){const reason=await promptText('دلیل انجام خارج از مسئولیت','چرا این تأیید نهایی را به‌جای رئیس هیئت‌مدیره انجام می‌دهید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
-    try { await api(`/expense-requests/${b.dataset.chairFinal}/chair-decision`,{method:'POST',body});toast('سند قطعی شد و از صندوق برداشت شد');reload(); }
-    catch(e){toast(e.message);reload();}
-   });
-   act(box,'[data-chair-revision]',async b=>{
-    const reason=await promptText('درخواست اصلاح','دلیل نیاز به اصلاح سند را بنویسید','ثبت دلیل');if(!reason)return;
-    await api(`/expense-requests/${b.dataset.chairRevision}/chair-decision`,{method:'POST',body:{status:'revision',reason}});toast('درخواست برای اصلاح به مدیر اجرایی بازگشت');reload();
-   });
   }
  };
 }
