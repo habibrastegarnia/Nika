@@ -562,3 +562,16 @@ html[data-theme="light"] .header .header-logout{background:transparent!important
 /* Restore the logout icon wrapper; an older span selector was hiding it */
 .header .header-tools .header-logout span[data-icon]{display:inline-flex!important;visibility:visible!important;opacity:1!important;width:19px!important;height:19px!important;align-items:center!important;justify-content:center!important}
 .header .header-tools .header-logout span[data-icon] svg{display:block!important;visibility:visible!important;opacity:1!important;width:19px!important;height:19px!important}
+
+/* Calendar: event dots, nearest upcoming event pulse, and a ring around today's number */
+.page-calendar span.day-cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-sizing:border-box}
+.page-calendar span.day-cell.event{background:#273348;color:#c5d1e5;box-shadow:none}
+.page-calendar span.day-cell.today{outline:none}
+.page-calendar .day-number{display:grid;place-items:center;width:21px;height:21px;border:1px solid transparent;border-radius:50%;font-size:10px;font-weight:500;line-height:1;box-sizing:border-box}
+.page-calendar span.day-cell.today .day-number{border-color:#65d7a0;color:#e8fff4;font-weight:700}
+.page-calendar .event-dot{display:block;width:5px;height:5px;flex:0 0 5px;border-radius:50%;background:#16a36a}
+.page-calendar .event-dot.pulse{animation:calendarEventPulse 1.35s ease-in-out infinite;transform-origin:center}
+@keyframes calendarEventPulse{0%,100%{transform:scale(.78);box-shadow:0 0 0 0 rgba(22,163,106,.28)}50%{transform:scale(1.5);box-shadow:0 0 0 4px rgba(22,163,106,0)}}
+@media(prefers-reduced-motion:reduce){.page-calendar .event-dot.pulse{animation:none}}
+html[data-theme="light"] .page-calendar span.day-cell.event{background:#edf1f7;color:#53627a;box-shadow:none}
+html[data-theme="light"] .page-calendar span.day-cell.today .day-number{border-color:#16865a;color:#176b4b}
