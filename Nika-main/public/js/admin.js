@@ -4,7 +4,7 @@ import { S, can, canAny } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, JM, monthStart, monthLen, jToday, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js';
 import { refreshSummary, loadLatestNotice } from './pages.js?v=15';
-import { applyIcons } from './icons.js?v=2';
+import { applyIcons, iconMarkup } from './icons.js?v=2';
 
 const card = (title, body) => html`<div class="nika-admincard"><h3>${title}</h3>${body}</div>`;
 const empty = t => html`<p>${t}</p>`;
@@ -350,15 +350,15 @@ async function financeTab() {
   const { funds } = await api('/finance/funds');
   fundsCard = card('موجودی صندوق‌ها', html`<div class="nika-users">${funds.map(f => html`<div class="nika-usercard"><strong>${f.title}</strong><div class="page-stat-grid"><div class="page-stat"><small>موجودی فعلی</small><strong class="${f.balance < 0 ? 'debt-text' : 'credit-text'}">${toman(f.balance)}</strong></div><div class="page-stat"><small>دریافتی تأییدشده</small><strong>${toman(f.incoming)}</strong></div><div class="page-stat"><small>هزینه قطعی‌شده</small><strong>${toman(f.outgoing)}</strong></div></div></div>` )}</div>`);
  }
- const addShortcut = (id, title, symbol) => shortcuts.push(html`<button type="button" class="nika-secondary" data-finance-toggle="${id}" aria-haspopup="dialog" style="min-height:86px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;text-align:center;border-radius:12px"><span aria-hidden="true" style="font-size:23px;line-height:1">${symbol}</span><strong>${title}</strong></button>`);
- if (can('finance.approve')) { paymentOut = await registerUnitPaymentTab(); addShortcut('unit-payment', 'ثبت شارژ واحدها', '＋'); actions.push({ id:'unit-payment', title:'ثبت شارژ واحدها', view:paymentOut }); }
- if (approvalsAllowed) { approvalsOut = await financeApprovalsTab(); addShortcut('payment-approvals', 'تأیید پرداخت‌ها', '✓'); actions.push({ id:'payment-approvals', title:'تأیید پرداخت‌ها', view:approvalsOut }); }
- if (expenseAllowed) { expenseOut = await expenseRequestsTab(); addShortcut('expense-create', 'ثبت هزینه', '▤'); actions.push({ id:'expense-create', title:'ثبت هزینه', view:expenseOut }); }
- if (can('expenses.approve')) { reviewOut = await expenseReviewTab(); addShortcut('expense-review', 'بررسی درخواست‌های هزینه', '⌕'); actions.push({ id:'expense-review', title:'بررسی درخواست‌های هزینه', view:reviewOut }); }
- if (can('expenses.finalize')) { finalOut = await chairFinalReviewTab(); addShortcut('expense-finalize', 'تأیید نهایی هزینه‌ها', '✓'); actions.push({ id:'expense-finalize', title:'تأیید نهایی هزینه‌ها', view:finalOut }); }
+ const addShortcut = (id, title, iconName) => shortcuts.push(html`<button type="button" class="category nika-finance-shortcut" data-finance-toggle="${id}" aria-haspopup="dialog"><span class="cat-icon">${raw(iconMarkup(iconName))}</span><span>${title}</span></button>`);
+ if (can('finance.approve')) { paymentOut = await registerUnitPaymentTab(); addShortcut('unit-payment', 'ثبت شارژ واحدها', 'wallet'); actions.push({ id:'unit-payment', title:'ثبت شارژ واحدها', view:paymentOut }); }
+ if (approvalsAllowed) { approvalsOut = await financeApprovalsTab(); addShortcut('payment-approvals', 'تأیید پرداخت‌ها', 'badge-check'); actions.push({ id:'payment-approvals', title:'تأیید پرداخت‌ها', view:approvalsOut }); }
+ if (expenseAllowed) { expenseOut = await expenseRequestsTab(); addShortcut('expense-create', 'ثبت هزینه', 'receipt-text'); actions.push({ id:'expense-create', title:'ثبت هزینه', view:expenseOut }); }
+ if (can('expenses.approve')) { reviewOut = await expenseReviewTab(); addShortcut('expense-review', 'بررسی درخواست‌های هزینه', 'clipboard-list'); actions.push({ id:'expense-review', title:'بررسی درخواست‌های هزینه', view:reviewOut }); }
+ if (can('expenses.finalize')) { finalOut = await chairFinalReviewTab(); addShortcut('expense-finalize', 'تأیید نهایی هزینه‌ها', 'shield-check'); actions.push({ id:'expense-finalize', title:'تأیید نهایی هزینه‌ها', view:finalOut }); }
  if (!shortcuts.length && !reportsAllowed) return {html:empty('امکان مشاهده بخش مالی برای شما فعال نیست.')};
  return {
-  html:html`<div class="manager-finance-page">${fundsCard}<div class="nika-finance-shortcuts" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px">${raw(join(shortcuts))}</div></div>`,
+  html:html`<div class="manager-finance-page">${fundsCard}<div class="categories is-manager nika-finance-shortcuts">${raw(join(shortcuts))}</div></div>`,
   bind(box) {
    $$('[data-finance-toggle]',box).forEach(button=>button.addEventListener('click',()=>{
     const action = actions.find(item => item.id === button.dataset.financeToggle);
