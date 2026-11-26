@@ -491,7 +491,7 @@ async function expenseRequestsTab() {
    const form = $('#expenseRequestNew', box), fundSelect = $('select[name="fund"]', box), balanceLabel = $('#expenseFundBalance', box);
    const fileInput = $('#expenseFiles', box), fileStatus = $('#expenseFilesStatus', box);
    let preparedFiles = [], filePreparation = Promise.resolve(), filePreparationError = null;
-   fileInput.addEventListener('change', () => {
+   if (fileInput) fileInput.addEventListener('change', () => {
     preparedFiles = []; filePreparationError = null;
     const selected = Array.from(fileInput.files || []);
     if (selected.length > 4) { filePreparationError = new Error('حداکثر چهار تصویر قابل ارسال است'); fileInput.value = ''; fileStatus.textContent = filePreparationError.message; return; }
@@ -507,7 +507,7 @@ async function expenseRequestsTab() {
     }).finally(() => { fileInput.disabled = false; });
    });
    const updateBalance = () => { const f = funds.find(x => x.fund_id === fundSelect.value); balanceLabel.textContent = f ? `موجودی فعلی ${f.title}: ${toman(f.balance)}` : ''; };
-   fundSelect.onchange = updateBalance; updateBalance();
+   if (fundSelect) { fundSelect.onchange = updateBalance; updateBalance(); }
    onSubmit(form, async d => {
     await filePreparation;
     if (filePreparationError) throw filePreparationError;
@@ -550,6 +550,7 @@ async function editExpenseRequest(q) {
   { name:'description',label:'شرح درخواست',type:'textarea',rows:3,value:q.description,required:true }];
  const modal = openModal(`اصلاح درخواست ${q.reference_no}`, html`<form class="nika-form" novalidate>${fields(files,'nika')}<label class="nika-label">تصاویر جدید (اختیاری)</label><input class="nika-input" id="expenseEditFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple><div class="nika-footnote" id="expenseEditFilesStatus">تصاویر هنگام انتخاب، در همین دستگاه کوچک و فشرده می‌شوند؛ حداکثر ۴ تصویر.</div><div class="nika-actions"><button class="nika-primary" type="submit">اصلاح و ارسال مجدد</button></div></form>`);
  const editInput = $('#expenseEditFiles', modal), editStatus = $('#expenseEditFilesStatus', modal);
+ if (!editInput || !editStatus) { console.warn('Nika: عناصر پیوست فرم اصلاح درخواست پیدا نشدند.'); return; }
  let editPreparedFiles = [], editPreparation = Promise.resolve(), editPreparationError = null;
  editInput.addEventListener('change', () => {
   editPreparedFiles = []; editPreparationError = null;
