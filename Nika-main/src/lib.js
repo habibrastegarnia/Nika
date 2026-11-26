@@ -1,3 +1,4 @@
+import { jalaliToDate } from './jcal.js';
 // ابزارهای مشترک: خطا، پاسخ JSON، اعتبارسنجی ورودی، رمزنگاری
 export class ApiError extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
@@ -83,6 +84,8 @@ export function jdate(v, sep) {
   const s = normDigits(v).trim().replace(/[\/\-]/g, sep);
   const re = sep === '/' ? /^1[34]\d{2}\/(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])$/ : /^1[34]\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
   if (!re.test(s)) throw err(400, 'INVALID_DATE', 'تاریخ شمسی باید به شکل ۱۴۰۵/۰۹/۰۱ باشد');
+  const [y, m, d] = s.split(sep).map(Number);
+  if (!jalaliToDate(y, m, d)) throw err(400, 'INVALID_DATE', 'روز انتخاب‌شده در تقویم شمسی معتبر نیست');
   return s;
 }
 

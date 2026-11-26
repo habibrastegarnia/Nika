@@ -177,6 +177,27 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
 
   // مالک و ساکن واحد ۱۲ مستقل‌اند و فقط صندوق خودشان را می‌بینند
   assert.equal((await own.get('/api/finance/my?fund=owner')).data.balance, 9000000);
+  // پرداخت مالکانه از صفحه شخصی، سال را از تاریخ تهران می‌گیرد و به period اجباری فرم وابسته نیست.
+  r = await own.post('/api/transactions', { fund: 'owner', kind: 'payment', amount: 1000, reference: 'OWN-001' });
+  assert.equal(r.status, 201, JSON.stringify(r.data));
+  assert.equal((await own.del('/api/transactions/' + r.data.id)).status, 200, 'پرداخت آزمایشی در انتظار را لغو می‌کنیم تا مانده حساب تغییر نکند');
+
+  // حساب مشترک مالک+ساکن در دیتابیس account_type=owner دارد؛ انتساب پرداخت باید از روی user_roles انجام شود.
+  const both = await chair.post('/api/admin/users', { name: 'حساب مشترک آزمون', accountType: 'both', unit: '14', phone: '09124444444', reason: 'آزمون انتساب پرداخت حساب مشترک' });
+  assert.equal(both.status, 201, JSON.stringify(both.data));
+  await chair.post('/api/finance/charges', { fund: 'monthly', period: '1405-09', amount: 1000, title: 'آزمون واحد ۱۴', unitNumbers: ['14'] });
+  const entered = await fin.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 1000, unitNumber: '14' });
+  assert.equal(entered.status, 201);
+  const attribution = await env.DB.prepare('SELECT user_id FROM transactions WHERE id=?').bind(entered.data.id).first();
+  assert.equal(attribution.user_id, both.data.id, 'پرداخت باید به حساب دارای نقش resident متصل شود');
+  const testUnit = await env.DB.prepare('SELECT id FROM units WHERE unit_number=?').bind('14').first();
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM transactions WHERE unit_id=?').bind(testUnit.id),
+    env.DB.prepare('DELETE FROM user_roles WHERE user_id=?').bind(both.data.id),
+    env.DB.prepare('DELETE FROM users WHERE id=?').bind(both.data.id),
+    env.DB.prepare('DELETE FROM units WHERE id=?').bind(testUnit.id)
+  ]);
+
   assert.equal((await own.get('/api/finance/my?fund=monthly')).status, 403);
   assert.equal((await res1.get('/api/transactions?fund=owner')).status, 403);
   const mine = (await res2.get('/api/transactions?fund=monthly')).data.transactions;
@@ -186,6 +207,29 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
   r = await res1.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 500000 }); ids.pay2 = r.data.id;
   assert.equal((await res2.del(`/api/transactions/${ids.pay2}`)).status, 404);
   assert.equal((await res1.del(`/api/transactions/${ids.pay2}`)).status, 200);
+  // دو تأیید هم‌زمان نباید یک پرداخت را دوبار نهایی کنند.
+  const concurrent = await res1.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 1234 });
+  const decisions = await Promise.all([
+    fin.post(`/api/transactions/${concurrent.data.id}/decision`, { status: 'rejected', note: 'آزمون هم‌زمانی اول' }),
+    fin.post(`/api/transactions/${concurrent.data.id}/decision`, { status: 'rejected', note: 'آزمون هم‌زمانی دوم' })
+  ]);
+  assert.deepEqual(decisions.map(x => x.status).sort(), [200, 409]);
+  assert.equal((await res1.get('/api/finance/my?fund=monthly')).data.balance, 1000000, 'رد هم‌زمان نباید مانده مالی را تغییر دهد');
+
+  // تأیید هم‌زمان نیز باید فقط یک‌بار موجودی صندوق را افزایش دهد.
+  const cashBefore = (await env.DB.prepare("SELECT cash_balance FROM funds WHERE id='monthly'").first()).cash_balance;
+  const concurrentApproval = await res1.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 2345 });
+  const approvals = await Promise.all([
+    fin.post(`/api/transactions/${concurrentApproval.data.id}/decision`, { status: 'approved' }),
+    fin.post(`/api/transactions/${concurrentApproval.data.id}/decision`, { status: 'approved' })
+  ]);
+  assert.deepEqual(approvals.map(x => x.status).sort(), [200, 409]);
+  const cashAfter = (await env.DB.prepare("SELECT cash_balance FROM funds WHERE id='monthly'").first()).cash_balance;
+  assert.equal(cashAfter, cashBefore + 2345, 'واریز هم‌زمان فقط یک‌بار باید در صندوق منظور شود');
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM transactions WHERE id=?').bind(concurrentApproval.data.id),
+    env.DB.prepare("UPDATE funds SET cash_balance=? WHERE id='monthly'").bind(cashBefore)
+  ]);
   // رد با دلیل
   r = await res1.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 700000 });
   assert.equal((await fin.post(`/api/transactions/${r.data.id}/decision`, { status: 'rejected', note: 'رسید ناخوانا' })).status, 200);
