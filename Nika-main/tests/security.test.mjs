@@ -179,14 +179,44 @@ test('پشتیبان‌گیری: رمز هش‌شده و تصویر پروفای
   assert.ok(!text.includes('password_hash') && !text.includes('password_salt') && !text.includes('avatar_data') && !text.includes(png.slice(30, 80)));
 });
 
-test('پاک‌سازی کامل: نیاز به عبارت تأیید و رمز دارد و با داده‌ی واقعی (درخواست هزینه، جانشینی، پشتیبان) خطا نمی‌دهد', async () => {
-  assert.equal((await S.exec.post('/api/admin/reset-test-data', { confirm: 'RESET-ALL-DATA', currentPassword: 'x' })).status, 403);
-  assert.equal((await chair.post('/api/admin/reset-test-data', { reason: 'آزمون' })).data.error, 'CONFIRM_REQUIRED');
-  assert.equal((await chair.post('/api/admin/reset-test-data', { reason: 'آزمون', confirm: 'RESET-ALL-DATA', currentPassword: 'wrong-wrong-1' })).data.error, 'WRONG_PASSWORD');
-  const ok = await chair.post('/api/admin/reset-test-data', { reason: 'آزمون', confirm: 'RESET-ALL-DATA', currentPassword: 'Chair-Strong-Pass-1' });
+test('مدیر سامانه باید یک حساب مستقل باشد', async () => {
+  const mixed = await chair.post('/api/admin/users', {
+    name: 'مدیر سامانه ترکیبی', accountType: 'staff', phone: '09125551111',
+    roles: ['system_admin', 'finance'], reason: 'آزمون نقش مستقل'
+  });
+  assert.equal(mixed.status, 400);
+  assert.equal(mixed.data.error, 'SYSTEM_ADMIN_MUST_BE_STANDALONE');
+});
+
+test('بازنشانی اطلاعات آزمایشی فقط با حساب مستقل مدیر سامانه انجام می‌شود و واحدها را حفظ می‌کند', async () => {
+  assert.equal((await S.exec.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'x' })).status, 403);
+  assert.equal((await chair.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'Chair-Strong-Pass-1' })).status, 403, 'رئیس هیئت‌مدیره اجازه بازنشانی ندارد');
+  assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'WRONG-PHRASE', currentPassword: 'Sys-Strong-Pass-12' })).data.error, 'CONFIRM_REQUIRED');
+  assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'wrong-wrong-1' })).data.error, 'WRONG_PASSWORD');
+
+  assert.equal((await chair.post('/api/admin/units', { unitNumber: '91', block: 'A', floor: '9' })).status, 201);
+  const chairId = (await env.DB.prepare("SELECT user_id FROM user_roles WHERE role='chair' LIMIT 1").first()).user_id;
+  await env.DB.prepare("INSERT INTO finance_settings(id,effective_from,created_by,monthly_amount) VALUES('test-reset-setting','1405-01-01',?,500000)").bind(chairId).run();
+  const beforeUnits = Number((await env.DB.prepare('SELECT COUNT(*) n FROM units').first()).n);
+
+  const ok = await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'Sys-Strong-Pass-12' });
   assert.equal(ok.status, 200, JSON.stringify(ok.data));
-  const users = (await chair.get('/api/admin/users')).data.users; assert.equal(users.length, 1);
-  assert.equal((await chair.get('/api/me')).status, 200, 'رئیس همچنان وارد است');
-  const left = await env.DB.prepare('SELECT (SELECT COUNT(*) FROM expense_requests) a,(SELECT COUNT(*) FROM manager_delegations) b,(SELECT COUNT(*) FROM transactions) c').first();
-  assert.deepEqual({ ...left }, { a: 0, b: 0, c: 0 });
+  assert.equal(ok.data.preservedUnits, beforeUnits);
+  assert.equal((await S.sys.get('/api/me')).status, 200, 'مدیر سامانه همچنان وارد است');
+  assert.equal((await chair.get('/api/me')).status, 401, 'نشست سایر کاربران باطل می‌شود');
+
+  const users = (await S.sys.get('/api/admin/users')).data.users;
+  assert.equal(users.length, 1);
+  assert.deepEqual(users[0].roles, ['system_admin']);
+  const left = await env.DB.prepare(`SELECT
+    (SELECT COUNT(*) FROM expense_requests) a,
+    (SELECT COUNT(*) FROM manager_delegations) b,
+    (SELECT COUNT(*) FROM transactions) c,
+    (SELECT COUNT(*) FROM finance_settings) d,
+    (SELECT COUNT(*) FROM messages) e,
+    (SELECT COUNT(*) FROM audit_logs WHERE action!='system.test_data_reset') f,
+    (SELECT COUNT(*) FROM units) g,
+    (SELECT COUNT(*) FROM funds) h,
+    (SELECT SUM(cash_balance) FROM funds) i`).first();
+  assert.deepEqual({ ...left }, { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0, g: beforeUnits, h: 2, i: 0 });
 });
