@@ -23,9 +23,12 @@ async function handle(request, env, url) {
     if (initialized) return reply({ ok: true, initialized: true });
     return reply({ db: !!env.DB, jwt: typeof env.JWT_SECRET === 'string' && env.JWT_SECRET.length >= 32, bootstrap: typeof env.BOOTSTRAP_KEY === 'string' && env.BOOTSTRAP_KEY.length > 0, initialized: false });
   }
-  if (!env.DB || !env.JWT_SECRET) throw err(503, 'SERVER_NOT_CONFIGURED', 'سرور هنوز پیکربندی نشده است');
+  if (!env.DB) throw err(503, 'SERVER_NOT_CONFIGURED', 'پایگاه داده هنوز پیکربندی نشده است');
   const { route, params, pathOnly } = match(request.method, url.pathname);
   if (!route) throw pathOnly ? err(405, 'METHOD_NOT_ALLOWED', 'متد مجاز نیست') : err(404, 'NOT_FOUND', 'مسیر پیدا نشد');
+  // مسیرهای عمومی مانند فرم گردآوری اطلاعات به نشست و JWT نیاز ندارند.
+  // مسیرهای خصوصی همچنان بدون Secret معتبر اجرا نمی‌شوند.
+  if (!route.opts.public && !env.JWT_SECRET) throw err(503, 'SERVER_NOT_CONFIGURED', 'سرور هنوز پیکربندی نشده است');
 
   const mutating = !['GET', 'HEAD'].includes(request.method);
   const origin = request.headers.get('Origin');
