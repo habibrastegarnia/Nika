@@ -190,6 +190,13 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
   assert.equal(entered.status, 201);
   const attribution = await env.DB.prepare('SELECT user_id FROM transactions WHERE id=?').bind(entered.data.id).first();
   assert.equal(attribution.user_id, both.data.id, 'پرداخت باید به حساب دارای نقش resident متصل شود');
+  const testUnit = await env.DB.prepare('SELECT id FROM units WHERE unit_number=?').bind('14').first();
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM transactions WHERE unit_id=?').bind(testUnit.id),
+    env.DB.prepare('DELETE FROM user_roles WHERE user_id=?').bind(both.data.id),
+    env.DB.prepare('DELETE FROM users WHERE id=?').bind(both.data.id),
+    env.DB.prepare('DELETE FROM units WHERE id=?').bind(testUnit.id)
+  ]);
 
   assert.equal((await own.get('/api/finance/my?fund=monthly')).status, 403);
   assert.equal((await res1.get('/api/transactions?fund=owner')).status, 403);
