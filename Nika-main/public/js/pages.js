@@ -1,6 +1,6 @@
 // صفحه‌های کاربری: خانه، مقررات، مصوبات، تقویم، تابلو، درخواست‌ها، مالی، پیام‌ها، پروفایل، تنظیمات
 import { api } from './api.js';
-import { S, can, readableFunds, dashFunds, isManager } from './state.js';
+import { S, can, canManageCalendarEvents, readableFunds, dashFunds, isManager } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, isRecent, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
   FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, route, open, fields, onSubmit } from './ui.js';
@@ -100,7 +100,7 @@ export async function calendarPage(y, m) {
   const mm = String(m).padStart(2, '0'), response = await api(`/events?month=${y}-${mm}`);
   // پاسخ خالی/ناقص API نباید مانع بازشدن تقویم شود.
   const items = Array.isArray(response?.items) ? response.items : [];
-  const canEdit = S.workspace === 'manager' && S.user.roles.some(role => role === 'chair' || role === 'executive');
+  const canEdit = canManageCalendarEvents();
   const buildingItems = items.filter(event => !event.isHoliday);
   const byDay = {}; items.forEach(e => (byDay[+e.event_date.slice(8, 10)] ||= []).push(e));
   const start = monthStart(y, m), len = Math.round(((m === 12 ? monthStart(y + 1, 1) : monthStart(y, m + 1)) - start) / 864e5), lead = (start.getUTCDay() + 1) % 7;
