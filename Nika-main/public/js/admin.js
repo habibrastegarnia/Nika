@@ -365,7 +365,7 @@ async function financeTab() {
     const panel=$(target,box);
     if(!panel)return;
     const opening=panel.hidden;
-    $('[data-finance-panel]',box).forEach(item=>{item.hidden=true;});
+    $$('[data-finance-panel]',box).forEach(item=>{item.hidden=true;});
     toggles.forEach(b=>{b.setAttribute('aria-expanded','false');b.classList.remove('nika-primary');b.classList.add('nika-secondary');});
     if(opening){
      panel.hidden=false;
