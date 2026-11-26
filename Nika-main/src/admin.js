@@ -159,14 +159,15 @@ R('DELETE', '/api/admin/users/:id', { perm: 'users.delete' }, async c => {
   return reply({ ok: true });
 });
 
-// پاک‌سازی کامل داده‌های آزمایشی؛ حساب رئیس فعلی و صندوق‌های پایه حفظ می‌شوند.
-// عملیات غیرقابل بازگشت است (حتی گزارش ممیزی پاک می‌شود)، پس علاوه بر نقش رئیس، عبارت تأیید و رمز فعلی هم لازم است.
-// پیش‌تر: بدون تأیید اجرا می‌شد و به‌دلیل کلید خارجی (درخواست‌های هزینه، جانشینی، پشتیبان‌ها، ...) با خطای ۵۰۰ شکست می‌خورد.
+// بازنشانی کامل داده‌های دوره آزمایشی؛ فقط مدیر سامانه مستقل مجاز است.
+// واحدهای ساختمان و صندوق‌های پایه حفظ می‌شوند؛ تمام داده‌ها و تنظیمات قابل تغییر پاک می‌شوند.
 R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
-  if (!can(c.user, 'roles.assign')) throw err(403, 'FORBIDDEN', 'فقط رئیس هیئت‌مدیره اجازه‌ی پاک‌سازی کامل را دارد');
+  if (c.user.account_type !== 'staff' || c.user.roles.length !== 1 || c.user.roles[0] !== 'system_admin') {
+    throw err(403, 'FORBIDDEN', 'فقط حساب مستقل مدیر سامانه اجازه‌ی بازنشانی اطلاعات آزمایشی را دارد');
+  }
   const x = await readJson(c.request);
-  if (x.confirm !== 'RESET-ALL-DATA') throw err(400, 'CONFIRM_REQUIRED', 'برای تأیید پاک‌سازی کامل، عبارت RESET-ALL-DATA را بفرستید');
-  if (!await verifyUserPassword(c.db, c.user.id, x.currentPassword)) throw err(403, 'WRONG_PASSWORD', 'رمز عبور فعلی نادرست است');
+  if (x.confirm !== 'RESET-NIKA-TEST-DATA') throw err(400, 'CONFIRM_REQUIRED', 'عبارت تأیید بازنشانی کامل وارد نشده است');
+  if (!await verifyUserPassword(c.db, c.user.id, x.currentPassword)) throw err(403, 'WRONG_PASSWORD', 'رمز عبور فعلی مدیر سامانه نادرست است');
   await c.db.batch([
     c.db.prepare('DELETE FROM expense_request_files'),
     c.db.prepare('DELETE FROM expense_request_history'),
@@ -188,15 +189,15 @@ R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
     c.db.prepare('DELETE FROM login_attempts'),
     c.db.prepare('DELETE FROM audit_logs'),
     c.db.prepare('DELETE FROM user_roles WHERE user_id!=?').bind(c.user.id),
-    c.db.prepare("DELETE FROM user_roles WHERE user_id=? AND role!='chair'").bind(c.user.id),
-    c.db.prepare("INSERT OR IGNORE INTO user_roles(user_id,role) VALUES(?,'chair')").bind(c.user.id),
+    c.db.prepare("DELETE FROM user_roles WHERE user_id=? AND role!='system_admin'").bind(c.user.id),
+    c.db.prepare("INSERT OR IGNORE INTO user_roles(user_id,role) VALUES(?,'system_admin')").bind(c.user.id),
     c.db.prepare('DELETE FROM users WHERE id!=?').bind(c.user.id),
-    c.db.prepare('DELETE FROM units WHERE id NOT IN (SELECT unit_id FROM users WHERE id=? AND unit_id IS NOT NULL)').bind(c.user.id),
     c.db.prepare('UPDATE funds SET cash_balance=0'),
     c.db.prepare('UPDATE expense_request_sequences SET next_value=1')
   ]);
   await audit(c.db, c.user.id, 'system.test_data_reset', 'system', null);
-  return reply({ ok: true, preservedUser: c.user.id });
+  const unitCount = await c.db.prepare('SELECT COUNT(*) n FROM units').first();
+  return reply({ ok: true, preservedUser: c.user.id, preservedUnits: Number(unitCount?.n || 0) });
 });
 // ---------- واحدها ----------
 R('GET', '/api/admin/units', { perm: 'units.read' }, async c => {
