@@ -40,6 +40,7 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   const contractEndDate = x.contractEndDate ? jdate(x.contractEndDate, '-') : null;
   if (contractStartDate && contractEndDate && contractEndDate < contractStartDate) throw err(400, 'INVALID_CONTRACT_DATES', 'تاریخ پایان قرارداد نمی‌تواند قبل از تاریخ شروع باشد');
   const extras = validateExtras(c.user, x.roles ?? []);
+  if (extras.includes('system_admin') && (accountType !== 'staff' || extras.length !== 1)) throw err(400, 'SYSTEM_ADMIN_MUST_BE_STANDALONE', 'مدیر سامانه باید یک حساب مستقل و بدون نقش مدیریتی دیگر باشد');
   if (accountType === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'برای حساب مدیر/کارکنان حداقل یک نقش انتخاب کنید');
   const storedType = accountType === 'both' ? 'owner' : accountType;
   const baseRoles = accountType === 'both' ? ['owner', 'resident'] : (accountType === 'staff' ? [] : [accountType]);
@@ -115,6 +116,7 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
   if ('roles' in x) {
     if (!can(c.user, 'roles.assign')) throw err(403, 'ROLE_ASSIGN_FORBIDDEN', 'تغییر نقش‌های مدیریتی فقط در اختیار رئیس هیئت‌مدیره است');
     const extras = validateExtras(c.user, x.roles);
+    if (extras.includes('system_admin') && (t.account_type !== 'staff' || extras.length !== 1)) throw err(400, 'SYSTEM_ADMIN_MUST_BE_STANDALONE', 'مدیر سامانه باید یک حساب مستقل و بدون نقش مدیریتی دیگر باشد');
     if (t.account_type === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'حساب مدیر/کارکنان باید حداقل یک نقش داشته باشد');
     if (t.roles.includes('chair') && !extras.includes('chair') && !await otherActiveChairs(c.db, t.id)) throw err(400, 'LAST_CHAIR', 'حداقل یک رئیس فعال باید باقی بماند');
     const base = [...new Set([...t.roles.filter(r => !EXTRA_ROLES.includes(r)), ...(Array.isArray(x.addBaseRoles) ? x.addBaseRoles.filter(r => ['owner', 'resident'].includes(r)) : [])])];
