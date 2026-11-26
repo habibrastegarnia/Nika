@@ -129,7 +129,8 @@ async function usersTab() {
       const form = $('#uNew', box);
       if (form) onSubmit(form, async d => {
         const accountType = d.owner && d.resident ? 'both' : (d.owner ? 'owner' : (d.resident ? 'resident' : 'staff'));
-        if (accountType === 'staff' && !canAssignRoles) throw new Error('ساخت حساب مدیریتی و تعیین نقش فقط در اختیار رئیس هیئت‌مدیره است.');
+        const bootstrapChairOnly = opts.some(([r]) => r === 'chair') && (d.roles || []).length === 1 && d.roles[0] === 'chair';
+        if (accountType === 'staff' && !canAssignRoles && !bootstrapChairOnly) throw new Error('در نبود رئیس هیئت‌مدیره، مدیر سامانه فقط می‌تواند حساب رئیس جدید را تعریف کند.');
         if (accountType === 'staff' && !(d.roles || []).length) throw new Error('برای حساب مستقل، حداقل یک نقش انتخاب کنید.');
         const body = { unit: d.unit, name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone, contractStartDate: d.contractStartDate, contractEndDate: d.contractEndDate, accountType, roles: d.roles || [] };
         if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران ایجاد می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
@@ -297,15 +298,15 @@ async function systemTab() {
       <p>این عملیات برای پایان دوره آزمایشی است و تمام اطلاعات ثبت‌شده در این دوره را به‌صورت غیرقابل‌بازگشت پاک می‌کند.</p>
       <div class="nika-usercard">
         <strong>مواردی که پاک می‌شوند</strong>
-        <small>تمام کاربران آزمایشی به‌جز دو حساب پایه‌ی مدیر سامانه و رئیس هیئت‌مدیره، سوابق مالی و تراکنش‌ها، تنظیمات مالی، پیام‌ها، درخواست‌ها، اطلاعیه‌ها، مصوبات، رویدادها، اسناد، جانشینی‌ها، فایل‌های پیوست، سوابق پشتیبان و گزارش‌های ممیزی.</small>
+        <small>تمام کاربران دیگر، حساب رئیس هیئت‌مدیره، واحدها، سوابق مالی و تراکنش‌ها، تنظیمات مالی، پیام‌ها، درخواست‌ها، اطلاعیه‌ها، مقررات، مصوبات، رویدادها، اسناد، جانشینی‌ها، فایل‌های پیوست، سوابق پشتیبان، نشست‌های دیگر و گزارش‌های ممیزی.</small>
       </div>
       <div class="nika-usercard">
         <strong>مواردی که حفظ می‌شوند</strong>
-        <small>ساختار و مشخصات واحدهای ساختمان، صندوق‌های پایه، حساب مستقل مدیر سامانه و حساب رئیس هیئت‌مدیره.</small>
+        <small>فقط حساب فعلی مدیر سامانه، همراه با نام کاربری، رمز عبور و امکان ورود همان حساب.</small>
       </div>
       <form id="systemResetForm" novalidate>
         ${fields([
-          { name: 'confirm', label: 'عبارت تأیید را دقیقاً وارد کنید', placeholder: 'RESET-NIKA-TEST-DATA', required: true, dir: 'ltr' },
+          { name: 'confirm', label: 'عبارت تأیید را دقیقاً وارد کنید', placeholder: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', required: true, dir: 'ltr' },
           { name: 'currentPassword', label: 'رمز عبور فعلی مدیر سامانه', type: 'password', required: true, dir: 'ltr', autocomplete: 'current-password' }
         ], 'nika')}
         <div class="nika-actions"><button class="nika-secondary danger" type="submit">بازنشانی کامل اطلاعات آزمایشی</button></div>
@@ -314,10 +315,10 @@ async function systemTab() {
     `),
     bind(box) {
       onSubmit($('#systemResetForm', box), async data => {
-        if (data.confirm !== 'RESET-NIKA-TEST-DATA') throw new Error('عبارت تأیید را دقیقاً و بدون تغییر وارد کنید.');
-        if (!await ask('بازنشانی غیرقابل‌بازگشت سامانه', 'تمام اطلاعات آزمایشی و تنظیمات مالی پاک می‌شوند. فقط حساب‌های پایه‌ی مدیر سامانه و رئیس هیئت‌مدیره، واحدهای ساختمان و صندوق‌های پایه باقی می‌مانند. آیا مطمئن هستید؟', 'پاک‌سازی کامل', true)) return;
+        if (data.confirm !== 'RESET-NIKA-KEEP-SYSTEM-ADMIN') throw new Error('عبارت تأیید را دقیقاً و بدون تغییر وارد کنید.');
+        
         const result = await api('/admin/reset-test-data', { method: 'POST', body: { confirm: data.confirm, currentPassword: data.currentPassword } });
-        toast(`بازنشانی انجام شد؛ ${fa(result.preservedUnits)} واحد ساختمان و دو حساب پایه حفظ شدند.`);
+        toast('بازنشانی انجام شد؛ فقط حساب مدیر سامانه باقی مانده است.');
         reload();
       });
     }
@@ -737,11 +738,17 @@ async function archiveTab() {
    </div>
    <div class="nika-footnote">فایل را روی رایانه و ترجیحاً یک حافظه جداگانه ذخیره کنید. پس از دانلود، فایل را نگه دارید و فقط در صورت اطمینان از ذخیره‌شدن آن، پاک‌سازی تصاویر آنلاین را تأیید کنید. تمام سوابق متنی و مالی در سامانه باقی می‌مانند.</div>
    <div class="nika-actions"><a class="page-btn sm secondary" href="/offline-archive.html" download>دانلود برنامه دسکتاپ آفلاین</a></div>
+   <div class="nika-usercard">
+    <strong>بازنشانی کامل سامانه</strong>
+    <small>پاک‌کردن همه اطلاعات و حفظ فقط حساب فعلی مدیر سامانه</small>
+    <div class="nika-actions"><button class="nika-secondary danger" type="button" data-open-system-reset>ورود به بازنشانی کامل</button></div>
+   </div>
    <div class="nika-actions"><button class="nika-primary" type="button" data-backup-download>تهیه و دانلود فایل پشتیبان</button>
     <button class="nika-secondary" type="button" data-backup-confirm hidden>فایل ذخیره شد؛ تأیید و پاک‌سازی تصاویر</button></div>
    <p class="nika-footnote" id="backupMessage">تهیه فایل به‌صورت دستی انجام می‌شود تا بتوانید نسخه آن را روی رایانه خود نگهداری کنید.</p>
   `),
   bind(box) {
+   act(box, '[data-open-system-reset]', async () => { showAdmin('system'); });
    act(box, '[data-backup-download]', async button => {
     button.disabled = true;
     try {

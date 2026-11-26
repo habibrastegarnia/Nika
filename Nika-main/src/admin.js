@@ -5,11 +5,11 @@ import { can, EXTRA_ROLES, assignableExtraRoles, canManageTarget } from './perms
 
 const rolesOf = async (db, id) => (await db.prepare('SELECT role FROM user_roles WHERE user_id=?').bind(id).all()).results.map(r => r.role);
 
-function validateExtras(actor, extras) {
+function validateExtras(actor, extras, allowChairBootstrap = false) {
   if (!Array.isArray(extras)) throw err(400, 'INVALID_INPUT', 'نقش‌ها نامعتبر است');
   const set = [...new Set(extras)];
   if (set.some(r => !EXTRA_ROLES.includes(r))) throw err(400, 'INVALID_ROLE', 'نقش نامعتبر است');
-  const allowed = assignableExtraRoles(actor);
+  const allowed = allowChairBootstrap ? [...assignableExtraRoles(actor), 'chair'] : assignableExtraRoles(actor);
   if (set.some(r => !allowed.includes(r))) throw err(403, 'ROLE_NOT_ASSIGNABLE', 'اجازه‌ی تعیین این نقش را ندارید');
   return set;
 }
@@ -23,9 +23,12 @@ R('GET', '/api/admin/users', { perm: 'users.read' }, async c => {
      FROM users u LEFT JOIN units n ON n.id=u.unit_id
      WHERE (?='' OR u.name LIKE ? OR u.phone LIKE ? OR n.unit_number LIKE ?)
      ORDER BY u.created_at DESC LIMIT 500`).bind(q, like, like, like).all();
+  const bootstrapChairAvailable = c.user.account_type === 'staff' && c.user.roles.length === 1 &&
+    c.user.roles[0] === 'system_admin' &&
+    !await c.db.prepare("SELECT 1 FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role='chair' AND u.active=1 LIMIT 1").first();
   return reply({
     users: r.results.map(u => ({ ...u, active: !!u.active, must_change_password: !!u.must_change_password, roles: (u.roles || '').split(',').filter(Boolean) })),
-    assignable: assignableExtraRoles(c.user)
+    assignable: bootstrapChairAvailable ? ['chair'] : assignableExtraRoles(c.user)
   });
 });
 
@@ -39,7 +42,13 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   const contractStartDate = x.contractStartDate ? jdate(x.contractStartDate, '-') : null;
   const contractEndDate = x.contractEndDate ? jdate(x.contractEndDate, '-') : null;
   if (contractStartDate && contractEndDate && contractEndDate < contractStartDate) throw err(400, 'INVALID_CONTRACT_DATES', 'تاریخ پایان قرارداد نمی‌تواند قبل از تاریخ شروع باشد');
-  const extras = validateExtras(c.user, x.roles ?? []);
+  const bootstrapChairAvailable = accountType === 'staff' && c.user.account_type === 'staff' &&
+    c.user.roles.length === 1 && c.user.roles[0] === 'system_admin' &&
+    !await c.db.prepare("SELECT 1 FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role='chair' AND u.active=1 LIMIT 1").first();
+  const extras = validateExtras(c.user, x.roles ?? [], bootstrapChairAvailable);
+  if (bootstrapChairAvailable && (extras.length !== 1 || extras[0] !== 'chair')) {
+    throw err(403, 'BOOTSTRAP_CHAIR_ONLY', 'مدیر سامانه در این مرحله فقط می‌تواند رئیس هیئت‌مدیره جدید را تعریف کند');
+  }
   if (extras.includes('system_admin') && (accountType !== 'staff' || extras.length !== 1)) throw err(400, 'SYSTEM_ADMIN_MUST_BE_STANDALONE', 'مدیر سامانه باید یک حساب مستقل و بدون نقش مدیریتی دیگر باشد');
   if (accountType === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'برای حساب مدیر/کارکنان حداقل یک نقش انتخاب کنید');
   const storedType = accountType === 'both' ? 'owner' : accountType;
@@ -165,17 +174,17 @@ R('DELETE', '/api/admin/users/:id', { perm: 'users.delete' }, async c => {
   return reply({ ok: true });
 });
 
-// بازنشانی کامل داده‌های دوره آزمایشی؛ فقط مدیر سامانه مستقل مجاز است.
-// واحدهای ساختمان و صندوق‌های پایه حفظ می‌شوند؛ تمام داده‌ها و تنظیمات قابل تغییر پاک می‌شوند.
+// بازنشانی کامل سامانه؛ فقط حساب فعلی مدیر سامانه حفظ می‌شود.
 R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
   if (c.user.account_type !== 'staff' || c.user.roles.length !== 1 || c.user.roles[0] !== 'system_admin') {
-    throw err(403, 'FORBIDDEN', 'فقط حساب مستقل مدیر سامانه اجازه‌ی بازنشانی اطلاعات آزمایشی را دارد');
+    throw err(403, 'FORBIDDEN', 'فقط حساب مستقل مدیر سامانه اجازه‌ی بازنشانی کامل را دارد');
   }
   const x = await readJson(c.request);
-  if (x.confirm !== 'RESET-NIKA-TEST-DATA') throw err(400, 'CONFIRM_REQUIRED', 'عبارت تأیید بازنشانی کامل وارد نشده است');
+  if (x.confirm !== 'RESET-NIKA-KEEP-SYSTEM-ADMIN') throw err(400, 'CONFIRM_REQUIRED', 'عبارت تأیید بازنشانی کامل وارد نشده است');
   if (!await verifyUserPassword(c.db, c.user.id, x.currentPassword)) throw err(403, 'WRONG_PASSWORD', 'رمز عبور فعلی مدیر سامانه نادرست است');
-  const chair = await c.db.prepare("SELECT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role='chair' AND u.active=1 ORDER BY u.created_at LIMIT 1").first();
-  if (!chair) throw err(409, 'CHAIR_REQUIRED', 'برای بازنشانی، باید یک حساب فعال رئیس هیئت‌مدیره وجود داشته باشد');
+  if (!c.user.sid) throw err(401, 'SESSION_REQUIRED', 'نشست معتبر مدیر سامانه پیدا نشد؛ دوباره وارد شوید');
+
+  // همه داده‌های وابسته ابتدا حذف می‌شوند؛ حساب و نشست همین مدیر سامانه باقی می‌ماند.
   await c.db.batch([
     c.db.prepare('DELETE FROM expense_request_files'),
     c.db.prepare('DELETE FROM expense_request_history'),
@@ -193,21 +202,18 @@ R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
     c.db.prepare('DELETE FROM resolutions'),
     c.db.prepare('DELETE FROM events'),
     c.db.prepare('DELETE FROM documents'),
-    c.db.prepare('DELETE FROM sessions WHERE user_id!=?').bind(c.user.id),
-    c.db.prepare('DELETE FROM login_attempts'),
     c.db.prepare('DELETE FROM audit_logs'),
-    c.db.prepare('DELETE FROM user_roles WHERE user_id NOT IN (?,?)').bind(c.user.id, chair.id),
-    c.db.prepare("DELETE FROM user_roles WHERE user_id=? AND role!='system_admin'").bind(c.user.id),
-    c.db.prepare("DELETE FROM user_roles WHERE user_id=? AND role!='chair'").bind(chair.id),
-    c.db.prepare("INSERT OR IGNORE INTO user_roles(user_id,role) VALUES(?,'system_admin')").bind(c.user.id),
-    c.db.prepare("INSERT OR IGNORE INTO user_roles(user_id,role) VALUES(?,'chair')").bind(chair.id),
-    c.db.prepare('DELETE FROM users WHERE id NOT IN (?,?)').bind(c.user.id, chair.id),
+    c.db.prepare('DELETE FROM login_attempts'),
+    c.db.prepare('DELETE FROM sessions WHERE id!=?').bind(c.user.sid),
+    c.db.prepare('DELETE FROM user_roles'),
+    c.db.prepare("UPDATE users SET unit_id=NULL,account_type='staff' WHERE id=?").bind(c.user.id),
+    c.db.prepare('DELETE FROM users WHERE id!=?').bind(c.user.id),
+    c.db.prepare('DELETE FROM units'),
+    c.db.prepare("INSERT INTO user_roles(user_id,role) VALUES(?,'system_admin')").bind(c.user.id),
     c.db.prepare('UPDATE funds SET cash_balance=0'),
     c.db.prepare('UPDATE expense_request_sequences SET next_value=1')
   ]);
-  await audit(c.db, c.user.id, 'system.test_data_reset', 'system', null);
-  const unitCount = await c.db.prepare('SELECT COUNT(*) n FROM units').first();
-  return reply({ ok: true, preservedUser: c.user.id, preservedChair: chair.id, preservedUnits: Number(unitCount?.n || 0) });
+  return reply({ ok: true, preservedUser: c.user.id, preservedSessions: 1 });
 });
 // ---------- واحدها ----------
 R('GET', '/api/admin/units', { perm: 'units.read' }, async c => {

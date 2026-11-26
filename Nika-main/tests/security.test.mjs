@@ -188,43 +188,6 @@ test('مدیر سامانه باید یک حساب مستقل باشد', async (
   assert.equal(mixed.data.error, 'SYSTEM_ADMIN_MUST_BE_STANDALONE');
 });
 
-test('بازنشانی اطلاعات آزمایشی فقط با حساب مستقل مدیر سامانه انجام می‌شود و واحدها را حفظ می‌کند', async () => {
-  assert.equal((await S.exec.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'x' })).status, 403);
-  assert.equal((await chair.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'Chair-Strong-Pass-1', reason: 'آزمون عدم دسترسی رئیس' })).status, 403, 'رئیس هیئت‌مدیره اجازه بازنشانی ندارد');
-  assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'WRONG-PHRASE', currentPassword: 'Sys-Strong-Pass-12' })).data.error, 'CONFIRM_REQUIRED');
-  assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'wrong-wrong-1' })).data.error, 'WRONG_PASSWORD');
-
-  assert.equal((await chair.post('/api/admin/units', { unitNumber: '91', block: 'A', floor: '9' })).status, 201);
-  const chairId = (await env.DB.prepare("SELECT user_id FROM user_roles WHERE role='chair' LIMIT 1").first()).user_id;
-  await env.DB.prepare("INSERT INTO finance_settings(id,effective_from,created_by,monthly_amount) VALUES('test-reset-setting','1405-01-01',?,500000)").bind(chairId).run();
-  const beforeUnits = Number((await env.DB.prepare('SELECT COUNT(*) n FROM units').first()).n);
-
-  const ok = await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'Sys-Strong-Pass-12' });
-  assert.equal(ok.status, 200, JSON.stringify(ok.data));
-  assert.equal(ok.data.preservedUnits, beforeUnits);
-  assert.equal((await S.sys.get('/api/me')).status, 200, 'مدیر سامانه همچنان وارد است');
-  assert.equal((await chair.get('/api/me')).status, 401, 'نشست سایر کاربران باطل می‌شود');
-
-  const users = (await S.sys.get('/api/admin/users')).data.users;
-  assert.equal(users.length, 2, 'فقط دو حساب پایه باقی می‌مانند');
-  assert.deepEqual(users.map(u => u.roles[0]).sort(), ['chair', 'system_admin']);
-  const freshChairSession = new Client(env);
-  assert.equal((await freshChairSession.login('Admin', 'Chair-Strong-Pass-1')).status, 200, 'حساب رئیس حفظ شده و می‌تواند دوباره وارد شود');
-  assert.equal((await freshChairSession.get('/api/me')).data.user.roles.includes('chair'), true);
-  const left = await env.DB.prepare(`SELECT
-    (SELECT COUNT(*) FROM expense_requests) a,
-    (SELECT COUNT(*) FROM manager_delegations) b,
-    (SELECT COUNT(*) FROM transactions) c,
-    (SELECT COUNT(*) FROM finance_settings) d,
-    (SELECT COUNT(*) FROM messages) e,
-    (SELECT COUNT(*) FROM audit_logs WHERE action NOT IN ('system.test_data_reset','login')) f,
-    (SELECT COUNT(*) FROM units) g,
-    (SELECT COUNT(*) FROM funds) h,
-    (SELECT SUM(cash_balance) FROM funds) i`).first();
-  assert.deepEqual({ ...left }, { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0, g: beforeUnits, h: 2, i: 0 });
-});
-
-
 test('حساب bootstrap با نام کاربری Admin فقط پس از تعیین رئیس جایگزین به مدیر سامانه تبدیل می‌شود', async () => {
   // بازنشانی قبلی نشست رئیس را باطل کرده است؛ دوباره با همان حساب Admin وارد می‌شویم.
   const rootChair = new Client(env);
@@ -253,3 +216,51 @@ test('حساب bootstrap با نام کاربری Admin فقط پس از تعی�
   assert.equal(updated.account_type, 'staff');
   assert.equal((await successorSession.get('/api/me')).data.user.roles.includes('chair'), true, 'رئیس جایگزین باید فعال بماند');
 });
+
+test('بازنشانی کامل فقط حساب مدیر سامانه را نگه می‌دارد و امکان تعریف رئیس جدید را می‌دهد', async () => {
+  assert.equal((await S.exec.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'x' })).status, 403);
+  assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'WRONG-PHRASE', currentPassword: 'Sys-Strong-Pass-12' })).data.error, 'CONFIRM_REQUIRED');
+  assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'wrong-wrong-1' })).data.error, 'WRONG_PASSWORD');
+
+
+  const systemAdminId = (await S.sys.get('/api/me')).data.user.id;
+  const ok = await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'Sys-Strong-Pass-12' });
+  assert.equal(ok.status, 200, JSON.stringify(ok.data));
+  assert.equal(ok.data.preservedUser, systemAdminId);
+  assert.equal((await S.sys.get('/api/me')).status, 200, 'نشست مدیر سامانه حفظ می‌شود');
+  assert.equal((await chair.get('/api/me')).status, 401, 'نشست رئیس قبلی باطل می‌شود');
+
+  const usersResponse = await S.sys.get('/api/admin/users');
+  assert.equal(usersResponse.data.users.length, 1, 'فقط یک حساب باقی می‌ماند');
+  assert.deepEqual(usersResponse.data.users[0].roles, ['system_admin']);
+  assert.deepEqual(usersResponse.data.assignable, ['chair'], 'مدیر سامانه فقط امکان تعریف رئیس جدید را دارد');
+  const left = await env.DB.prepare(`SELECT
+    (SELECT COUNT(*) FROM users) a,
+    (SELECT COUNT(*) FROM units) b,
+    (SELECT COUNT(*) FROM expense_requests) c,
+    (SELECT COUNT(*) FROM manager_delegations) d,
+    (SELECT COUNT(*) FROM transactions) e,
+    (SELECT COUNT(*) FROM finance_settings) f,
+    (SELECT COUNT(*) FROM messages) g,
+    (SELECT COUNT(*) FROM requests) h,
+    (SELECT COUNT(*) FROM notices) i,
+    (SELECT COUNT(*) FROM audit_logs) j,
+    (SELECT COUNT(*) FROM sessions) k,
+    (SELECT COUNT(*) FROM funds) l,
+    (SELECT SUM(cash_balance) FROM funds) m`).first();
+  assert.deepEqual({ ...left }, { a: 1, b: 0, c: 0, d: 0, e: 0, f: 0, g: 0, h: 0, i: 0, j: 0, k: 1, l: 2, m: 0 });
+
+  const created = await S.sys.post('/api/admin/users', {
+    name: 'رئیس جدید', accountType: 'staff', phone: '09125559902', roles: ['chair']
+  });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  assert.ok(created.data.tempPassword);
+  const newChair = new Client(env);
+  assert.equal((await newChair.login('09125559902', created.data.tempPassword)).status, 200);
+  assert.deepEqual((await newChair.get('/api/me')).data.user.roles, ['chair']);
+  assert.deepEqual((await S.sys.get('/api/admin/users')).data.assignable, [], 'پس از ایجاد رئیس، مجوز موقت ساخت رئیس بسته می‌شود');
+  assert.equal((await S.sys.post('/api/admin/users', {
+    name: 'مدیر مالی', accountType: 'staff', phone: '09125559903', roles: ['finance']
+  })).status, 403, 'مدیر سامانه نباید بتواند نقش مدیریتی دیگری تعیین کند');
+});
+
