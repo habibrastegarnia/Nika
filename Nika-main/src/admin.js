@@ -82,7 +82,11 @@ async function otherActiveChairs(db, exceptId) {
 R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
   const t = await targetOrFail(c), x = await readJson(c.request), sets = [], vals = [], stmts = [];
   const self = t.id === c.user.id;
-  if (self && ('roles' in x || 'active' in x)) throw err(400, 'SELF_CHANGE', 'نقش‌ها یا وضعیت حساب خودتان را نمی‌توانید تغییر دهید');
+  // تحویل امن حساب bootstrap از رئیس به مدیر سامانه: فقط اگر رئیس فعال دیگری وجود داشته باشد.
+  const selfRoleHandoff = self && 'roles' in x && !('active' in x) && t.account_type === 'staff' &&
+    t.roles.length === 1 && t.roles[0] === 'chair' && Array.isArray(x.roles) && x.roles.length === 1 &&
+    x.roles[0] === 'system_admin' && await otherActiveChairs(c.db, t.id) > 0;
+  if (self && ('active' in x || ('roles' in x && !selfRoleHandoff))) throw err(400, 'SELF_CHANGE', 'تغییر نقش یا وضعیت حساب خودتان مجاز نیست؛ فقط تبدیل رئیس به مدیر سامانه با وجود رئیس جایگزین امکان‌پذیر است');
   if ('name' in x) { sets.push('name=?'); vals.push(str(x.name, { max: 100, field: 'نام' })); }
   if ('contractStartDate' in x || 'contractEndDate' in x) {
     const current = await c.db.prepare('SELECT contract_start_date,contract_end_date FROM users WHERE id=?').bind(t.id).first();
