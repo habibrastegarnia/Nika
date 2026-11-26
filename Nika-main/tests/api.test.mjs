@@ -467,7 +467,7 @@ test('تغییر رمز: رمز فعلی لازم است و نشست‌های د
   assert.equal((await own.get('/api/me')).status, 200);
 });
 
-test('خروج: کوکی پاک و نشست باطل می‌شود', async () => {
+test('خروجی فهرست ثبت‌نام‌ها دسترسی کنترل‌شده دارد', async () => {\n  const anonymous = new Client();\n  assert.equal((await anonymous.get('/api/public/user-submissions/export')).status, 401);\n  assert.equal((await res1.get('/api/public/user-submissions/export')).status, 403);\n  const exported = await chair.get('/api/public/user-submissions/export');\n  assert.equal(exported.status, 200);\n  assert.match(exported.res.headers.get('Content-Type'), /text\\/csv/);\n  const csv = await exported.res.text();\n  assert.match(csv, /شماره واحد/);\n  assert.match(csv, /تاریخ اتمام قرارداد/);\n});\n\ntest('خروج: کوکی پاک و نشست باطل می‌شود', async () => {
   const cookie = chair.cookie;
   assert.equal((await chair.post('/api/logout')).status, 200);
   const r = await worker.fetch(new Request(BASE + '/api/me', { headers: { Cookie: cookie } }), env);
