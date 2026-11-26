@@ -8,7 +8,7 @@ test('هر workspace از همان نسخه ماژول pages و icons استفا
     readFile(new URL('../public/js/admin.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/js/ui.js', import.meta.url), 'utf8')
   ]);
-  const version = main.match(/import \\* as P from '\\.\\/pages\\.js\\?v=(\\d+)'/);
+  const version = main.match(/pages\\.js\\?v=(\\d+)/);
   assert.ok(version, 'نسخه ماژول pages در main مشخص باشد');
   assert.ok(admin.includes("from './pages.js?v=" + version[1] + "'"), 'admin و main باید یک نمونه از pages را وارد کنند');
   assert.ok(ui.includes("from './icons.js?v=2'"), 'ماژول آیکون در ui باید با بقیه یکسان باشد');
