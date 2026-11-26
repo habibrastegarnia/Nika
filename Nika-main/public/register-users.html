@@ -23,10 +23,10 @@
 <div class="field"><label for="phone">شماره تماس <span class="req">*</span></label><input class="control" id="phone" inputmode="tel" autocomplete="tel" placeholder="مثلاً ۰۹۱۲۱۲۳۴۵۶۷" required></div>
 <div class="field"><label for="secondaryPhone">شماره تماس پشتیبان</label><input class="control" id="secondaryPhone" inputmode="tel" placeholder="در صورت تمایل وارد کنید"></div>
 <div class="grid" id="contractFields">
-<div class="field"><label for="contractStartDate">تاریخ شروع قرارداد <span class="req">*</span></label><button class="control date-trigger" type="button" id="contractStartDate" onclick="window.openNikaCalendar('contractStartDate')">انتخاب تاریخ شمسی</button></div>
-<div class="field"><label for="contractEndDate">تاریخ اتمام قرارداد <span class="req">*</span></label><button class="control date-trigger" type="button" id="contractEndDate" onclick="window.openNikaCalendar('contractEndDate')">انتخاب تاریخ شمسی</button></div>
+<div class="field"><label for="contractStartDate">تاریخ شروع قرارداد <span class="req">*</span></label><input class="control" type="text" id="contractStartDate" inputmode="numeric" maxlength="10" placeholder="۱۴۰۵/۰۱/۰۱" autocomplete="off" required></div>
+<div class="field"><label for="contractEndDate">تاریخ اتمام قرارداد <span class="req">*</span></label><input class="control" type="text" id="contractEndDate" inputmode="numeric" maxlength="10" placeholder="۱۴۰۵/۰۱/۰۱" autocomplete="off" required></div>
 </div>
-<p class="hint" id="contractHint">لطفاً تاریخ شروع و اتمام قرارداد را از تقویم شمسی انتخاب کنید.</p>
+<p class="hint" id="contractHint">تاریخ را به‌شکل سال/ماه/روز وارد کنید؛ مثال: ۱۴۰۵/۰۱/۰۱</p>
 <div class="trap" aria-hidden="true"><label>وب‌سایت<input id="website" tabindex="-1" autocomplete="off"></label></div>
 <button class="submit" id="submitBtn" type="submit">ثبت اطلاعات</button><p class="privacy">این فرم فقط برای جمع‌آوری اولیه اطلاعات است و حساب کاربری واقعی ایجاد یا تغییر نمی‌دهد.</p>
 </form></div>
@@ -39,48 +39,34 @@
 <p class="signature">با سپاس و احترام<strong>هیأت مدیره ساختمان نیکا</strong></p>
 </div>
 </section><div class="footer">ساختمان نیکا</div></main>
-<div class="modal-backdrop" id="calendarBackdrop" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
-<div class="calendar-modal"><div class="cal-top"><h2 id="calendarTitle">انتخاب تاریخ شمسی</h2><button type="button" class="close-cal" id="closeCalendar" aria-label="بستن">×</button></div>
-<div class="cal-controls"><button type="button" id="prevMonth" aria-label="ماه قبل">‹</button><div class="month-year" id="monthYear"></div><button type="button" id="nextMonth" aria-label="ماه بعد">›</button></div>
-<div class="weekdays"><span>شنبه</span><span>یکشنبه</span><span>دوشنبه</span><span>سه‌شنبه</span><span>چهارشنبه</span><span>پنجشنبه</span><span>جمعه</span></div>
-<div class="calendar-days" id="calendarDays"></div>
-<div class="cal-actions"><button type="button" id="todayBtn">رفتن به امروز</button><button type="button" id="cancelCalendar">انصراف</button></div><div class="cal-note">برای انتخاب، روی روز موردنظر بزنید.</div></div></div>
-
 <script>
-const $=id=>document.getElementById(id), faDigits=s=>String(s).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
-const months=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
-let fmt;
-try{
- fmt=new Intl.DateTimeFormat('en-u-ca-persian-nu-latn',{year:'numeric',month:'numeric',day:'numeric'});
-}catch(intlError){
- try{fmt=new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn',{year:'numeric',month:'numeric',day:'numeric'});}
- catch(fallbackError){console.error('Persian calendar initialization failed:',intlError,fallbackError);}
-}
-function jparts(date){const o={};for(const p of fmt.formatToParts(date))if(p.type!=='literal')o[p.type]=+p.value;return {y:o.year,m:o.month,d:o.day}}
-function monthDates(y,m){const result=[];const start=new Date(y+621,1,15),end=new Date(y+623,4,15);for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){const p=jparts(d);if(p.y===y&&p.m===m)result.push(new Date(d.getFullYear(),d.getMonth(),d.getDate()))}return result}
-function jalaliToday(){return jparts(new Date())}
-function jalaliText(y,m,d){return faDigits(y+'/'+String(m).padStart(2,'0')+'/'+String(d).padStart(2,'0'))}
-function parseJalaliText(s){const a=String(s||'').replace(/[۰-۹]/g,c=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(c)).split('/').map(Number);return a.length===3?a:null}
+const $=id=>document.getElementById(id), faDigits=s=>String(s).replace(/\\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
 const units=$('unit');
-let calendarTarget=null,calendarYear=jalaliToday().y,calendarMonth=jalaliToday().m;
-function showCalendar(target){calendarTarget=target;const current=parseJalaliText($(target).dataset.jdate);const t=current||[jalaliToday().y,jalaliToday().m,jalaliToday().d];calendarYear=t[0];calendarMonth=t[1];$('calendarTitle').textContent=target==='contractStartDate'?'انتخاب تاریخ شروع قرارداد':'انتخاب تاریخ اتمام قرارداد';const backdrop=$('calendarBackdrop');backdrop.classList.add('open');backdrop.style.display='flex';document.body.style.overflow='hidden';try{drawCalendar()}catch(error){console.error('Calendar render error:',error);$('monthYear').textContent='خطا در نمایش تقویم';$('calendarDays').innerHTML='<p style="grid-column:1/-1;text-align:center;font-size:12px">نمایش تقویم با مشکل روبه‌رو شد. صفحه را تازه‌سازی کنید.</p>'}}
-function hideCalendar(){$('calendarBackdrop').classList.remove('open');$('calendarBackdrop').style.display='none';document.body.style.overflow='';calendarTarget=null}
-function drawCalendar(){const dates=monthDates(calendarYear,calendarMonth);$('monthYear').textContent=months[calendarMonth-1]+' '+faDigits(calendarYear);const grid=$('calendarDays');grid.innerHTML='';const offset=(dates[0].getDay()+1)%7;for(let i=0;i<offset;i++)grid.appendChild(document.createElement('span'));const today=jalaliToday(),picked=calendarTarget?parseJalaliText($(calendarTarget).dataset.jdate):null;
-dates.forEach((date,i)=>{const p=jparts(date),b=document.createElement('button');b.type='button';b.textContent=faDigits(p.d);if(picked&&picked[0]===p.y&&picked[1]===p.m&&picked[2]===p.d)b.classList.add('selected');if(today.y===p.y&&today.m===p.m&&today.d===p.d)b.classList.add('today');b.addEventListener('click',()=>{const value=jalaliText(p.y,p.m,p.d);const target=$(calendarTarget);target.dataset.jdate=p.y+'/'+String(p.m).padStart(2,'0')+'/'+String(p.d).padStart(2,'0');target.textContent=value;hideCalendar()});grid.appendChild(b)})}
-$('prevMonth').onclick=()=>{calendarMonth--;if(calendarMonth<1){calendarMonth=12;calendarYear--}drawCalendar()};
-$('nextMonth').onclick=()=>{calendarMonth++;if(calendarMonth>12){calendarMonth=1;calendarYear++}drawCalendar()};
-$('todayBtn').onclick=()=>{const t=jalaliToday();calendarYear=t.y;calendarMonth=t.m;drawCalendar()};
-$('closeCalendar').onclick=hideCalendar;$('cancelCalendar').onclick=hideCalendar;
-$('calendarBackdrop').addEventListener('click',e=>{if(e.target===$('calendarBackdrop'))hideCalendar()});
-window.openNikaCalendar=showCalendar;
-['contractStartDate','contractEndDate'].forEach(id=>$(id).addEventListener('click',()=>showCalendar(id)));
-function updateContractFields(){['contractStartDate','contractEndDate'].forEach(id=>{const el=$(id);el.disabled=false;el.textContent=el.dataset.jdate?faDigits(el.dataset.jdate):'انتخاب تاریخ شمسی'});$('contractHint').textContent='لطفاً تاریخ شروع و اتمام قرارداد را از تقویم شمسی انتخاب کنید.'}
 function latinDigits(s){return String(s||'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))}
-$('registration').addEventListener('submit',async e=>{e.preventDefault();const first=$('firstName').value.trim(),last=$('lastName').value.trim(),type=$('userType').value,start=$('contractStartDate').dataset.jdate||'',end=$('contractEndDate').dataset.jdate||'';if(!first||!last){alert('لطفاً نام و نام خانوادگی را وارد کنید.');return}if(!start||!end){alert('لطفاً تاریخ شروع و اتمام قرارداد را انتخاب کنید.');return}if(end<start){alert('تاریخ اتمام قرارداد نمی‌تواند پیش از تاریخ شروع باشد.');return}
+function formatJalaliInput(value){
+ const digits=latinDigits(value).replace(/\\D/g,'').slice(0,8);
+ let out=digits;
+ if(digits.length>4) out=digits.slice(0,4)+'/'+digits.slice(4);
+ if(digits.length>6) out=digits.slice(0,4)+'/'+digits.slice(4,6)+'/'+digits.slice(6);
+ return faDigits(out);
+}
+['contractStartDate','contractEndDate'].forEach(id=>{
+ const field=$(id);
+ field.addEventListener('input',()=>{const pos=field.selectionStart;field.value=formatJalaliInput(field.value);try{field.setSelectionRange(field.value.length,field.value.length)}catch(e){}});
+});
+function validJalaliDate(value){
+ const v=latinDigits(value);
+ if(!/^\\d{4}\\/\\d{2}\\/\\d{2}$/.test(v)) return false;
+ const [year,month,day]=v.split('/').map(Number);
+ if(year<1300||year>1500||month<1||month>12||day<1) return false;
+ return day<=(month<=6?31:month<=11?30:30);
+}
+function latinDigits(s){return String(s||'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))}
+$('registration').addEventListener('submit',async e=>{e.preventDefault();const first=$('firstName').value.trim(),last=$('lastName').value.trim(),type=$('userType').value,start=latinDigits($('contractStartDate').value),end=latinDigits($('contractEndDate').value);if(!first||!last){alert('لطفاً نام و نام خانوادگی را وارد کنید.');return}if(!validJalaliDate(start)||!validJalaliDate(end)){alert('تاریخ‌ها را به‌شکل سال/ماه/روز وارد کنید؛ مثال: ۱۴۰۵/۰۱/۰۱');return}if(end<start){alert('تاریخ اتمام قرارداد نمی‌تواند پیش از تاریخ شروع باشد.');return}
 const payload={unit:units.value,userType:type,firstName:first,lastName:last,fullName:first+' '+last,gender:$('gender').value,phone:latinDigits($('phone').value).replace(/[\s-]/g,''),secondaryPhone:latinDigits($('secondaryPhone').value).replace(/[\s-]/g,''),contractStartDate:start,contractEndDate:end,website:$('website').value};
 if(!payload.unit||!type||!payload.gender||!payload.phone){alert('لطفاً همه موارد ستاره‌دار را تکمیل کنید.');return}
 const btn=$('submitBtn');btn.disabled=true;btn.textContent='در حال ثبت…';
 try{const r=await fetch('/api/public/user-submissions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await r.json();if(!r.ok)throw new Error(data.message||'ثبت اطلاعات انجام نشد.');const role=type==='owner'?'مالک':'ساکن',honor=$('gender').value==='female'?'خانم':'آقای';$('successGreeting').textContent=role+' محترم واحد '+faDigits(payload.unit)+'، '+honor+' '+first+' '+last;$('formView').style.display='none';$('successView').style.display='block';window.scrollTo({top:0,behavior:'smooth'})}
 catch(err){alert(err.message||'ارتباط با سرور برقرار نشد. دوباره تلاش کنید.');btn.disabled=false;btn.textContent='ثبت اطلاعات'}});
-updateContractFields();
+
 </script></body></html>
