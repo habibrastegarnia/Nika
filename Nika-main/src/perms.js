@@ -42,7 +42,8 @@ export const DELEGATE_PERMS = {
     'reports.read', 'audit.read', 'rules.read', 'resolutions.read', 'events.read'
   ],
   finance: ROLE_PERMS.finance,
-  executive: ROLE_PERMS.executive,
+  // جانشین مدیر اجرایی اجازه ثبت یا مدیریت رویدادهای تقویم را ندارد.
+  executive: ROLE_PERMS.executive.filter(permission => permission !== 'events.manage'),
   board: ROLE_PERMS.board
 };
 export function delegatedPerms(roles) {
