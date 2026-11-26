@@ -28,3 +28,14 @@ test('onSubmit مجموعه ورودی‌های مبلغ را با querySelector
   assert.match(body, /\$\$\(['"]input\[name="amount"\], input\[data-money="true"\]['"],\s*form\)/);
   assert.equal(body.split('\n').some(line => line.startsWith("  $('input[name")), false);
 });
+
+test('داشبورد مالی مدیر، HTML امن بخش‌ها و میانبرها را بدون escape ترکیب می‌کند', async () => {
+  const source = await readFile(new URL('../public/js/admin.js', import.meta.url), 'utf8');
+  const start = source.indexOf('async function financeTab()');
+  const end = source.indexOf('\nasync function registerUnitPaymentTab()', start);
+  assert.ok(start >= 0 && end > start, 'تابع financeTab باید وجود داشته باشد');
+  const body = source.slice(start, end);
+  assert.match(body, /\$\{join\(shortcuts\)\}/);
+  assert.match(body, /\$\{join\(panels\)\}/);
+  assert.doesNotMatch(body, /\$\{(?:shortcuts|panels)\.join\(/);
+});
