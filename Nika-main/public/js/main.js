@@ -99,6 +99,7 @@ function setupNav() {
 function initNav() {
   $$('.nav-item').forEach(b => { if (b.id === 'admNavBtn') return; b.onclick = () => {
     const n = b.dataset.nav;
+    if (n === 'مالی' && managerMode) { showAdmin('finance'); return; }
     if (managerMode) hideAdmin();
     if (n === 'خانه') { showHome(); P.loadHome(); }
     else if (n === 'حساب من') open(P.profilePage, { root: true });
