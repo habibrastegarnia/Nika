@@ -1,4 +1,5 @@
-export const S = { user: null, fund: 'monthly', summary: { unreadMessages: 0, pendingApprovals: 0, newRequests: 0 } };
+export const S = { user: null, workspace: 'resident', fund: 'monthly', summary: { unreadMessages: 0, pendingApprovals: 0, newRequests: 0 } };
+export const canManageCalendarEvents = () => S.workspace === 'manager' && !!S.user && Array.isArray(S.user.roles) && S.user.roles.some(role => role === 'chair' || role === 'executive');
 export const can = p => !!S.user && (S.user.perms.includes('*') || S.user.perms.includes(p));
 export const canAny = ps => ps.some(can);
 export const ADMIN_PERMS = ['users.manage', 'units.manage', 'finance.charge', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports', 'requests.manage', 'messages.manage', 'notices.manage', 'content.manage', 'resolutions.manage', 'audit.read'];
