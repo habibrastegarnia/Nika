@@ -101,7 +101,7 @@ export async function runReminders(env,now=new Date()){
    }
    const odays=diff(now,due),ostage=odays===-2?'before':odays===0?'due':odays===2?'late2':odays>=7?'late7':null;
    if(ostage){
-    const ownersDue=await env.DB.prepare("SELECT u.id,u.unit_id,n.unit_number,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind='charge' AND status='approved' AND period=?),0) charged,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind IN ('payment','adjustment') AND status='approved'),0) paid FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' JOIN units n ON n.id=u.unit_id WHERE u.active=1").bind(String(today.y)).all();
+    const ownersDue=await env.DB.prepare("SELECT u.id,u.unit_id,n.unit_number,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind='charge' AND status='approved' AND period=?),0) charged,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind IN ('payment','adjustment') AND status='approved' AND period=?),0) paid FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' JOIN units n ON n.id=u.unit_id WHERE u.active=1").bind(String(today.y),String(today.y)).all();
     for(const o of ownersDue.results){
      const balance=o.charged-o.paid;if(balance<=0)continue;
      const copy=templates[ostage],title=ostage==='late7'?'تذکر درباره بدهی شارژ مالکانه':copy[0].replace('شارژ ماهیانه','شارژ مالکانه');
