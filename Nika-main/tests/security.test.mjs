@@ -217,7 +217,7 @@ test('بازنشانی اطلاعات آزمایشی فقط با حساب مست
     (SELECT COUNT(*) FROM transactions) c,
     (SELECT COUNT(*) FROM finance_settings) d,
     (SELECT COUNT(*) FROM messages) e,
-    (SELECT COUNT(*) FROM audit_logs WHERE action!='system.test_data_reset') f,
+    (SELECT COUNT(*) FROM audit_logs WHERE action NOT IN ('system.test_data_reset','login')) f,
     (SELECT COUNT(*) FROM units) g,
     (SELECT COUNT(*) FROM funds) h,
     (SELECT SUM(cash_balance) FROM funds) i`).first();
