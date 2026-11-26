@@ -357,7 +357,7 @@ async function financeTab() {
  if (can('expenses.finalize')) { finalOut = await chairFinalReviewTab(); addShortcut('expense-finalize', 'تأیید نهایی هزینه‌ها', '✓'); panels.push(financeSection('expense-finalize', 'تأیید نهایی هزینه‌ها', finalOut.html)); }
  if (!panels.length) return {html:empty('امکان مشاهده بخش مالی برای شما فعال نیست.')};
  return {
-  html:html`<div class="manager-finance-page">${panels.length && reportsAllowed ? panels.shift() : ''}<div class="nika-finance-shortcuts" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px">${join(shortcuts)}</div>${join(panels)}</div>`,
+  html:html`<div class="manager-finance-page">${panels.length && reportsAllowed ? panels.shift() : ''}<div class="nika-finance-shortcuts" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px">${raw(join(shortcuts))}</div>${raw(join(panels))}</div>`,
   bind(box) {
    const toggles=$$('[data-finance-toggle]',box);
    toggles.forEach(button=>button.addEventListener('click',()=>{
