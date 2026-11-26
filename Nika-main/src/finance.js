@@ -58,8 +58,8 @@ R('POST', '/api/transactions', async c => {
       if (!unit) throw err(404, 'UNIT_NOT_FOUND', 'واحد انتخاب‌شده پیدا نشد');
       const financeRole = u.roles.includes('finance') || (u.delegatedRoles || []).includes('finance');
       const reason = financeRole ? null : str(x.reason, { max: 500, field: 'دلیل ثبت خارج از مسئولیت', multiline: true });
-      const accountType = fund === 'owner' ? 'owner' : 'resident';
-      const payer = await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=? AND active=1 ORDER BY created_at DESC LIMIT 1').bind(unit.id, accountType).first();
+      const payerRole = fund === 'owner' ? 'owner' : 'resident';
+      const payer = await c.db.prepare('SELECT u.id FROM users u JOIN user_roles r ON r.user_id=u.id AND r.role=? WHERE u.unit_id=? AND u.active=1 ORDER BY u.created_at DESC LIMIT 1').bind(payerRole, unit.id).first();
       const per = fund === 'owner' ? ownerYear(x.period) : period(x.period, false);
       await c.db.prepare("INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,note,created_by) VALUES(?,?,?,?,'payment',?,?,?,'pending',?,?,?)")
         .bind(id, unit.id, payer?.id || null, fund, amount, title, per, ref, note, u.id).run();
@@ -68,7 +68,7 @@ R('POST', '/api/transactions', async c => {
       if (!can(u, `finance.${fund}.pay`)) throw err(403, 'FORBIDDEN', 'اجازه‌ی ثبت پرداخت در این صندوق را ندارید');
       if (!u.unit_id) throw err(400, 'NO_UNIT', 'این حساب به واحدی متصل نیست');
       await c.db.prepare("INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,note,created_by) VALUES(?,?,?,?, 'payment',?,?,?,'pending',?,?,?)")
-        .bind(id, u.unit_id, u.id, fund, amount, title, fund === 'owner' ? ownerYear(x.period) : period(x.period, false), ref, note, u.id).run();
+        .bind(id, u.unit_id, u.id, fund, amount, title, fundPeriod(fund, x.period, false), ref, note, u.id).run();
       await audit(c.db, u.id, 'payment.create', 'transaction', id, { fund, amount });
     }
   } else if (x.kind === 'expense') {
