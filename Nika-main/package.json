@@ -1,6 +1,6 @@
 {
   "name": "nika-homepage-worker",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,7 +11,7 @@
     "deploy": "wrangler deploy",
     "migrate:local": "wrangler d1 migrations apply nika-db --local",
     "migrate:remote": "wrangler d1 migrations apply nika-db --remote",
-    "test": "node --no-warnings --test tests/api.test.mjs",
+    "test": "node --no-warnings --test tests/api.test.mjs tests/security.test.mjs tests/jcal.test.mjs",
     "dev:mock": "node --no-warnings tests/ui-server.mjs"
   },
   "devDependencies": {

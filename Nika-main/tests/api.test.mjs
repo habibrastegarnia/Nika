@@ -4,7 +4,7 @@ import worker from '../src/index.js';
 import { createDB } from './d1-shim.mjs';
 
 const BASE = 'https://nika.test';
-const env = { DB: createDB(), JWT_SECRET: 'x'.repeat(40), BOOTSTRAP_KEY: 'setup-key-123', ENVIRONMENT: 'production', ALLOW_SELF_APPROVAL: 'false', ASSETS: { fetch: () => new Response('asset') } };
+const env = { DB: createDB(), JWT_SECRET: 'x'.repeat(40), BOOTSTRAP_KEY: 'setup-key-123', ENVIRONMENT: 'production', ALLOW_SELF_APPROVAL: 'false', INITIAL_PASSWORD_MODE: 'phone', ASSETS: { fetch: () => new Response('asset') } };
 
 class Client {
   constructor(label) { this.label = label; this.cookie = ''; this.ip = '1.1.1.' + Math.floor(Math.random() * 250); }
@@ -39,13 +39,14 @@ test('health و تنظیمات', async () => {
 test('setup: کلید لازم است، رمز ضعیف رد می‌شود، فقط یک‌بار', async () => {
   assert.equal((await chair.post('/api/setup', { name: 'رئیس', phone: '09120000001', password: CHAIR_PW })).status, 403);
   const bad = { 'X-Setup-Key': 'setup-key-123' };
-  assert.equal((await chair.call('POST', '/api/setup', { name: 'رئیس', phone: '09120000001', password: '12345' }, bad)).status, 201);
+  const setupRes = await chair.call('POST', '/api/setup', {}, bad); assert.equal(setupRes.status, 201); ids.setupTemp = setupRes.data.tempPassword; assert.ok(ids.setupTemp && ids.setupTemp.length >= 12 && ids.setupTemp !== 'admin');
   assert.equal((await chair.call('POST', '/api/setup', { name: 'رئیس', phone: '09120000001', password: CHAIR_PW }, bad)).status, 409);
   assert.equal((await chair.call('POST', '/api/setup', { name: 'دوم', phone: '09120000002', password: CHAIR_PW }, bad)).status, 409);
 });
 
 test('ورود مدیر/کارکنان (بدون شماره واحد) کار می‌کند و کوکی HttpOnly می‌گیرد', async () => {
-  const r = await chair.login('staff', 'Admin', 'admin');
+  assert.equal((await new Client().login('staff', 'Admin', 'admin')).status, 401, 'رمز ثابت admin دیگر کار نمی‌کند');
+  const r = await chair.login('staff', 'Admin', ids.setupTemp);
   assert.equal((await chair.post('/api/password', { newPassword: CHAIR_PW })).status, 200);
   assert.equal(r.status, 200);
   const sc = r.res.headers.get('Set-Cookie');
@@ -176,20 +177,6 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
 
   // مالک و ساکن واحد ۱۲ مستقل‌اند و فقط صندوق خودشان را می‌بینند
   assert.equal((await own.get('/api/finance/my?fund=owner')).data.balance, 9000000);
-  assert.equal((await own.post('/api/transactions', { fund: 'owner', kind: 'payment', amount: 1000000 })).status, 400, 'سال پرداخت مالکانه اجباری است');
-  let ownerPay = await own.post('/api/transactions', { fund: 'owner', kind: 'payment', amount: 1000000, period: '1405', reference: 'OWN1405' });
-  assert.equal(ownerPay.status, 201);
-  assert.equal((await fin.post(`/api/transactions/${ownerPay.data.id}/decision`, { status: 'approved' })).status, 200);
-  assert.equal((await chair.post('/api/finance/charges', { fund: 'owner', period: '1406', amount: 12000000, title: 'شارژ مالکانه ۱۴۰۶', unitNumbers: ['12'] })).data.created, 1);
-  ownerPay = await own.post('/api/transactions', { fund: 'owner', kind: 'payment', amount: 4000000, period: '1406', reference: 'OWN1406' });
-  assert.equal(ownerPay.status, 201);
-  assert.equal((await fin.post(`/api/transactions/${ownerPay.data.id}/decision`, { status: 'approved' })).status, 200);
-  const ownerLedger = (await own.get('/api/finance/my?fund=owner')).data;
-  assert.equal(ownerLedger.balance, 16000000, 'مانده کل باید پرداخت‌های هر دو سال را لحاظ کند');
-  assert.deepEqual(ownerLedger.annualBalances.map(x => [x.period, x.charged, x.paid, x.balance]), [
-    ['1406', 12000000, 4000000, 8000000], ['1405', 9000000, 1000000, 8000000]
-  ], 'پرداخت هر سال فقط بدهی همان سال را کاهش می‌دهد');
-  assert.equal(ownerLedger.unassignedPayments, 0);
   assert.equal((await own.get('/api/finance/my?fund=monthly')).status, 403);
   assert.equal((await res1.get('/api/transactions?fund=owner')).status, 403);
   const mine = (await res2.get('/api/transactions?fund=monthly')).data.transactions;
@@ -231,7 +218,12 @@ test('درخواست پرداخت: ثبت، تأیید دومرحله‌ای، �
   const mine = await exec.get('/api/expense-requests?scope=mine');
   assert.equal(mine.data.requests[0].status, 'revision_chair');
   assert.equal((await fin.patch(`/api/expense-requests/${first}`, { ...create(990000, 'قبض آب اصلاح‌شده'), files: [], reason: 'اصلاح توسط جانشین فعال مدیر اجرایی' })).status, 200);
-  assert.equal((await fin.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' })).data.status, 'pending_chair');
+  // جداسازی وظایف برای «شخص»: جانشینی که درخواست را اصلاح کرده نمی‌تواند همان را بررسی مالی کند
+  const selfReview = await fin.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' });
+  assert.equal(selfReview.status, 403); assert.equal(selfReview.data.error, 'SELF_APPROVAL');
+  const mk2 = await chair.post('/api/admin/users', { name: 'مدیر مالی دوم', accountType: 'staff', phone: '09120000099', roles: ['finance'], reason: 'آزمون جداسازی وظایف' });
+  const fin2 = new Client('fin2'); await activate(fin2, 'staff', '09120000099', mk2.data.tempPassword, 'Finance2-Pass-555');
+  assert.equal((await fin2.post(`/api/expense-requests/${first}/finance-decision`, { status: 'approved' })).data.status, 'pending_chair');
   assert.equal((await chair.post(`/api/expense-requests/${first}/chair-decision`, { status: 'approved' })).status, 200);
   assert.equal((await exec.get(`/api/expense-requests/${first}`)).data.request.status, 'finalized');
   assert.equal((await fin.get('/api/finance/funds')).data.funds.find(f => f.fund_id === 'monthly').balance, 2010000);

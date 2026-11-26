@@ -1,11 +1,11 @@
 // احراز هویت، نشست، پروفایل، رمز عبور، آواتار و خلاصه‌ی نشان‌ها
 import { R } from './router.js';
-import { err, reply, readJson, str, optStr, phoneOrFail, normPhone, unitOrNull, passwordProblem, hashPassword, newSalt, safeEqual, signToken, verifyToken, audit } from './lib.js';
+import { err, reply, readJson, str, optStr, phoneOrFail, normPhone, unitOrNull, passwordProblem, hashPassword, newSalt, safeEqual, signToken, verifyToken, audit, tempPassword } from './lib.js';
 import { userPerms, delegatedPerms, can } from './perms.js';
 
 const SESSION_TTL = 60 * 60 * 24 * 7;
 const COOKIE = 'nika_session';
-const WINDOW = 900, MAX_ID_FAILS = 5, MAX_IP_FAILS = 30;
+const WINDOW = 900, MAX_ID_FAILS = 5, MAX_ID_GLOBAL_FAILS = 25, MAX_IP_FAILS = 30;
 const DUMMY_SALT = 'nika-dummy-salt-for-timing';
 
 export const sessionCookie = (value, secure, maxAge) =>
@@ -81,14 +81,16 @@ async function issueSession(c, userRow) {
 R('POST', '/api/setup', { public: true }, async c => {
   const key = c.request.headers.get('X-Setup-Key') || '';
   if (!c.env.BOOTSTRAP_KEY || !safeEqual(key, c.env.BOOTSTRAP_KEY)) throw err(403, 'FORBIDDEN', 'کلید فعال‌سازی نادرست است');
-  const uid = crypto.randomUUID(), salt = newSalt(), ph = await hashPassword('admin', salt);
+  // رمز موقت تصادفی است و فقط همین یک‌بار نمایش داده می‌شود؛ رمز ثابت «admin» حذف شد
+  // (هر کسی که آدرس سایت را می‌دانست می‌توانست پیش از مالک با Admin/admin وارد شود).
+  const uid = crypto.randomUUID(), salt = newSalt(), temp = tempPassword(), ph = await hashPassword(temp, salt);
   const created = await c.db.prepare(
     "INSERT INTO users(id,unit_id,account_type,name,phone,email,password_hash,password_salt,must_change_password) SELECT ?,NULL,'staff','مدیر اصلی','00000000000','admin',?,?,1 WHERE NOT EXISTS (SELECT 1 FROM users)"
   ).bind(uid, ph, salt).run();
   if (!created.meta.changes) throw err(409, 'ALREADY_INITIALIZED', 'سامانه قبلاً راه‌اندازی شده است');
   await c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, 'chair').run();
   await audit(c.db, uid, 'bootstrap', 'user', uid, { username: 'Admin', forcedPasswordChange: true });
-  return reply({ ok: true, username: 'Admin', message: 'حساب مدیر اصلی ساخته شد. با نام کاربری Admin و رمز موقت admin وارد شوید و فوراً رمز را تغییر دهید.' }, 201);
+  return reply({ ok: true, username: 'Admin', tempPassword: temp, message: 'حساب مدیر اصلی ساخته شد. رمز موقت را همین حالا یادداشت کنید (دوباره نمایش داده نمی‌شود)، با نام کاربری Admin وارد شوید و رمز را تغییر دهید.' }, 201);
 });
 
 R('POST', '/api/login', { public: true }, async c => {
@@ -100,8 +102,10 @@ R('POST', '/api/login', { public: true }, async c => {
   const normalizedPhone = /^\+?[0-9۰-۹٠-٩]{8,15}$/.test(identifier) ? normPhone(identifier) : null;
   const unit = unitOrNull(identifier);
   const ip = c.request.headers.get('CF-Connecting-IP') || 'unknown';
-  const idKey = `id:unified:${identifier.toLowerCase()}`, ipKey = `ip:${ip}`;
-  await assertNotLocked(c.db, [idKey, ipKey], c.now);
+  // قفل سه‌گانه: (شناسه+IP) سخت‌گیر، شناسه به‌تنهایی با سقف بالاتر، و IP به‌تنهایی.
+  // قفل فقط بر اساس شناسه به مهاجم اجازه می‌داد با ۵ تلاش اشتباه از هر جا، حساب یک واحد را ۱۵ دقیقه قفل کند.
+  const idLower = identifier.toLowerCase().slice(0, 64), idIpKey = `idip:${idLower}:${ip}`, idKey = `id:unified:${idLower}`, ipKey = `ip:${ip}`;
+  await assertNotLocked(c.db, [idIpKey, idKey, ipKey], c.now);
   let candidates = [];
   if (isRootAdmin) {
     const root = await c.db.prepare("SELECT * FROM users WHERE unit_id IS NULL AND account_type='staff' AND lower(email) IN ('admin','admin@nika.com') AND active=1").first();
@@ -125,11 +129,12 @@ R('POST', '/api/login', { public: true }, async c => {
   }
   if (!candidates.length) await hashPassword(password, DUMMY_SALT);
   if (!u) {
-    await registerFailure(c.db, idKey, MAX_ID_FAILS, c.now);
+    await registerFailure(c.db, idIpKey, MAX_ID_FAILS, c.now);
+    await registerFailure(c.db, idKey, MAX_ID_GLOBAL_FAILS, c.now);
     await registerFailure(c.db, ipKey, MAX_IP_FAILS, c.now);
     throw err(401, 'INVALID_CREDENTIALS', 'شناسه یا رمز عبور صحیح نیست');
   }
-  await c.db.prepare('DELETE FROM login_attempts WHERE key=?').bind(idKey).run();
+  await c.db.prepare('DELETE FROM login_attempts WHERE key=?').bind(idIpKey).run();
   await audit(c.db, u.id, 'login', 'user', u.id);
   return issueSession(c, u);
 });
@@ -172,22 +177,30 @@ async function updateProfile(c) {
 
 R('POST', '/api/password', async c => {
   const x = await readJson(c.request);
+  // محدودیت تلاش: بدون آن می‌شد رمز فعلی را حدس زد، و بررسی «رمز مالک و ساکن یک واحد نباید یکسان باشد»
+  // مثل یک oracle عمل می‌کرد (۴۰۹ یعنی رمزِ حساب دیگرِ واحد دقیقاً همین است).
+  const pwKey = `pw:${c.user.id}`;
+  await assertNotLocked(c.db, [pwKey], c.now);
   const row = await c.db.prepare('SELECT password_hash,password_salt,phone FROM users WHERE id=?').bind(c.user.id).first();
   if (!c.user.must_change_password) {
-    const ok = typeof x.currentPassword === 'string' && safeEqual(await hashPassword(x.currentPassword, row.password_salt), row.password_hash);
-    if (!ok) throw err(403, 'WRONG_PASSWORD', 'رمز عبور فعلی نادرست است');
+    const ok = typeof x.currentPassword === 'string' && x.currentPassword.length <= 128 && safeEqual(await hashPassword(x.currentPassword, row.password_salt), row.password_hash);
+    if (!ok) { await registerFailure(c.db, pwKey, MAX_ID_FAILS, c.now); throw err(403, 'WRONG_PASSWORD', 'رمز عبور فعلی نادرست است'); }
   }
   const prob = passwordProblem(x.newPassword, row.phone);
   if (prob) throw err(400, 'WEAK_PASSWORD', prob);
   if (x.newPassword === x.currentPassword) throw err(400, 'SAME_PASSWORD', 'رمز جدید باید با رمز قبلی متفاوت باشد');
   if (c.user.unit_id) {
     const other = await c.db.prepare("SELECT password_hash,password_salt FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND id!=? AND active=1 LIMIT 1").bind(c.user.unit_id, c.user.id).first();
-    if (other && safeEqual(await hashPassword(x.newPassword, other.password_salt), other.password_hash)) throw err(409, 'SHARED_UNIT_PASSWORD', 'رمز عبور مالک و ساکن یک واحد نمی‌تواند یکسان باشد');
+    if (other && safeEqual(await hashPassword(x.newPassword, other.password_salt), other.password_hash)) {
+      await registerFailure(c.db, pwKey, MAX_ID_FAILS, c.now);
+      throw err(409, 'SHARED_UNIT_PASSWORD', 'این رمز قابل استفاده نیست؛ رمز دیگری انتخاب کنید');
+    }
   }
   const salt = newSalt(), ph = await hashPassword(x.newPassword, salt);
   await c.db.batch([
     c.db.prepare('UPDATE users SET password_hash=?,password_salt=?,must_change_password=0,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(ph, salt, c.user.id),
-    c.db.prepare('DELETE FROM sessions WHERE user_id=? AND id!=?').bind(c.user.id, c.user.sid)
+    c.db.prepare('DELETE FROM sessions WHERE user_id=? AND id!=?').bind(c.user.id, c.user.sid),
+    c.db.prepare('DELETE FROM login_attempts WHERE key=?').bind(pwKey)
   ]);
   await audit(c.db, c.user.id, 'password.change', 'user', c.user.id);
   return reply({ ok: true, user: await loadUser(c.db, c.user.id) });

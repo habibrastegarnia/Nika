@@ -1,26 +1,19 @@
 import { R } from './router.js';
 import { reply, readJson, int, jdate, audit } from './lib.js';
+import { jTehran, jalaliToDate, occursOn } from './jcal.js';
 
-const PERSIAN_FORMAT = new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'2-digit',day:'2-digit'});
-const pparts = d => {
- const a = PERSIAN_FORMAT.formatToParts(d);
- const o=Object.fromEntries(a.map(x=>[x.type,x.value]));
- return {y:+o.year,m:+o.month,d:+o.day};
-};
+const pparts = d => jTehran(d);
 const keyDate=d=>new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())).toISOString().slice(0,10);
-function jalaliDate(y,m,day){
- const start=Date.UTC(y+621,2,15);
- for(let i=0;i<370;i++){const d=new Date(start+i*86400000),p=pparts(d);if(p.y===y&&p.m===m&&p.d===day)return d;}
- return null;
-}
+// تبدیل سریع و کش‌شده (به‌جای اسکن تا ۳۷۰ روز با Intl برای هر تاریخ)
+const jalaliDate = (y,m,day) => jalaliToDate(y,m,day);
 const diff=(a,b)=>Math.round((Date.parse(keyDate(a)+'T00:00:00Z')-Date.parse(keyDate(b)+'T00:00:00Z'))/86400000);
 const fa=v=>String(v).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
 const amount=v=>fa(Number(v).toLocaleString('en-US'));
 const templates={
  before:['یادآوری موعد شارژ ماهیانه','info','به اطلاع می‌رسانیم موعد پرداخت شارژ ماهیانه شما به مبلغ AMOUNT تومان، دو روز دیگر فرا می‌رسد.\n\nپرداخت به‌موقع شارژ، نقش مهمی در تأمین هزینه‌های جاری و استمرار امور خدماتی و رفاهی ساختمان دارد.\n\nاز همراهی و مسئولیت‌پذیری شما در قبال مجموعه نیکا سپاسگزاریم.'],
  due:['امروز موعد پرداخت شارژ ماهیانه است','warning','امروز موعد پرداخت شارژ ماهیانه شما به مبلغ AMOUNT تومان است.\n\nهزینه‌های جاری ساختمان بر اساس مشارکت و پرداخت به‌موقع تمامی واحدها تأمین می‌شود. تأخیر در پرداخت هر واحد می‌تواند برنامه‌ریزی و ارائه خدمات مورد نیاز سایر ساکنان را نیز تحت تأثیر قرار دهد.\n\nخواهشمندیم با پرداخت به‌موقع، در حفظ نظم و رفاه مجموعه سهیم باشید.'],
- late2:['پرداخت شارژ ماهیانه شما هنوز انجام نشده است','amber','با گذشت دو روز از موعد پرداخت، مبلغ AMOUNT تومان از شارژ ماهیانه واحد شما همچنان پرداخت‌نشده باقی مانده است.\n\nشارژ ساختمان صرفاً یک تعهد فردی نیست؛ بلکه پشتوانه تأمین هزینه‌های مشترک و اداره منظم ساختمان است. تأخیر در پرداخت هر واحد ممکن است موجب اختلال در انجام تعهدات مالی ساختمان و ایجاد مشکل برای سایر ساکنانی شود که سهم خود را به‌موقع پرداخت کرده‌اند.\n\nلطفاً با تسویه بدهی، در انجام مسئولیت مشترک خود نسبت به ساختمان و همسایگان همراهی فرمایید.'],
  lateDaily:['یادآوری بدهی شارژ ماهیانه','amber','با وجود گذشت موعد سررسید، مبلغ AMOUNT تومان از شارژ ماهیانه واحد شما همچنان پرداخت‌نشده است.\n\nخواهشمندیم برای جلوگیری از انباشته‌شدن بدهی و اختلال در تأمین هزینه‌های مشترک ساختمان، در اسرع وقت نسبت به پرداخت آن اقدام فرمایید.'],
+ late2:['پرداخت شارژ ماهیانه شما هنوز انجام نشده است','amber','با گذشت دو روز از موعد پرداخت، مبلغ AMOUNT تومان از شارژ ماهیانه واحد شما همچنان پرداخت‌نشده باقی مانده است.\n\nشارژ ساختمان صرفاً یک تعهد فردی نیست؛ بلکه پشتوانه تأمین هزینه‌های مشترک و اداره منظم ساختمان است. تأخیر در پرداخت هر واحد ممکن است موجب اختلال در انجام تعهدات مالی ساختمان و ایجاد مشکل برای سایر ساکنانی شود که سهم خود را به‌موقع پرداخت کرده‌اند.\n\nلطفاً با تسویه بدهی، در انجام مسئولیت مشترک خود نسبت به ساختمان و همسایگان همراهی فرمایید.'],
  late7:['تداوم عدم پرداخت شارژ، بر امور کل ساختمان تأثیر می‌گذارد','danger','با وجود گذشت هفت روز یا بیشتر از تاریخ سررسید، مبلغ AMOUNT تومان از شارژ ماهیانه واحد شما همچنان تسویه نشده است.\n\nاداره ساختمان، تأمین هزینه‌های خدماتی، نگهداری تأسیسات و انجام امور مشترک، به مشارکت مالی منظم تمامی واحدها وابسته است. عدم پرداخت به‌موقع شارژ از سوی حتی یک واحد، می‌تواند تعادل مالی و برنامه‌ریزی مدیریت ساختمان را مختل کند و در نهایت پیامدهایی به دنبال داشته باشد که سایر ساکنان، حتی با وجود انجام به‌موقع تعهدات خود، از آثار آن متأثر شوند.\n\nانتظار می‌رود با درک اهمیت مسئولیت‌پذیری در قبال مجموعه و حقوق سایر همسایگان، در اسرع وقت نسبت به پرداخت بدهی اقدام فرمایید.\n\nحفظ کیفیت زندگی و رفاه در ساختمان، مسئولیتی مشترک است و همکاری تک‌تک واحدها در تحقق آن نقش دارد.']
 };
 async function send(db,sender,recipient,title,body,tone,key){
@@ -77,7 +70,7 @@ export async function runReminders(env,now=new Date()){
   const resident=await env.DB.prepare("SELECT u.id,u.name FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='resident' WHERE u.unit_id=? AND u.active=1 LIMIT 1").bind(r.unit_id).first();
   if(!resident)continue;
   const t=templates[stage],body='ساکن محترم واحد '+r.unit_number+'،\n\n'+t[2].replace('AMOUNT',amount(balance))+'\n\nمدیریت ساختمان نیکا';
-  const msgKey='monthly:'+r.unit_id+':'+r.period+':'+(days>=1?'daily:'+keyDate(now):stage);
+  const msgKey='monthly:'+r.unit_id+':'+r.period+':'+(stage==='late7'?'daily:'+keyDate(now):stage);
   await send(env.DB,sender.id,resident.id,t[0],body,t[1],msgKey);sent++;
   if(days>=7){
    const owner=await env.DB.prepare("SELECT u.id FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' WHERE u.unit_id=? AND u.active=1 LIMIT 1").bind(r.unit_id).first();
@@ -101,7 +94,7 @@ export async function runReminders(env,now=new Date()){
    }
    const odays=diff(now,due),ostage=odays===-2?'before':odays===0?'due':odays===2?'late2':odays>=7?'late7':null;
    if(ostage){
-    const ownersDue=await env.DB.prepare("SELECT u.id,u.unit_id,n.unit_number,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind='charge' AND status='approved' AND period=?),0) charged,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind IN ('payment','adjustment') AND status='approved'),0) paid FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' JOIN units n ON n.id=u.unit_id WHERE u.active=1").bind(String(today.y)).all();
+    const ownersDue=await env.DB.prepare("SELECT u.id,u.unit_id,n.unit_number,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind='charge' AND status='approved' AND period=?),0) charged,COALESCE((SELECT SUM(amount) FROM transactions WHERE unit_id=u.unit_id AND fund_id='owner' AND kind IN ('payment','adjustment') AND status='approved' AND period=?),0) paid FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' JOIN units n ON n.id=u.unit_id WHERE u.active=1").bind(String(today.y),String(today.y)).all();
     for(const o of ownersDue.results){
      const balance=o.charged-o.paid;if(balance<=0)continue;
      const copy=templates[ostage],title=ostage==='late7'?'تذکر درباره بدهی شارژ مالکانه':copy[0].replace('شارژ ماهیانه','شارژ مالکانه');
@@ -112,35 +105,20 @@ export async function runReminders(env,now=new Date()){
   }
  }
  // یادآوری رویدادهای تقویم: یک روز پیش از هر نوبت برای رئیس و مدیر اجرایی.
- const managers=await env.DB.prepare("SELECT DISTINCT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role IN ('chair','executive') AND u.active=1").all();
+ const managers=(await env.DB.prepare("SELECT DISTINCT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role IN ('chair','executive') AND u.active=1").all()).results; // خروجی .all() آبجکت است نه آرایه؛ قبلاً for...of روی آن خطا می‌داد و یادآوری تقویم/قرارداد هرگز ارسال نمی‌شد
  const tomorrowDate=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1));
  const tomorrowJ=(()=>{const p=pparts(tomorrowDate);return String(p.y)+'-'+String(p.m).padStart(2,'0')+'-'+String(p.d).padStart(2,'0');})();
  const calendarEvents=await env.DB.prepare("SELECT id,title,event_date,event_time,recurrence,recurrence_until FROM events WHERE event_date<=? AND (recurrence='none' OR recurrence_until IS NULL OR recurrence_until>=?)").bind(tomorrowJ,tomorrowJ).all();
- const nextJ=(date,recurrence)=>{
-  const [y,m,d]=String(date).split('-').map(Number);
-  const toDate=(yy,mm,dd)=>{const start=Date.UTC(yy+621,2,15);for(let i=0;i<370;i++){const dt=new Date(start+i*86400000),p=pparts(dt);if(p.y===yy&&p.m===mm&&p.d===dd)return dt;}return null;};
-  const fromDate=dt=>{const p=pparts(dt);return String(p.y)+'-'+String(p.m).padStart(2,'0')+'-'+String(p.d).padStart(2,'0');};
-  if(recurrence==='weekly'){const dt=toDate(y,m,d);return dt?fromDate(new Date(dt.getTime()+7*86400000)):null;}
-  let yy=y,mm=m;if(recurrence==='monthly'){mm++;if(mm===13){mm=1;yy++;}}else if(recurrence==='yearly')yy++;else return null;
-  for(let day=d;day>=1;day--)if(toDate(yy,mm,day))return String(yy)+'-'+String(mm).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-  return null;
- };
  for(const ev of calendarEvents.results){
-  let occurrence=ev.event_date,guard=0;
-  while(occurrence<=tomorrowJ&&guard++<5000){
-   if(occurrence===tomorrowJ){
-    const override=await env.DB.prepare('SELECT event_date,cancelled,title,event_time FROM event_occurrences WHERE event_id=? AND occurrence_date=?').bind(ev.id,occurrence).first();
-    if(!override?.cancelled && (override?.event_date||occurrence)===tomorrowJ){
-     const shown=override?.event_date||occurrence;
-     const title=override?.title||ev.title;
-     for(const recipient of managers){
-      await send(env.DB,sender.id,recipient.id,'یادآوری رویداد فردا: '+title,'رویداد «'+title+'» فردا در تاریخ '+shown+(override?.event_time||ev.event_time?'، ساعت '+(override?.event_time||ev.event_time):'')+' برنامه‌ریزی شده است.','info','calendar:'+ev.id+':'+occurrence+':'+recipient.id);sent++;
-     }
-    }
-    break;
+  if(!occursOn(ev.event_date,ev.recurrence,ev.recurrence_until,tomorrowJ))continue;
+  const occurrence=tomorrowJ;
+  const override=await env.DB.prepare('SELECT event_date,cancelled,title,event_time FROM event_occurrences WHERE event_id=? AND occurrence_date=?').bind(ev.id,occurrence).first();
+  if(!override?.cancelled && (override?.event_date||occurrence)===tomorrowJ){
+   const shown=override?.event_date||occurrence;
+   const title=override?.title||ev.title;
+   for(const recipient of managers){
+    await send(env.DB,sender.id,recipient.id,'یادآوری رویداد فردا: '+title,'رویداد «'+title+'» فردا در تاریخ '+shown+(override?.event_time||ev.event_time?'، ساعت '+(override?.event_time||ev.event_time):'')+' برنامه‌ریزی شده است.','info','calendar:'+ev.id+':'+occurrence+':'+recipient.id);sent++;
    }
-   if(ev.recurrence==='none')break;
-   const n=nextJ(occurrence,ev.recurrence);if(!n||n<=occurrence)break;occurrence=n;
   }
  }
  // نوبت‌هایی که از تاریخ اصلی خود به فردا منتقل شده‌اند نیز یادآوری می‌شوند.

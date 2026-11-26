@@ -18,7 +18,7 @@
   xhr.onload=function(){
    var data={};try{data=JSON.parse(xhr.responseText||'{}');}catch(ignore){}
    out.textContent=(xhr.status>=200&&xhr.status<300?'موفقیت: ':'خطای سرور ('+xhr.status+'): ')+(data.message||data.error||'پاسخ نامشخص');
-   if(xhr.status>=200&&xhr.status<300){form.reset();out.textContent+='\nاکنون به صفحه ورود بروید و با Admin / admin وارد شوید.';}
+   if(xhr.status>=200&&xhr.status<300){form.reset();out.textContent+='\n\nنام کاربری: Admin\nرمز موقت: '+(data.tempPassword||'')+'\n\nاین رمز دوباره نمایش داده نمی‌شود. اکنون به صفحه ورود بروید و پس از ورود رمز را تغییر دهید.';}
    button.disabled=false;
   };
   xhr.onerror=function(){out.textContent='خطای ارتباط با سرور.';button.disabled=false;};

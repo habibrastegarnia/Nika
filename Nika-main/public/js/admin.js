@@ -145,7 +145,7 @@ async function usersTab() {
         await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE', body }); toast('حساب غیرفعال شد؛ سوابق حفظ شدند'); reload();
       });
       act(box, '[data-reset]', async b => {
-        if (!await ask('بازنشانی رمز', 'رمز به شماره موبایل ثبت‌شده کاربر برمی‌گردد و همه‌ی نشست‌های او بسته می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
+        if (!await ask('بازنشانی رمز', 'یک رمز موقت جدید ساخته می‌شود و همه‌ی نشست‌های این کاربر بسته می‌شود. رمز فقط همین یک‌بار نمایش داده می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
         const body = {};
         if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا رمز این کاربر را به‌جای مسئول اصلی مدیریت کاربران بازنشانی می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
         const r = await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST', body });
