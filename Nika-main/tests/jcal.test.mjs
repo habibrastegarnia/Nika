@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { jParts, jalaliToDate, dateToJalali, monthLength, occursOn, occurrencesBetween, daysBetween } from '../src/jcal.js';
+import { jdate } from '../src/lib.js';
 
 test('jalaliToDate با ICU برای همه‌ی روزهای ۱۳۸۰ تا ۱۴۶۰ رفت‌وبرگشتی سازگار است', () => {
   const DAY = 86400000; let n = 0;
@@ -10,6 +11,15 @@ test('jalaliToDate با ICU برای همه‌ی روزهای ۱۳۸۰ تا ۱۴
   }
   assert.ok(n > 29000);
 });
+test('اعتبارسنجی ورودی تاریخ، روز و ماه واقعی تقویم شمسی را کنترل می‌کند', () => {
+  assert.equal(jdate('1405-07-30', '-'), '1405-07-30');
+  assert.equal(jdate('1403-12-30', '-'), '1403-12-30');
+  assert.equal(jdate('1405/09/01', '/'), '1405/09/01');
+  assert.throws(() => jdate('1405-07-31', '-'), { code: 'INVALID_DATE' });
+  assert.throws(() => jdate('1405-12-30', '-'), { code: 'INVALID_DATE' });
+  assert.throws(() => jdate('1405-13-01', '-'), { code: 'INVALID_DATE' });
+});
+
 test('تاریخ نامعتبر null می‌دهد و طول ماه‌ها درست است', () => {
   assert.equal(jalaliToDate(1405, 7, 31), null); assert.equal(jalaliToDate(1405, 13, 1), null); assert.equal(jalaliToDate(1405, 12, 30), null);
   assert.ok(jalaliToDate(1403, 12, 30));
