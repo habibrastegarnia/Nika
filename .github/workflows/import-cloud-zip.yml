@@ -1,7 +1,9 @@
 name: Import reviewed Cloudflare ZIP
 
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - "Nika-main-v0.3-reviewed.zip"
 
 permissions:
   contents: write
@@ -10,7 +12,7 @@ jobs:
   import:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout selected branch
+      - name: Checkout uploaded archive branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
