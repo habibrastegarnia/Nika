@@ -189,7 +189,7 @@ R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
     c.db.prepare('DELETE FROM resolutions'),
     c.db.prepare('DELETE FROM events'),
     c.db.prepare('DELETE FROM documents'),
-    c.db.prepare('DELETE FROM sessions WHERE user_id NOT IN (?,?)').bind(c.user.id, chair.id),
+    c.db.prepare('DELETE FROM sessions WHERE user_id!=?').bind(c.user.id),
     c.db.prepare('DELETE FROM login_attempts'),
     c.db.prepare('DELETE FROM audit_logs'),
     c.db.prepare('DELETE FROM user_roles WHERE user_id NOT IN (?,?)').bind(c.user.id, chair.id),
