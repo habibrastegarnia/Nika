@@ -63,7 +63,7 @@ R('POST', '/api/transactions', async c => {
       const per = fund === 'owner' ? ownerYear(x.period) : period(x.period, false);
       await c.db.prepare("INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,note,created_by) VALUES(?,?,?,?,'payment',?,?,?,'pending',?,?,?)")
         .bind(id, unit.id, payer?.id || null, fund, amount, title, per, ref, note, u.id).run();
-      await audit(c.db, u.id, 'payment.create', 'transaction', id, { fund, amount, unitNumber, enteredForUnit: true }, reason ? { actorRole: u.roles[0] || 'manager', reason } : {});
+      await audit(c.db, u.id, 'payment.create', 'transaction', id, { fund, amount, unitNumber, enteredForUnit: true }, reason ? { actorRole: u.roles[0] || 'manager', isDelegate: true, reason } : {});
     } else {
       if (!can(u, `finance.${fund}.pay`)) throw err(403, 'FORBIDDEN', 'اجازه‌ی ثبت پرداخت در این صندوق را ندارید');
       if (!u.unit_id) throw err(400, 'NO_UNIT', 'این حساب به واحدی متصل نیست');
