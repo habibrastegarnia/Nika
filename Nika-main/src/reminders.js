@@ -3,7 +3,7 @@ import { reply, readJson, int, jdate, audit } from './lib.js';
 import { jTehran, jalaliToDate, occursOn } from './jcal.js';
 
 const pparts = d => jTehran(d);
-const keyDate=d=>new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())).toISOString().slice(0,10);
+export const reminderStageKey = (stage, localDate) => stage === 'lateDaily' || stage === 'late7' ? 'daily:' + localDate : stage;
 // تبدیل سریع و کش‌شده (به‌جای اسکن تا ۳۷۰ روز با Intl برای هر تاریخ)
 const jalaliDate = (y,m,day) => jalaliToDate(y,m,day);
 const diff=(a,b)=>Math.round((Date.parse(keyDate(a)+'T00:00:00Z')-Date.parse(keyDate(b)+'T00:00:00Z'))/86400000);
@@ -70,7 +70,7 @@ export async function runReminders(env,now=new Date()){
   const resident=await env.DB.prepare("SELECT u.id,u.name FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='resident' WHERE u.unit_id=? AND u.active=1 LIMIT 1").bind(r.unit_id).first();
   if(!resident)continue;
   const t=templates[stage],body='ساکن محترم واحد '+r.unit_number+'،\n\n'+t[2].replace('AMOUNT',amount(balance))+'\n\nمدیریت ساختمان نیکا';
-  const msgKey='monthly:'+r.unit_id+':'+r.period+':'+(stage==='lateDaily'||stage==='late7'?'daily:'+keyDate(now):stage);
+  const msgKey='monthly:'+r.unit_id+':'+r.period+':'+reminderStageKey(stage,todayJ);
   await send(env.DB,sender.id,resident.id,t[0],body,t[1],msgKey);sent++;
   if(days>=7){
    const owner=await env.DB.prepare("SELECT u.id FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' WHERE u.unit_id=? AND u.active=1 LIMIT 1").bind(r.unit_id).first();
@@ -99,7 +99,7 @@ export async function runReminders(env,now=new Date()){
      const balance=o.charged-o.paid;if(balance<=0)continue;
      const copy=templates[ostage],title=ostage==='late7'?'تذکر درباره بدهی شارژ مالکانه':copy[0].replace('شارژ ماهیانه','شارژ مالکانه');
      const body='مالک محترم واحد '+o.unit_number+'،\n\n'+(ostage==='late7'?'با وجود گذشت هفت روز یا بیشتر از موعد پرداخت شارژ مالکانه، مبلغ '+amount(balance)+' تومان همچنان تسویه نشده است.\n\nپرداخت به‌موقع شارژ مالکانه بخشی از مسئولیت مشترک در حفظ و نگهداری ساختمان و تأمین منابع مورد نیاز آن است. تأخیر در پرداخت می‌تواند برنامه‌ریزی و اجرای امور مصوب ساختمان را با مشکل روبه‌رو کند.\n\nانتظار می‌رود با احساس مسئولیت نسبت به مجموعه و سایر ساکنان، در اسرع وقت بدهی خود را تسویه فرمایید.':copy[2].replace(/شارژ ماهیانه/g,'شارژ مالکانه').replace('AMOUNT',amount(balance)))+'\n\nمدیریت ساختمان نیکا';
-     await send(env.DB,sender.id,o.id,title,body,copy[1],'owner:'+o.unit_id+':'+today.y+':'+(ostage==='late7'?'daily:'+keyDate(now):ostage));sent++;
+     await send(env.DB,sender.id,o.id,title,body,copy[1],'owner:'+o.unit_id+':'+today.y+':'+reminderStageKey(ostage,todayJ));sent++;
     }
    }
   }
