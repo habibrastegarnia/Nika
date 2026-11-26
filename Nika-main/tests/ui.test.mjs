@@ -9,5 +9,5 @@ test('onSubmit مجموعه ورودی‌های مبلغ را با querySelector
   assert.ok(start >= 0 && end > start, 'تابع onSubmit باید وجود داشته باشد');
   const body = source.slice(start, end);
   assert.match(body, /\$\$\(['"]input\[name="amount"\], input\[data-money="true"\]['"],\s*form\)/);
-  assert.doesNotMatch(body, /^\\s{2}\\$\\('input\\[name=/m);
+  assert.equal(body.split('\n').some(line => line.startsWith("  $('input[name")), false);
 });
