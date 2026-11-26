@@ -8,9 +8,14 @@ test('هر workspace از همان نسخه ماژول pages و icons استفا
     readFile(new URL('../public/js/admin.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/js/ui.js', import.meta.url), 'utf8')
   ]);
-  const version = main.split("from './pages.js?v=")[1]?.split("'")[0];
-  assert.ok(version, 'نسخه ماژول pages در main مشخص باشد');
-  assert.ok(admin.includes("from './pages.js?v=" + version[1] + "'"), 'admin و main باید یک نمونه از pages را وارد کنند');
+  const getVersion = source => {
+    const marker = 'pages.js?v=';
+    const at = source.indexOf(marker);
+    return at < 0 ? null : source.slice(at + marker.length).split("'")[0];
+  };
+  const mainVersion = getVersion(main), adminVersion = getVersion(admin);
+  assert.ok(mainVersion, 'نسخه ماژول pages در main مشخص باشد');
+  assert.equal(adminVersion, mainVersion, 'admin و main باید یک نسخه از pages را وارد کنند');
   assert.ok(ui.includes("from './icons.js?v=2'"), 'ماژول آیکون در ui باید با بقیه یکسان باشد');
 });
 
