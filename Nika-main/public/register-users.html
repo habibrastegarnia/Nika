@@ -23,8 +23,8 @@
 <div class="field"><label for="phone">شماره تماس <span class="req">*</span></label><input class="control" id="phone" inputmode="tel" autocomplete="tel" placeholder="مثلاً ۰۹۱۲۱۲۳۴۵۶۷" required></div>
 <div class="field"><label for="secondaryPhone">شماره تماس پشتیبان</label><input class="control" id="secondaryPhone" inputmode="tel" placeholder="در صورت تمایل وارد کنید"></div>
 <div class="grid" id="contractFields">
-<div class="field"><label for="contractStartDate">تاریخ شروع قرارداد <span class="req">*</span></label><input class="control" type="text" id="contractStartDate" inputmode="numeric" maxlength="10" placeholder="۱۴۰۵/۰۱/۰۱" autocomplete="off" required></div>
-<div class="field"><label for="contractEndDate">تاریخ اتمام قرارداد <span class="req">*</span></label><input class="control" type="text" id="contractEndDate" inputmode="numeric" maxlength="10" placeholder="۱۴۰۵/۰۱/۰۱" autocomplete="off" required></div>
+<div class="field"><label for="contractStartDate">تاریخ شروع قرارداد <span class="req">*</span></label><input class="control" type="text" id="contractStartDate" inputmode="text" maxlength="10" placeholder="۱۴۰۵/۰۱/۰۱" autocomplete="off" required></div>
+<div class="field"><label for="contractEndDate">تاریخ اتمام قرارداد <span class="req">*</span></label><input class="control" type="text" id="contractEndDate" inputmode="text" maxlength="10" placeholder="۱۴۰۵/۰۱/۰۱" autocomplete="off" required></div>
 </div>
 <p class="hint" id="contractHint">تاریخ را به‌شکل سال/ماه/روز وارد کنید؛ مثال: ۱۴۰۵/۰۱/۰۱</p>
 <div class="trap" aria-hidden="true"><label>وب‌سایت<input id="website" tabindex="-1" autocomplete="off"></label></div>
@@ -43,17 +43,6 @@
 const $=id=>document.getElementById(id), faDigits=s=>String(s).replace(/\\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
 const units=$('unit');
 function latinDigits(s){return String(s||'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))}
-function formatJalaliInput(value){
- const digits=latinDigits(value).replace(/\\D/g,'').slice(0,8);
- let out=digits;
- if(digits.length>4) out=digits.slice(0,4)+'/'+digits.slice(4);
- if(digits.length>6) out=digits.slice(0,4)+'/'+digits.slice(4,6)+'/'+digits.slice(6);
- return faDigits(out);
-}
-['contractStartDate','contractEndDate'].forEach(id=>{
- const field=$(id);
- field.addEventListener('input',()=>{const pos=field.selectionStart;field.value=formatJalaliInput(field.value);try{field.setSelectionRange(field.value.length,field.value.length)}catch(e){}});
-});
 function validJalaliDate(value){
  const v=latinDigits(value);
  if(!/^\\d{4}\\/\\d{2}\\/\\d{2}$/.test(v)) return false;
