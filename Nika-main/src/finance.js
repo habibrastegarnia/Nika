@@ -36,7 +36,7 @@ R('GET', '/api/transactions', async c => {
   for (const [k, col] of [['status', 't.status'], ['kind', 't.kind']]) {
     const v = q.get(k); if (v) { where.push(`${col}=?`); vals.push(v); }
   }
-  if (q.get('period')) { where.push('t.period=?'); vals.push(period(q.get('period'))); }
+  if (q.get('period')) { where.push('t.period=?'); vals.push(fundPeriod(fund, q.get('period'))); }
   const limit = Math.min(Math.max(Number(q.get('limit')) || 100, 1), 200), offset = Math.max(Number(q.get('offset')) || 0, 0);
   const r = await c.db.prepare(`SELECT ${COLS} ${FROM} WHERE ${where.join(' AND ')} ORDER BY t.created_at DESC,t.rowid DESC LIMIT ? OFFSET ?`).bind(...vals, limit, offset).all();
   return reply({ transactions: r.results });
@@ -51,7 +51,7 @@ R('POST', '/api/transactions', async c => {
     const amount = int(x.amount, { field: 'مبلغ' }), ref = optStr(x.reference, { max: 40, field: 'شماره پیگیری' });
     const title = optStr(x.title, { max: 120, field: 'عنوان' }) || `پرداخت ${FUND_TITLE[fund]}`;
     await c.db.prepare("INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,note,created_by) VALUES(?,?,?,?, 'payment',?,?,?,'pending',?,?,?)")
-      .bind(id, u.unit_id, u.id, fund, amount, title, fund === 'owner' ? null : period(x.period, false), ref, optStr(x.note, { max: 300, field: 'توضیحات', multiline: true }), u.id).run();
+      .bind(id, u.unit_id, u.id, fund, amount, title, fund === 'owner' ? ownerYear(x.period) : period(x.period, false), ref, optStr(x.note, { max: 300, field: 'توضیحات', multiline: true }), u.id).run();
     await audit(c.db, u.id, 'payment.create', 'transaction', id, { fund, amount });
   } else if (x.kind === 'expense') {
     throw err(410, 'USE_EXPENSE_REQUESTS', 'ثبت هزینه فقط از مسیر درخواست پرداخت و تأیید دومرحله‌ای امکان‌پذیر است');
@@ -118,7 +118,21 @@ R('GET', '/api/finance/my', async c => {
             COALESCE(SUM(CASE WHEN kind='payment' AND status='pending' THEN amount END),0) pending,
             MAX(CASE WHEN kind='payment' AND status='approved' THEN approved_at END) lastPaymentAt
      FROM transactions WHERE fund_id=? AND unit_id=?`).bind(fund, c.user.unit_id).first();
-  return reply({ ...r, balance: r.charged - r.settled });
+  let annualBalances = [], unassignedPayments = 0;
+  if (fund === 'owner') {
+    annualBalances = (await c.db.prepare(
+      `SELECT period,
+              COALESCE(SUM(CASE WHEN kind='charge' AND status='approved' THEN amount ELSE 0 END),0) charged,
+              COALESCE(SUM(CASE WHEN kind IN ('payment','adjustment') AND status='approved' THEN amount ELSE 0 END),0) paid
+       FROM transactions WHERE fund_id='owner' AND unit_id=? AND period IS NOT NULL
+       GROUP BY period HAVING charged>0 ORDER BY period DESC`).bind(c.user.unit_id).all()).results
+      .map(x => ({ ...x, balance: x.charged - x.paid }));
+    const legacy = await c.db.prepare(
+      `SELECT COALESCE(SUM(amount),0) amount FROM transactions
+       WHERE fund_id='owner' AND unit_id=? AND kind='payment' AND status='approved' AND period IS NULL`).bind(c.user.unit_id).first();
+    unassignedPayments = legacy?.amount || 0;
+  }
+  return reply({ ...r, balance: r.charged - r.settled, annualBalances, unassignedPayments });
 });
 
 // موجودی نقدی صندوق‌ها برای مدیران دارای دسترسی گزارش مالی

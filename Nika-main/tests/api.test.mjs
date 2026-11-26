@@ -176,6 +176,20 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
 
   // مالک و ساکن واحد ۱۲ مستقل‌اند و فقط صندوق خودشان را می‌بینند
   assert.equal((await own.get('/api/finance/my?fund=owner')).data.balance, 9000000);
+  assert.equal((await own.post('/api/transactions', { fund: 'owner', kind: 'payment', amount: 1000000 })).status, 400, 'سال پرداخت مالکانه اجباری است');
+  let ownerPay = await own.post('/api/transactions', { fund: 'owner', kind: 'payment', amount: 1000000, period: '1405', reference: 'OWN1405' });
+  assert.equal(ownerPay.status, 201);
+  assert.equal((await fin.post(`/api/transactions/${ownerPay.data.id}/decision`, { status: 'approved' })).status, 200);
+  assert.equal((await chair.post('/api/finance/charges', { fund: 'owner', period: '1406', amount: 12000000, title: 'شارژ مالکانه ۱۴۰۶', unitNumbers: ['12'] })).data.created, 1);
+  ownerPay = await own.post('/api/transactions', { fund: 'owner', kind: 'payment', amount: 4000000, period: '1406', reference: 'OWN1406' });
+  assert.equal(ownerPay.status, 201);
+  assert.equal((await fin.post(`/api/transactions/${ownerPay.data.id}/decision`, { status: 'approved' })).status, 200);
+  const ownerLedger = (await own.get('/api/finance/my?fund=owner')).data;
+  assert.equal(ownerLedger.balance, 16000000, 'مانده کل باید پرداخت‌های هر دو سال را لحاظ کند');
+  assert.deepEqual(ownerLedger.annualBalances.map(x => [x.period, x.charged, x.paid, x.balance]), [
+    ['1406', 12000000, 4000000, 8000000], ['1405', 9000000, 1000000, 8000000]
+  ], 'پرداخت هر سال فقط بدهی همان سال را کاهش می‌دهد');
+  assert.equal(ownerLedger.unassignedPayments, 0);
   assert.equal((await own.get('/api/finance/my?fund=monthly')).status, 403);
   assert.equal((await res1.get('/api/transactions?fund=owner')).status, 403);
   const mine = (await res2.get('/api/transactions?fund=monthly')).data.transactions;
