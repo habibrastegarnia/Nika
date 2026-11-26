@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "نیکا | مدیریت مجتمع مسکونی",
+  "short_name": "نیکا",
+  "description": "سامانه مدیریت مجتمع مسکونی نیکا",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101827",
+  "theme_color": "#111a2b",
+  "icons": [
+    {
+      "src": "/assets/nika-logo.webp?v=3",
+      "sizes": "192x192 512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ]
+}
