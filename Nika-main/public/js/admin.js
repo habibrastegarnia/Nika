@@ -129,7 +129,8 @@ async function usersTab() {
       const form = $('#uNew', box);
       if (form) onSubmit(form, async d => {
         const accountType = d.owner && d.resident ? 'both' : (d.owner ? 'owner' : (d.resident ? 'resident' : 'staff'));
-        if (accountType === 'staff' && !canAssignRoles) throw new Error('ساخت حساب مدیریتی و تعیین نقش فقط در اختیار رئیس هیئت‌مدیره است.');
+        const bootstrapChairOnly = opts.some(([r]) => r === 'chair') && (d.roles || []).length === 1 && d.roles[0] === 'chair';
+        if (accountType === 'staff' && !canAssignRoles && !bootstrapChairOnly) throw new Error('در نبود رئیس هیئت‌مدیره، مدیر سامانه فقط می‌تواند حساب رئیس جدید را تعریف کند.');
         if (accountType === 'staff' && !(d.roles || []).length) throw new Error('برای حساب مستقل، حداقل یک نقش انتخاب کنید.');
         const body = { unit: d.unit, name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone, contractStartDate: d.contractStartDate, contractEndDate: d.contractEndDate, accountType, roles: d.roles || [] };
         if (!S.user.roles.some(r => ['executive', 'system_admin'].includes(r))) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران ایجاد می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
