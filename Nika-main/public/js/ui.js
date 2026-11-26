@@ -59,8 +59,10 @@ function showJalaliPicker(display) {
   render();
 }
 export function initModal() {
-  $('#closeModal').onclick = closeModal;
-  $('#modalBackdrop').addEventListener('click', e => { if (e.target.id === 'modalBackdrop') closeModal(); });
+  const closeButton = $('#closeModal');
+  const backdrop = $('#modalBackdrop');
+  if (closeButton) closeButton.onclick = closeModal;
+  if (backdrop) backdrop.addEventListener('click', e => { if (e.target.id === 'modalBackdrop') closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
   document.addEventListener('click', e => {
     const display=e.target.closest('[data-jalali-date], [data-jdisplay]');
