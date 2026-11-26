@@ -215,7 +215,9 @@ test('حساب bootstrap با نام کاربری Admin فقط پس از تعی�
   assert.deepEqual(updated.roles, ['system_admin'], 'حساب Admin باید فقط نقش مستقل مدیر سامانه داشته باشد');
   assert.equal(updated.account_type, 'staff');
   assert.equal((await successorSession.get('/api/me')).data.user.roles.includes('chair'), true, 'رئیس جایگزین باید فعال بماند');
-});\n\ntest('بازنشانی کامل فقط حساب مدیر سامانه را نگه می‌دارد و امکان تعریف رئیس جدید را می‌دهد', async () => {
+});
+
+test('بازنشانی کامل فقط حساب مدیر سامانه را نگه می‌دارد و امکان تعریف رئیس جدید را می‌دهد', async () => {
   assert.equal((await S.exec.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'x' })).status, 403);
   assert.equal((await chair.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'Chair-Strong-Pass-1' })).status, 403, 'رئیس اجازه بازنشانی ندارد');
   assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'WRONG-PHRASE', currentPassword: 'Sys-Strong-Pass-12' })).data.error, 'CONFIRM_REQUIRED');
