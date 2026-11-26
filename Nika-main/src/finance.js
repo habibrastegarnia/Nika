@@ -7,8 +7,10 @@ import { can, canAny } from './perms.js';
 const fundOf = v => { if (!FUNDS.includes(v)) throw err(400, 'FUND_REQUIRED', 'صندوق نامعتبر است'); return v; };
 const ownerYear = v => {
   const y = String(v ?? '').replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).trim();
-  if (!/^1[34]\d{2}$/.test(y)) throw err(400, 'INVALID_PERIOD', 'سال شارژ مالکانه باید به شکل ۱۴۰۵ باشد');
-  return y;
+  // Intl may append an era marker (for example "1405 AP"); extract the four-digit Jalali year.
+  const match = y.match(/1[34]\d{2}/);
+  if (!match) throw err(400, 'INVALID_PERIOD', 'سال شارژ مالکانه باید به شکل ۱۴۰۵ باشد');
+  return match[0];
 };
 const fundPeriod = (fund, value, required = true) => fund === 'owner'
   ? (value == null || value === '' ? (required ? ownerYear(new Intl.DateTimeFormat('en-u-ca-persian', { timeZone: 'Asia/Tehran', year: 'numeric' }).format(new Date())) : null) : ownerYear(value))
