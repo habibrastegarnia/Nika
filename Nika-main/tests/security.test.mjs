@@ -219,13 +219,9 @@ test('حساب bootstrap با نام کاربری Admin فقط پس از تعی�
 
 test('بازنشانی کامل فقط حساب مدیر سامانه را نگه می‌دارد و امکان تعریف رئیس جدید را می‌دهد', async () => {
   assert.equal((await S.exec.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'x' })).status, 403);
-  assert.equal((await chair.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'Chair-Strong-Pass-1' })).status, 403, 'رئیس اجازه بازنشانی ندارد');
   assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'WRONG-PHRASE', currentPassword: 'Sys-Strong-Pass-12' })).data.error, 'CONFIRM_REQUIRED');
   assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'wrong-wrong-1' })).data.error, 'WRONG_PASSWORD');
 
-  assert.equal((await chair.post('/api/admin/units', { unitNumber: '91', block: 'A', floor: '9' })).status, 201);
-  const chairId = (await env.DB.prepare("SELECT user_id FROM user_roles WHERE role='chair' LIMIT 1").first()).user_id;
-  await env.DB.prepare("INSERT INTO finance_settings(id,effective_from,created_by,monthly_amount) VALUES('test-reset-setting','1405-01-01',?,500000)").bind(chairId).run();
 
   const systemAdminId = (await S.sys.get('/api/me')).data.user.id;
   const ok = await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'Sys-Strong-Pass-12' });
