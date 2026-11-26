@@ -183,7 +183,7 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
   assert.equal((await own.del('/api/transactions/' + r.data.id)).status, 200, 'پرداخت آزمایشی در انتظار را لغو می‌کنیم تا مانده حساب تغییر نکند');
 
   // حساب مشترک مالک+ساکن در دیتابیس account_type=owner دارد؛ انتساب پرداخت باید از روی user_roles انجام شود.
-  const both = await chair.post('/api/admin/users', { name: 'حساب مشترک آزمون', accountType: 'both', unit: '14', phone: '09124444444' });
+  const both = await chair.post('/api/admin/users', { name: 'حساب مشترک آزمون', accountType: 'both', unit: '14', phone: '09124444444', reason: 'آزمون انتساب پرداخت حساب مشترک' });
   assert.equal(both.status, 201, JSON.stringify(both.data));
   await chair.post('/api/finance/charges', { fund: 'monthly', period: '1405-09', amount: 1000, title: 'آزمون واحد ۱۴', unitNumbers: ['14'] });
   const entered = await fin.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 1000, unitNumber: '14' });
