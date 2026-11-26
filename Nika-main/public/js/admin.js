@@ -46,6 +46,7 @@ function showManagerShortcuts(show) {
 }
 export function showAdmin(want) {
   managerHome = true;
+  S.workspace = 'manager';
   updateWorkspaceToggle(true);
   showManagerShortcuts(true);
   if (!want) {
@@ -86,6 +87,7 @@ export function hideAdmin() {
 }
 export function showResidentMode() {
   managerHome = false;
+  S.workspace = 'resident';
   hideAdmin();
 }
 async function loadTab() {
