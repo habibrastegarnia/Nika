@@ -179,14 +179,77 @@ test('پشتیبان‌گیری: رمز هش‌شده و تصویر پروفای
   assert.ok(!text.includes('password_hash') && !text.includes('password_salt') && !text.includes('avatar_data') && !text.includes(png.slice(30, 80)));
 });
 
-test('پاک‌سازی کامل: نیاز به عبارت تأیید و رمز دارد و با داده‌ی واقعی (درخواست هزینه، جانشینی، پشتیبان) خطا نمی‌دهد', async () => {
-  assert.equal((await S.exec.post('/api/admin/reset-test-data', { confirm: 'RESET-ALL-DATA', currentPassword: 'x' })).status, 403);
-  assert.equal((await chair.post('/api/admin/reset-test-data', { reason: 'آزمون' })).data.error, 'CONFIRM_REQUIRED');
-  assert.equal((await chair.post('/api/admin/reset-test-data', { reason: 'آزمون', confirm: 'RESET-ALL-DATA', currentPassword: 'wrong-wrong-1' })).data.error, 'WRONG_PASSWORD');
-  const ok = await chair.post('/api/admin/reset-test-data', { reason: 'آزمون', confirm: 'RESET-ALL-DATA', currentPassword: 'Chair-Strong-Pass-1' });
+test('مدیر سامانه باید یک حساب مستقل باشد', async () => {
+  const mixed = await chair.post('/api/admin/users', {
+    name: 'مدیر سامانه ترکیبی', accountType: 'staff', phone: '09125551111',
+    roles: ['system_admin', 'finance'], reason: 'آزمون نقش مستقل'
+  });
+  assert.equal(mixed.status, 400);
+  assert.equal(mixed.data.error, 'SYSTEM_ADMIN_MUST_BE_STANDALONE');
+});
+
+test('بازنشانی اطلاعات آزمایشی فقط با حساب مستقل مدیر سامانه انجام می‌شود و واحدها را حفظ می‌کند', async () => {
+  assert.equal((await S.exec.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'x' })).status, 403);
+  assert.equal((await chair.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'Chair-Strong-Pass-1', reason: 'آزمون عدم دسترسی رئیس' })).status, 403, 'رئیس هیئت‌مدیره اجازه بازنشانی ندارد');
+  assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'WRONG-PHRASE', currentPassword: 'Sys-Strong-Pass-12' })).data.error, 'CONFIRM_REQUIRED');
+  assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'wrong-wrong-1' })).data.error, 'WRONG_PASSWORD');
+
+  assert.equal((await chair.post('/api/admin/units', { unitNumber: '91', block: 'A', floor: '9' })).status, 201);
+  const chairId = (await env.DB.prepare("SELECT user_id FROM user_roles WHERE role='chair' LIMIT 1").first()).user_id;
+  await env.DB.prepare("INSERT INTO finance_settings(id,effective_from,created_by,monthly_amount) VALUES('test-reset-setting','1405-01-01',?,500000)").bind(chairId).run();
+  const beforeUnits = Number((await env.DB.prepare('SELECT COUNT(*) n FROM units').first()).n);
+
+  const ok = await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'Sys-Strong-Pass-12' });
   assert.equal(ok.status, 200, JSON.stringify(ok.data));
-  const users = (await chair.get('/api/admin/users')).data.users; assert.equal(users.length, 1);
-  assert.equal((await chair.get('/api/me')).status, 200, 'رئیس همچنان وارد است');
-  const left = await env.DB.prepare('SELECT (SELECT COUNT(*) FROM expense_requests) a,(SELECT COUNT(*) FROM manager_delegations) b,(SELECT COUNT(*) FROM transactions) c').first();
-  assert.deepEqual({ ...left }, { a: 0, b: 0, c: 0 });
+  assert.equal(ok.data.preservedUnits, beforeUnits);
+  assert.equal((await S.sys.get('/api/me')).status, 200, 'مدیر سامانه همچنان وارد است');
+  assert.equal((await chair.get('/api/me')).status, 401, 'نشست سایر کاربران باطل می‌شود');
+
+  const users = (await S.sys.get('/api/admin/users')).data.users;
+  assert.equal(users.length, 2, 'فقط دو حساب پایه باقی می‌مانند');
+  assert.deepEqual(users.map(u => u.roles[0]).sort(), ['chair', 'system_admin']);
+  const freshChairSession = new Client(env);
+  assert.equal((await freshChairSession.login('Admin', 'Chair-Strong-Pass-1')).status, 200, 'حساب رئیس حفظ شده و می‌تواند دوباره وارد شود');
+  assert.equal((await freshChairSession.get('/api/me')).data.user.roles.includes('chair'), true);
+  const left = await env.DB.prepare(`SELECT
+    (SELECT COUNT(*) FROM expense_requests) a,
+    (SELECT COUNT(*) FROM manager_delegations) b,
+    (SELECT COUNT(*) FROM transactions) c,
+    (SELECT COUNT(*) FROM finance_settings) d,
+    (SELECT COUNT(*) FROM messages) e,
+    (SELECT COUNT(*) FROM audit_logs WHERE action NOT IN ('system.test_data_reset','login')) f,
+    (SELECT COUNT(*) FROM units) g,
+    (SELECT COUNT(*) FROM funds) h,
+    (SELECT SUM(cash_balance) FROM funds) i`).first();
+  assert.deepEqual({ ...left }, { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0, g: beforeUnits, h: 2, i: 0 });
+});
+
+
+test('حساب bootstrap با نام کاربری Admin فقط پس از تعیین رئیس جایگزین به مدیر سامانه تبدیل می‌شود', async () => {
+  // بازنشانی قبلی نشست رئیس را باطل کرده است؛ دوباره با همان حساب Admin وارد می‌شویم.
+  const rootChair = new Client(env);
+  assert.equal((await rootChair.login('Admin', 'Chair-Strong-Pass-1')).status, 200);
+  const me = (await rootChair.get('/api/me')).data.user;
+  assert.equal(me.account_type, 'staff');
+  assert.deepEqual(me.roles, ['chair']);
+
+  const blocked = await rootChair.patch(`/api/admin/users/${me.id}`, {
+    roles: ['system_admin'], reason: 'آزمون تحویل امن حساب'
+  });
+  assert.equal(blocked.data.error, 'SELF_CHANGE', 'بدون رئیس جایگزین، تبدیل حساب فعلی ممنوع است');
+
+  const successor = await makeUser(rootChair, {
+    name: 'رئیس جایگزین', accountType: 'staff', phone: '09125559901', roles: ['chair']
+  });
+  const successorSession = await activate(env, '09125559901', successor.tempPassword, 'Chair-Second-Pass-1');
+  assert.equal((await successorSession.get('/api/me')).data.user.roles.includes('chair'), true);
+
+  const changed = await rootChair.patch(`/api/admin/users/${me.id}`, {
+    roles: ['system_admin'], reason: 'تحویل حساب bootstrap به مدیر سامانه'
+  });
+  assert.equal(changed.status, 200, JSON.stringify(changed.data));
+  const updated = (await rootChair.get('/api/me')).data.user;
+  assert.deepEqual(updated.roles, ['system_admin'], 'حساب Admin باید فقط نقش مستقل مدیر سامانه داشته باشد');
+  assert.equal(updated.account_type, 'staff');
+  assert.equal((await successorSession.get('/api/me')).data.user.roles.includes('chair'), true, 'رئیس جایگزین باید فعال بماند');
 });
