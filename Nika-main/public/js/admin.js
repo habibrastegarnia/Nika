@@ -333,24 +333,104 @@ async function settingsTab() {
   }
  };
 }
+function financeSection(id, title, content) {
+ return html`<section class="nika-admincard" style="margin-top:12px">
+  <button type="button" class="nika-secondary" data-finance-toggle="${id}" aria-expanded="false" style="width:100%;display:flex;justify-content:space-between;align-items:center;text-align:right;padding:14px">
+   <strong>${title}</strong><span data-finance-mark="${id}">＋</span>
+  </button>
+  <div data-finance-panel="${id}" hidden style="padding-top:12px">${content}</div>
+ </section>`;
+}
 async function financeTab() {
  const approvalsAllowed = canAny(['finance.approve','expenses.approve']);
  const expenseAllowed = can('expenses.create');
  const reportsAllowed = can('finance.reports');
- const parts = [];
- let settingsOut = null, approvalsOut = null, expenseOut = null, reviewOut = null, finalOut = null;
+ const parts = [], sections = [];
+ let paymentOut = null, approvalsOut = null, expenseOut = null, reviewOut = null, finalOut = null;
  if (reportsAllowed) {
   const { funds } = await api('/finance/funds');
   parts.push(card('موجودی صندوق‌ها', html`<div class="nika-users">${funds.map(f => html`<div class="nika-usercard"><strong>${f.title}</strong><div class="page-stat-grid"><div class="page-stat"><small>موجودی فعلی</small><strong class="${f.balance < 0 ? 'debt-text' : 'credit-text'}">${toman(f.balance)}</strong></div><div class="page-stat"><small>دریافتی تأییدشده</small><strong>${toman(f.incoming)}</strong></div><div class="page-stat"><small>هزینه قطعی‌شده</small><strong>${toman(f.outgoing)}</strong></div></div></div>` )}</div>`));
  }
- if (approvalsAllowed) { approvalsOut = await financeApprovalsTab(); parts.push(approvalsOut.html); }
- if (expenseAllowed) { expenseOut = await expenseRequestsTab(); parts.push(expenseOut.html); }
- if (can('expenses.approve')) { reviewOut = await expenseReviewTab(); parts.push(reviewOut.html); }
- if (can('expenses.finalize')) { finalOut = await chairFinalReviewTab(); parts.push(finalOut.html); }
- if (!parts.length) return {html:empty('امکان مشاهده بخش مالی برای شما فعال نیست.')};
+ if (can('finance.approve')) {
+  paymentOut = await registerUnitPaymentTab();
+  sections.push(financeSection('unit-payment', 'ثبت شارژ واحدها', paymentOut.html));
+ }
+ if (approvalsAllowed) {
+  approvalsOut = await financeApprovalsTab();
+  sections.push(financeSection('payment-approvals', 'تأیید پرداخت‌ها', approvalsOut.html));
+ }
+ if (expenseAllowed) {
+  expenseOut = await expenseRequestsTab();
+  sections.push(financeSection('expense-create', 'ثبت هزینه', expenseOut.html));
+ }
+ if (can('expenses.approve')) {
+  reviewOut = await expenseReviewTab();
+  sections.push(financeSection('expense-review', 'بررسی درخواست‌های هزینه', reviewOut.html));
+ }
+ if (can('expenses.finalize')) {
+  finalOut = await chairFinalReviewTab();
+  sections.push(financeSection('expense-finalize', 'تأیید نهایی هزینه‌ها', finalOut.html));
+ }
+ if (!parts.length && !sections.length) return {html:empty('امکان مشاهده بخش مالی برای شما فعال نیست.')};
  return {
-  html:html`<div class="manager-finance-page">${parts.map(x=>x)}</div>`,
-  bind(box){ settingsOut?.bind?.(box); approvalsOut?.bind?.(box); expenseOut?.bind?.(box); reviewOut?.bind?.(box); finalOut?.bind?.(box); }
+  html:html`<div class="manager-finance-page">${parts.map(x=>x)}${sections.map(x=>x)}</div>`,
+  bind(box){
+   const toggles = $$('[data-finance-toggle]', box);
+   toggles.forEach(button => button.addEventListener('click', () => {
+    const id = button.dataset.financeToggle;
+    const target = $(`[data-finance-panel="${id}"]`, box), opening = target.hidden;
+    $$('[data-finance-panel]', box).forEach(panel => { panel.hidden = true; });
+    toggles.forEach(b => {
+     b.setAttribute('aria-expanded', 'false');
+     const mark = $(`[data-finance-mark="${b.dataset.financeToggle}"]`, box);
+     if (mark) mark.textContent = '＋';
+    });
+    if (opening) {
+     target.hidden = false;
+     button.setAttribute('aria-expanded', 'true');
+     const mark = $(`[data-finance-mark="${id}"]`, box);
+     if (mark) mark.textContent = '－';
+    }
+   }));
+   paymentOut?.bind?.(box); approvalsOut?.bind?.(box); expenseOut?.bind?.(box); reviewOut?.bind?.(box); finalOut?.bind?.(box);
+  }
+ };
+}
+async function registerUnitPaymentTab() {
+ const { units } = await api('/admin/units');
+ const options = units.map(u => [u.unit_number, 'واحد ' + u.unit_number]);
+ if (!options.length) return { html: card('ثبت پرداخت واحد', empty('ابتدا واحدهای ساختمان را ثبت کنید.')) };
+ return {
+  html: card('ثبت پرداخت به‌جای واحد', html`<form id="unitPaymentNew" novalidate>
+   ${fields([
+    { name:'unitNumber', label:'انتخاب واحد', type:'select', value:options[0][0], options },
+    { name:'fund', label:'نوع شارژ', type:'select', value:'monthly', options:[['monthly','شارژ ماهیانه'],['owner','شارژ مالکانه']] },
+    { name:'amount', label:'مبلغ پرداخت (تومان)', inputmode:'numeric', dir:'ltr', required:true },
+    { name:'period', label:'دوره / سال شارژ (شمسی)', value:curPeriod(), required:true, dir:'ltr' },
+    { name:'reference', label:'شماره پیگیری / توضیحات بانکی', dir:'ltr' },
+    { name:'note', label:'توضیحات (اختیاری)', type:'textarea', rows:2 }
+   ], 'nika')}
+   <p class="nika-footnote">پرداخت پس از ثبت، در فهرست تأیید پرداخت‌ها قرار می‌گیرد و تا زمان تأیید در مانده صندوق منظور نمی‌شود.</p>
+   <div class="nika-actions"><button class="nika-primary" type="submit">ثبت پرداخت واحد</button></div>
+  </form>`)
+ ,
+  bind(box) {
+   const form = $('#unitPaymentNew', box), fund = $('select[name="fund"]', form), periodField = $('input[name="period"]', form);
+   fund.addEventListener('change', () => { periodField.value = fund.value === 'owner' ? String(jToday().y) : curPeriod(); });
+   onSubmit(form, async d => {
+    const body = { kind:'payment', unitNumber:d.unitNumber, fund:d.fund, amount:parseAmount(d.amount), period:d.period, reference:d.reference, note:d.note };
+    if (!body.amount) throw new Error('مبلغ را به‌صورت عدد وارد کنید');
+    const financeRole = S.user.roles.includes('finance') || (S.user.delegatedRoles || []).includes('finance');
+    if (!financeRole) {
+     const reason = await promptText('دلیل ثبت خارج از مسئولیت', 'چرا این پرداخت را به‌جای مدیر مالی ثبت می‌کنید؟', 'ثبت دلیل');
+     if (!reason) return;
+     body.reason = reason;
+    }
+    await api('/transactions', { method:'POST', body });
+    toast('پرداخت واحد ثبت شد و برای تأیید ارسال شد');
+    reload();
+   });
+  }
  };
 }
 async function financeApprovalsTab() {
