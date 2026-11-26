@@ -226,26 +226,29 @@ test('بازنشانی اطلاعات آزمایشی فقط با حساب مست
 
 
 test('حساب bootstrap با نام کاربری Admin فقط پس از تعیین رئیس جایگزین به مدیر سامانه تبدیل می‌شود', async () => {
-  const me = (await chair.get('/api/me')).data.user;
+  // بازنشانی قبلی نشست رئیس را باطل کرده است؛ دوباره با همان حساب Admin وارد می‌شویم.
+  const rootChair = new Client(env);
+  assert.equal((await rootChair.login('Admin', 'Chair-Strong-Pass-1')).status, 200);
+  const me = (await rootChair.get('/api/me')).data.user;
   assert.equal(me.account_type, 'staff');
   assert.deepEqual(me.roles, ['chair']);
 
-  const blocked = await chair.patch(`/api/admin/users/${me.id}`, {
+  const blocked = await rootChair.patch(`/api/admin/users/${me.id}`, {
     roles: ['system_admin'], reason: 'آزمون تحویل امن حساب'
   });
   assert.equal(blocked.data.error, 'SELF_CHANGE', 'بدون رئیس جایگزین، تبدیل حساب فعلی ممنوع است');
 
-  const successor = await makeUser(chair, {
+  const successor = await makeUser(rootChair, {
     name: 'رئیس جایگزین', accountType: 'staff', phone: '09125559901', roles: ['chair']
   });
   const successorSession = await activate(env, '09125559901', successor.tempPassword, 'Chair-Second-Pass-1');
   assert.equal((await successorSession.get('/api/me')).data.user.roles.includes('chair'), true);
 
-  const changed = await chair.patch(`/api/admin/users/${me.id}`, {
+  const changed = await rootChair.patch(`/api/admin/users/${me.id}`, {
     roles: ['system_admin'], reason: 'تحویل حساب bootstrap به مدیر سامانه'
   });
   assert.equal(changed.status, 200, JSON.stringify(changed.data));
-  const updated = (await chair.get('/api/me')).data.user;
+  const updated = (await rootChair.get('/api/me')).data.user;
   assert.deepEqual(updated.roles, ['system_admin'], 'حساب Admin باید فقط نقش مستقل مدیر سامانه داشته باشد');
   assert.equal(updated.account_type, 'staff');
   assert.equal((await successorSession.get('/api/me')).data.user.roles.includes('chair'), true, 'رئیس جایگزین باید فعال بماند');
