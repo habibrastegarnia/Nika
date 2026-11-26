@@ -206,8 +206,11 @@ test('بازنشانی اطلاعات آزمایشی فقط با حساب مست
   assert.equal((await chair.get('/api/me')).status, 401, 'نشست سایر کاربران باطل می‌شود');
 
   const users = (await S.sys.get('/api/admin/users')).data.users;
-  assert.equal(users.length, 1);
-  assert.deepEqual(users[0].roles, ['system_admin']);
+  assert.equal(users.length, 2, 'فقط دو حساب پایه باقی می‌مانند');
+  assert.deepEqual(users.map(u => u.roles[0]).sort(), ['chair', 'system_admin']);
+  const freshChairSession = new Client(env);
+  assert.equal((await freshChairSession.login('Admin', 'Chair-Strong-Pass-1')).status, 200, 'حساب رئیس حفظ شده و می‌تواند دوباره وارد شود');
+  assert.equal((await freshChairSession.get('/api/me')).data.user.roles.includes('chair'), true);
   const left = await env.DB.prepare(`SELECT
     (SELECT COUNT(*) FROM expense_requests) a,
     (SELECT COUNT(*) FROM manager_delegations) b,
