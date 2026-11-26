@@ -29,13 +29,17 @@ test('onSubmit مجموعه ورودی‌های مبلغ را با querySelector
   assert.equal(body.split('\n').some(line => line.startsWith("  $('input[name")), false);
 });
 
-test('داشبورد مالی مدیر، HTML امن بخش‌ها و میانبرها را بدون escape ترکیب می‌کند', async () => {
+test('میانبرهای مالی فرم مربوط را در پنجره شناور باز می‌کنند، نه داخل داشبورد', async () => {
   const source = await readFile(new URL('../public/js/admin.js', import.meta.url), 'utf8');
   const start = source.indexOf('async function financeTab()');
   const end = source.indexOf('\nasync function registerUnitPaymentTab()', start);
   assert.ok(start >= 0 && end > start, 'تابع financeTab باید وجود داشته باشد');
   const body = source.slice(start, end);
   assert.match(body, /\$\{raw\(join\(shortcuts\)\)\}/);
-  assert.match(body, /\$\{raw\(join\(panels\)\)\}/);
-  assert.doesNotMatch(body, /\$\{(?:shortcuts|panels)\.join\(/);
+  assert.match(body, /openModal\(action\.title, action\.view\.html\)/);
+  assert.match(body, /action\.view\.bind\?\.\(modal\)/);
+  assert.doesNotMatch(body, /\$\{raw\(join\(panels\)\)\}/);
+  assert.doesNotMatch(body, /financeSection\(/);
+  const reload = source.match(/const reload = \(\) => \{ closeModal\(\); return loadTab\(\); \};/);
+  assert.ok(reload, 'پس از عملیات موفق، پنجره فرم بسته و داشبورد تازه‌سازی شود');
 });
