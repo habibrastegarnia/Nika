@@ -4,6 +4,7 @@ import { makeEnv, Client, bootstrap, makeUser, activate } from './helpers.mjs';
 import { runReminders } from '../src/reminders.js';
 import { jTehran } from '../src/jcal.js';
 import { ROLE_PERMS, delegatedPerms } from '../src/perms.js';
+import { S as clientState, canManageCalendarEvents } from '../public/js/state.js';
 
 test('مدیریت رویداد تقویم فقط برای رئیس و مدیر اجرایی مستقیم فعال است', () => {
   assert.ok(ROLE_PERMS.chair.includes('events.manage'));
@@ -13,6 +14,28 @@ test('مدیریت رویداد تقویم فقط برای رئیس و مدیر 
   }
   assert.ok(!delegatedPerms(['executive']).includes('events.manage'), 'جانشین مدیر اجرایی حق مدیریت رویداد ندارد');
   assert.ok(!delegatedPerms(['chair']).includes('events.manage'), 'جانشین رئیس حق مدیریت رویداد ندارد');
+});
+
+test('تقویم در فضای کاربر فقط نمایش داده می‌شود و ابزار مدیریت فقط در فضای مدیر مستقیم فعال است', () => {
+  const originalUser = clientState.user, originalWorkspace = clientState.workspace;
+  try {
+    clientState.user = { roles: ['chair'] };
+    clientState.workspace = 'resident';
+    assert.equal(canManageCalendarEvents(), false, 'حتی رئیس در فضای کاربر نباید فرم ثبت رویداد ببیند');
+    clientState.workspace = 'manager';
+    assert.equal(canManageCalendarEvents(), true, 'رئیس در فضای مدیریت باید ابزار رویداد داشته باشد');
+    clientState.user = { roles: ['executive'] };
+    assert.equal(canManageCalendarEvents(), true, 'مدیر اجرایی در فضای مدیریت مجاز است');
+    clientState.user = { roles: ['resident'] };
+    assert.equal(canManageCalendarEvents(), false, 'کاربر عادی مجاز نیست');
+    clientState.user = { roles: ['chair'], delegatedRoles: ['executive'] };
+    assert.equal(canManageCalendarEvents(), true, 'نقش مستقیم رئیس مجاز است');
+    clientState.user = { roles: ['resident'], delegatedRoles: ['executive'] };
+    assert.equal(canManageCalendarEvents(), false, 'جانشین مدیر اجرایی مجاز نیست');
+  } finally {
+    clientState.user = originalUser;
+    clientState.workspace = originalWorkspace;
+  }
 });
 
 const env = makeEnv();
