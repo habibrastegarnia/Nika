@@ -29,7 +29,7 @@ R('GET', '/api/public/user-submissions/export', { perm: 'users.read' }, async c 
   return new Response(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': "attachment; filename=n ika-users.csv; filename*=UTF-8''%D9%81%D9%87%D8%B1%D8%B3%D8%AA-%DA%A9%D8%A7%D8%B1%D8%A8%D8%B1%D8%A7%D9%86-%D9%86%DB%8C%DA%A9%D8%A7.csv".replace('n ika','nika'),
+      'Content-Disposition': "attachment; filename=nika-users.csv; filename*=UTF-8''%D9%81%D9%87%D8%B1%D8%B3%D8%AA-%DA%A9%D8%A7%D8%B1%D8%A8%D8%B1%D8%A7%D9%86-%D9%86%DB%8C%DA%A9%D8%A7.csv",
       'Cache-Control': 'no-store'
     }
   });
