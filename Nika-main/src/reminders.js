@@ -20,6 +20,7 @@ const templates={
  before:['یادآوری موعد شارژ ماهیانه','info','به اطلاع می‌رسانیم موعد پرداخت شارژ ماهیانه شما به مبلغ AMOUNT تومان، دو روز دیگر فرا می‌رسد.\n\nپرداخت به‌موقع شارژ، نقش مهمی در تأمین هزینه‌های جاری و استمرار امور خدماتی و رفاهی ساختمان دارد.\n\nاز همراهی و مسئولیت‌پذیری شما در قبال مجموعه نیکا سپاسگزاریم.'],
  due:['امروز موعد پرداخت شارژ ماهیانه است','warning','امروز موعد پرداخت شارژ ماهیانه شما به مبلغ AMOUNT تومان است.\n\nهزینه‌های جاری ساختمان بر اساس مشارکت و پرداخت به‌موقع تمامی واحدها تأمین می‌شود. تأخیر در پرداخت هر واحد می‌تواند برنامه‌ریزی و ارائه خدمات مورد نیاز سایر ساکنان را نیز تحت تأثیر قرار دهد.\n\nخواهشمندیم با پرداخت به‌موقع، در حفظ نظم و رفاه مجموعه سهیم باشید.'],
  late2:['پرداخت شارژ ماهیانه شما هنوز انجام نشده است','amber','با گذشت دو روز از موعد پرداخت، مبلغ AMOUNT تومان از شارژ ماهیانه واحد شما همچنان پرداخت‌نشده باقی مانده است.\n\nشارژ ساختمان صرفاً یک تعهد فردی نیست؛ بلکه پشتوانه تأمین هزینه‌های مشترک و اداره منظم ساختمان است. تأخیر در پرداخت هر واحد ممکن است موجب اختلال در انجام تعهدات مالی ساختمان و ایجاد مشکل برای سایر ساکنانی شود که سهم خود را به‌موقع پرداخت کرده‌اند.\n\nلطفاً با تسویه بدهی، در انجام مسئولیت مشترک خود نسبت به ساختمان و همسایگان همراهی فرمایید.'],
+ lateDaily:['یادآوری بدهی شارژ ماهیانه','amber','با وجود گذشت موعد سررسید، مبلغ AMOUNT تومان از شارژ ماهیانه واحد شما همچنان پرداخت‌نشده است.\\n\\nخواهشمندیم برای جلوگیری از انباشته‌شدن بدهی و اختلال در تأمین هزینه‌های مشترک ساختمان، در اسرع وقت نسبت به پرداخت آن اقدام فرمایید.'],
  late7:['تداوم عدم پرداخت شارژ، بر امور کل ساختمان تأثیر می‌گذارد','danger','با وجود گذشت هفت روز یا بیشتر از تاریخ سررسید، مبلغ AMOUNT تومان از شارژ ماهیانه واحد شما همچنان تسویه نشده است.\n\nاداره ساختمان، تأمین هزینه‌های خدماتی، نگهداری تأسیسات و انجام امور مشترک، به مشارکت مالی منظم تمامی واحدها وابسته است. عدم پرداخت به‌موقع شارژ از سوی حتی یک واحد، می‌تواند تعادل مالی و برنامه‌ریزی مدیریت ساختمان را مختل کند و در نهایت پیامدهایی به دنبال داشته باشد که سایر ساکنان، حتی با وجود انجام به‌موقع تعهدات خود، از آثار آن متأثر شوند.\n\nانتظار می‌رود با درک اهمیت مسئولیت‌پذیری در قبال مجموعه و حقوق سایر همسایگان، در اسرع وقت نسبت به پرداخت بدهی اقدام فرمایید.\n\nحفظ کیفیت زندگی و رفاه در ساختمان، مسئولیتی مشترک است و همکاری تک‌تک واحدها در تحقق آن نقش دارد.']
 };
 async function send(db,sender,recipient,title,body,tone,key){
@@ -70,19 +71,20 @@ export async function runReminders(env,now=new Date()){
   if(!periodSettings)continue;
   const parts=String(r.period).split('-').map(Number), maxDay=parts[1]<=6?31:parts[1]<=11?30:29, dueDay=Math.min(periodSettings.monthly_due_day,maxDay);
   const due=jalaliDate(parts[0],parts[1],dueDay), days=due?diff(now,due):null;
-  const stage=days===-2?'before':days===0?'due':days===2?'late2':days>=7?'late7':null;
+  const stage=days===-2?'before':days===0?'due':days>=7?'late7':days>=1?'lateDaily':null;
   if(!stage)continue;
   const balance=r.charged-r.paid;
   const resident=await env.DB.prepare("SELECT u.id,u.name FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='resident' WHERE u.unit_id=? AND u.active=1 LIMIT 1").bind(r.unit_id).first();
   if(!resident)continue;
   const t=templates[stage],body='ساکن محترم واحد '+r.unit_number+'،\n\n'+t[2].replace('AMOUNT',amount(balance))+'\n\nمدیریت ساختمان نیکا';
-  const msgKey='monthly:'+r.unit_id+':'+r.period+':'+(stage==='late7'?'daily:'+keyDate(now):stage);
+  const msgKey='monthly:'+r.unit_id+':'+r.period+':'+(days>=1?'daily:'+keyDate(now):stage);
   await send(env.DB,sender.id,resident.id,t[0],body,t[1],msgKey);sent++;
   if(days>=7){
    const owner=await env.DB.prepare("SELECT u.id FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' WHERE u.unit_id=? AND u.active=1 LIMIT 1").bind(r.unit_id).first();
    if(owner){
     const ownerBody='مالک محترم واحد '+r.unit_number+'،\n\nبه اطلاع می‌رسانیم شارژ ماهیانه واحد شما به مبلغ '+amount(balance)+' تومان که پرداخت آن بر عهده ساکن واحد است، با گذشت هفت روز از موعد سررسید همچنان تسویه نشده است.\n\nتأمین هزینه‌های جاری و اداره مناسب ساختمان به مشارکت منظم تمامی واحدها وابسته است. استمرار این وضعیت می‌تواند بر انجام امور مشترک و ارائه خدمات به سایر ساکنان نیز تأثیر بگذارد.\n\nخواهشمندیم در صورت امکان، موضوع را با ساکن واحد پیگیری فرمایید و در تقویت فرهنگ مسئولیت‌پذیری و همکاری جمعی ساختمان همراه مدیریت باشید.\n\nتوجه: بدهی یادشده همچنان در حساب ساکن ثبت است و به حساب مالک منتقل نشده است.\n\nمدیریت ساختمان نیکا';
-    await send(env.DB,sender.id,owner.id,'اطلاع درباره تأخیر در پرداخت شارژ واحد شما',ownerBody,'info','owner-notice:'+r.unit_id+':'+r.period);sent++;
+    const ownerWeek=Math.floor((days-7)/7);
+    await send(env.DB,sender.id,owner.id,'اطلاع درباره تأخیر در پرداخت شارژ واحد شما',ownerBody,'info','owner-notice:'+r.unit_id+':'+r.period+':week:'+ownerWeek);sent++;
    }
   }
  }
