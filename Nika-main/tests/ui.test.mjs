@@ -35,7 +35,7 @@ test('داشبورد مالی مدیر، HTML امن بخش‌ها و میانب
   const end = source.indexOf('\nasync function registerUnitPaymentTab()', start);
   assert.ok(start >= 0 && end > start, 'تابع financeTab باید وجود داشته باشد');
   const body = source.slice(start, end);
-  assert.match(body, /\$\{join\(shortcuts\)\}/);
-  assert.match(body, /\$\{join\(panels\)\}/);
+  assert.match(body, /\$\{raw\(join\(shortcuts\)\)\}/);
+  assert.match(body, /\$\{raw\(join\(panels\)\)\}/);
   assert.doesNotMatch(body, /\$\{(?:shortcuts|panels)\.join\(/);
 });
