@@ -36,6 +36,14 @@ test('میانبرهای مالی فرم مربوط را در پنجره شنا�
   assert.ok(start >= 0 && end > start, 'تابع financeTab باید وجود داشته باشد');
   const body = source.slice(start, end);
   assert.match(body, /\$\{raw\(join\(shortcuts\)\)\}/);
+  assert.match(body, /class="categories is-manager nika-finance-shortcuts"/);
+  assert.match(body, /class="category nika-finance-shortcut"/);
+  assert.match(body, /raw\(iconMarkup\(iconName\)\)/);
+  assert.match(body, /addShortcut\('unit-payment', 'ثبت شارژ واحدها', 'wallet'\)/);
+  assert.match(body, /addShortcut\('payment-approvals', 'تأیید پرداخت‌ها', 'badge-check'\)/);
+  assert.match(body, /addShortcut\('expense-create', 'ثبت هزینه', 'receipt-text'\)/);
+  assert.match(body, /addShortcut\('expense-review', 'بررسی درخواست‌های هزینه', 'clipboard-list'\)/);
+  assert.match(body, /addShortcut\('expense-finalize', 'تأیید نهایی هزینه‌ها', 'shield-check'\)/);
   assert.match(body, /openModal\(action\.title, action\.view\.html\)/);
   assert.match(body, /action\.view\.bind\?\.\(modal\)/);
   assert.doesNotMatch(body, /\$\{raw\(join\(panels\)\)\}/);
