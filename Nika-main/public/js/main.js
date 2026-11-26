@@ -33,13 +33,14 @@ function forcePassword() { show('#nikaForce'); }
 
 async function enter(user) {
   S.user = user;
+  S.workspace = 'resident';
   if (user.must_change_password) return forcePassword();
   managerMode = false; show('#app'); resetRouter(); showHome(); setupNav();
   await P.loadHome(); P.refreshSummary();
 }
 async function logout() {
   try { await api('/logout', { method: 'POST' }); } catch {}
-  S.user = null; resetRouter(); show('#nikaGate'); $('#nikaIdentifier')?.focus();
+  S.user = null; S.workspace = 'resident'; resetRouter(); show('#nikaGate'); $('#nikaIdentifier')?.focus();
 }
 
 // ---------- ناوبری ----------
