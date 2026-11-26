@@ -17,6 +17,7 @@ const TABS = () => [
   ['finance', 'مالی', canAny(['finance.settings', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'])],
   ['reports', 'گزارش عملکرد', can('audit.read')],
   ['archive', 'پشتیبان‌گیری', can('backup.manage')],
+  ['system', 'مدیریت سامانه', can('system.data.manage')],
 ].filter(t => t[2]);
 
 let managerHome = false;
@@ -96,7 +97,7 @@ async function loadTab() {
   $('#managerPageBack').onclick = hideAdmin;
   try {
     const out = await RENDER[tab]();
-    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>' + ({settings:'تنظیمات',users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>'; applyIcons(box);
+    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>' + ({settings:'تنظیمات',users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری',system:'مدیریت سامانه'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>'; applyIcons(box);
     $('#managerPageBack',box).onclick = hideAdmin;
     out.bind && out.bind(box);
   } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); applyIcons(box); $('#managerPageBack',box).onclick=hideAdmin; }
@@ -290,6 +291,39 @@ function bindGroupedMoneyInputs(root){
   format(); input.addEventListener('input',format);
  });
 }
+async function systemTab() {
+  return {
+    html: card('بازنشانی کامل اطلاعات آزمایشی', html`
+      <p>این عملیات برای پایان دوره آزمایشی است و تمام اطلاعات ثبت‌شده در این دوره را به‌صورت غیرقابل‌بازگشت پاک می‌کند.</p>
+      <div class="nika-usercard">
+        <strong>مواردی که پاک می‌شوند</strong>
+        <small>تمام کاربران به‌جز حساب مدیر سامانه، سوابق مالی و تراکنش‌ها، تنظیمات مالی، پیام‌ها، درخواست‌ها، اطلاعیه‌ها، مصوبات، رویدادها، اسناد، جانشینی‌ها، فایل‌های پیوست، سوابق پشتیبان و گزارش‌های ممیزی.</small>
+      </div>
+      <div class="nika-usercard">
+        <strong>مواردی که حفظ می‌شوند</strong>
+        <small>ساختار و مشخصات واحدهای ساختمان، صندوق‌های پایه و فقط حساب مستقل مدیر سامانه که با آن وارد شده‌اید.</small>
+      </div>
+      <form id="systemResetForm" novalidate>
+        ${fields([
+          { name: 'confirm', label: 'عبارت تأیید را دقیقاً وارد کنید', placeholder: 'RESET-NIKA-TEST-DATA', required: true, dir: 'ltr' },
+          { name: 'currentPassword', label: 'رمز عبور فعلی مدیر سامانه', type: 'password', required: true, dir: 'ltr', autocomplete: 'current-password' }
+        ], 'nika')}
+        <div class="nika-actions"><button class="nika-secondary danger" type="submit">بازنشانی کامل اطلاعات آزمایشی</button></div>
+      </form>
+      <p class="nika-footnote">این امکان فقط برای مدیر سامانه مستقل نمایش داده می‌شود. پس از بازنشانی، کاربران و تنظیمات واقعی را از ابتدا ثبت کنید.</p>
+    `),
+    bind(box) {
+      onSubmit($('#systemResetForm', box), async data => {
+        if (data.confirm !== 'RESET-NIKA-TEST-DATA') throw new Error('عبارت تأیید را دقیقاً و بدون تغییر وارد کنید.');
+        if (!await ask('بازنشانی غیرقابل‌بازگشت سامانه', 'تمام اطلاعات آزمایشی و تنظیمات مالی پاک می‌شوند. فقط حساب مدیر سامانه، واحدهای ساختمان و صندوق‌های پایه باقی می‌مانند. آیا مطمئن هستید؟', 'پاک‌سازی کامل', true)) return;
+        const result = await api('/admin/reset-test-data', { method: 'POST', body: { confirm: data.confirm, currentPassword: data.currentPassword } });
+        toast(`بازنشانی انجام شد؛ ${fa(result.preservedUnits)} واحد ساختمان حفظ شد.`);
+        reload();
+      });
+    }
+  };
+}
+
 async function settingsTab() {
  const editable = can('finance.settings');
  const { settings } = await api('/finance/reminder-settings');
@@ -751,4 +785,4 @@ async function archiveTab() {
  };
 }
 
-const RENDER = { settings: settingsTab, users: usersTab, units: unitsTab, finance: financeTab, reports: reportsTab, archive: archiveTab };
+const RENDER = { settings: settingsTab, users: usersTab, units: unitsTab, finance: financeTab, reports: reportsTab, archive: archiveTab, system: systemTab };
