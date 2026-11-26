@@ -48,13 +48,29 @@ R('GET', '/api/transactions', async c => {
 R('POST', '/api/transactions', async c => {
   const x = await readJson(c.request), fund = fundOf(x.fund), u = c.user, id = crypto.randomUUID();
   if (x.kind === 'payment') {
-    if (!can(u, `finance.${fund}.pay`)) throw err(403, 'FORBIDDEN', 'اجازه‌ی ثبت پرداخت در این صندوق را ندارید');
-    if (!u.unit_id) throw err(400, 'NO_UNIT', 'این حساب به واحدی متصل نیست');
     const amount = int(x.amount, { field: 'مبلغ' }), ref = optStr(x.reference, { max: 40, field: 'شماره پیگیری' });
     const title = optStr(x.title, { max: 120, field: 'عنوان' }) || `پرداخت ${FUND_TITLE[fund]}`;
-    await c.db.prepare("INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,note,created_by) VALUES(?,?,?,?, 'payment',?,?,?,'pending',?,?,?)")
-      .bind(id, u.unit_id, u.id, fund, amount, title, fund === 'owner' ? ownerYear(x.period) : period(x.period, false), ref, optStr(x.note, { max: 300, field: 'توضیحات', multiline: true }), u.id).run();
-    await audit(c.db, u.id, 'payment.create', 'transaction', id, { fund, amount });
+    const note = optStr(x.note, { max: 300, field: 'توضیحات', multiline: true });
+    if (x.unitNumber != null && String(x.unitNumber).trim() !== '') {
+      if (!can(u, 'finance.approve')) throw err(403, 'FORBIDDEN', 'اجازه‌ی ثبت پرداخت برای واحدها را ندارید');
+      const unitNumber = str(x.unitNumber, { max: 20, field: 'شماره واحد' });
+      const unit = await c.db.prepare('SELECT id FROM units WHERE unit_number=?').bind(unitNumber).first();
+      if (!unit) throw err(404, 'UNIT_NOT_FOUND', 'واحد انتخاب‌شده پیدا نشد');
+      const financeRole = u.roles.includes('finance') || (u.delegatedRoles || []).includes('finance');
+      const reason = financeRole ? null : str(x.reason, { max: 500, field: 'دلیل ثبت خارج از مسئولیت', multiline: true });
+      const accountType = fund === 'owner' ? 'owner' : 'resident';
+      const payer = await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=? AND active=1 ORDER BY created_at DESC LIMIT 1').bind(unit.id, accountType).first();
+      const per = fund === 'owner' ? ownerYear(x.period) : period(x.period, false);
+      await c.db.prepare("INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,note,created_by) VALUES(?,?,?,?,'payment',?,?,?,'pending',?,?,?)")
+        .bind(id, unit.id, payer?.id || null, fund, amount, title, per, ref, note, u.id).run();
+      await audit(c.db, u.id, 'payment.create', 'transaction', id, { fund, amount, unitNumber, enteredForUnit: true }, reason ? { actorRole: u.roles[0] || 'manager', reason } : {});
+    } else {
+      if (!can(u, `finance.${fund}.pay`)) throw err(403, 'FORBIDDEN', 'اجازه‌ی ثبت پرداخت در این صندوق را ندارید');
+      if (!u.unit_id) throw err(400, 'NO_UNIT', 'این حساب به واحدی متصل نیست');
+      await c.db.prepare("INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,note,created_by) VALUES(?,?,?,?, 'payment',?,?,?,'pending',?,?,?)")
+        .bind(id, u.unit_id, u.id, fund, amount, title, fund === 'owner' ? ownerYear(x.period) : period(x.period, false), ref, note, u.id).run();
+      await audit(c.db, u.id, 'payment.create', 'transaction', id, { fund, amount });
+    }
   } else if (x.kind === 'expense') {
     throw err(410, 'USE_EXPENSE_REQUESTS', 'ثبت هزینه فقط از مسیر درخواست پرداخت و تأیید دومرحله‌ای امکان‌پذیر است');
   } else throw err(400, 'INVALID_INPUT', 'نوع تراکنش نامعتبر است');
