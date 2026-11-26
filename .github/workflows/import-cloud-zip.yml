@@ -1,0 +1,44 @@
+name: Import reviewed Cloudflare ZIP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Extract and apply reviewed project
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="Nika-main-v0.3-reviewed.zip"
+          test -f "$archive"
+          rm -rf /tmp/nika-cloud-import
+          mkdir -p /tmp/nika-cloud-import
+          unzip -q "$archive" -d /tmp/nika-cloud-import
+          test -d /tmp/nika-cloud-import/Nika-main
+          cp -a /tmp/nika-cloud-import/Nika-main/. .
+          rm -f "$archive"
+
+      - name: Commit imported files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Import reviewed Cloudflare project v0.3"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
