@@ -7,9 +7,9 @@ const UNITS = new Set(Array.from({ length: 32 }, (_, i) => String((Math.floor(i 
 // خروجی فهرست متمرکز؛ فقط کاربران دارای مجوز مشاهده کاربران می‌توانند دریافت کنند.
 R('GET', '/api/public/user-submissions/export', { perm: 'users.read' }, async c => {
   const result = await c.db.prepare(
-    "SELECT unit_number,user_type,full_name,gender,phone,secondary_phone,contract_start_date,contract_end_date FROM public_user_submissions ORDER BY CAST(unit_number AS INTEGER), CASE user_type WHEN 'owner' THEN 0 ELSE 1 END, rowid"
+    "SELECT unit_number,user_type,full_name,gender,phone,secondary_phone,contract_start_date,contract_end_date,strftime('%Y-%m-%d %H:%M', created_at, '+3 hours', '+30 minutes') AS submitted_at FROM public_user_submissions ORDER BY CAST(unit_number AS INTEGER), CASE user_type WHEN 'owner' THEN 0 ELSE 1 END, rowid"
   ).all();
-  const headers = ['شماره واحد','نوع کاربر','نام و نام خانوادگی','جنسیت','شماره تماس','شماره تماس پشتیبان','تاریخ شروع قرارداد','تاریخ اتمام قرارداد'];
+  const headers = ['شماره واحد','نوع کاربر','نام و نام خانوادگی','جنسیت','شماره تماس','شماره تماس پشتیبان','تاریخ شروع قرارداد','تاریخ اتمام قرارداد','تاریخ و ساعت ثبت'];
   const safe = value => {
     let text = String(value ?? '');
     if (/^[=+@\-\t\r]/.test(text)) text = "'" + text;
@@ -23,7 +23,8 @@ R('GET', '/api/public/user-submissions/export', { perm: 'users.read' }, async c 
     row.phone,
     row.secondary_phone,
     row.contract_start_date,
-    row.contract_end_date
+    row.contract_end_date,
+    row.submitted_at
   ]);
   const csv = '\uFEFF' + [headers, ...rows].map(row => row.map(safe).join(',')).join('\r\n');
   return new Response(csv, {
@@ -33,6 +34,15 @@ R('GET', '/api/public/user-submissions/export', { perm: 'users.read' }, async c 
       'Cache-Control': 'no-store'
     }
   });
+});
+
+
+// تعداد ثبت‌نام‌ها به تفکیک روز؛ تاریخ بر اساس ساعت رسمی ایران محاسبه می‌شود.
+R('GET', '/api/public/user-submissions/daily-counts', { perm: 'users.read' }, async c => {
+  const result = await c.db.prepare(
+    "SELECT date(created_at, '+3 hours', '+30 minutes') AS day, COUNT(*) AS total FROM public_user_submissions GROUP BY day ORDER BY day DESC"
+  ).all();
+  return reply({ days: result.results || [] });
 });
 
 R('POST', '/api/public/user-submissions', { public: true }, async c => {
