@@ -36,6 +36,30 @@ test('health و تنظیمات', async () => {
   assert.equal(r.status, 503);
 });
 
+test('فرم عمومی ثبت اطلاعات بدون JWT کار می‌کند و حساب واقعی نمی‌سازد', async () => {
+  const beforeUsers = (await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first()).n;
+  const publicEnv = { DB: env.DB, ASSETS: env.ASSETS };
+  const payload = {
+    unit: '204', userType: 'resident', firstName: 'حبیب', lastName: 'رستگارنیا',
+    gender: 'male', phone: '۰۹۱۲۱۲۳۴۵۶۷', secondaryPhone: '',
+    contractStartDate: '۱۴۰۵/۰۸/۰۱', contractEndDate: '۱۴۰۶/۰۸/۰۱', website: ''
+  };
+  const response = await worker.fetch(new Request(BASE + '/api/public/user-submissions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  }), publicEnv);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true });
+  const saved = await env.DB.prepare('SELECT unit_number,user_type,full_name,gender,phone,contract_start_date,contract_end_date FROM public_user_submissions WHERE unit_number=?').bind('204').first();
+  assert.equal(saved.full_name, 'حبیب رستگارنیا');
+  assert.equal(saved.contract_start_date, '1405/08/01');
+  assert.equal(saved.contract_end_date, '1406/08/01');
+  assert.equal((await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first()).n, beforeUsers);
+  const invalid = await worker.fetch(new Request(BASE + '/api/public/user-submissions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, unit: '999' })
+  }), publicEnv);
+  assert.equal(invalid.status, 400);
+});
+
 test('setup: کلید لازم است، رمز ضعیف رد می‌شود، فقط یک‌بار', async () => {
   assert.equal((await chair.post('/api/setup', { name: 'رئیس', phone: '09120000001', password: CHAIR_PW })).status, 403);
   const bad = { 'X-Setup-Key': 'setup-key-123' };
