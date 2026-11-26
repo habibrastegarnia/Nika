@@ -104,10 +104,21 @@ export async function calendarPage(y, m) {
   const buildingItems = items.filter(event => !event.isHoliday);
   // فقط رویدادهای ساختمان در خانه‌های تقویم علامت‌گذاری شوند؛ مناسبت‌ها و تعطیلات رسمی برجسته نشوند.
   const byDay = {}; buildingItems.forEach(e => (byDay[+e.event_date.slice(8, 10)] ||= []).push(e));
+  const todayKey = `${t.y}-${String(t.m).padStart(2, '0')}-${String(t.d).padStart(2, '0')}`;
+  const clock = new Date(), nowTime = `${String(clock.getHours()).padStart(2, '0')}:${String(clock.getMinutes()).padStart(2, '0')}`;
+  const nextBuildingEvent = buildingItems
+    .filter(e => e.event_date > todayKey || (e.event_date === todayKey && (!e.event_time || String(e.event_time) >= nowTime)))
+    .sort((a, b) => a.event_date.localeCompare(b.event_date) || String(a.event_time || '').localeCompare(String(b.event_time || '')))[0];
+  const nextEventDate = nextBuildingEvent?.event_date;
   const start = monthStart(y, m), len = Math.round(((m === 12 ? monthStart(y + 1, 1) : monthStart(y, m + 1)) - start) / 864e5), lead = (start.getUTCDay() + 1) % 7;
   const cells = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map(d => html`<span class="dow">${d}</span>`);
   for (let i = 0; i < lead; i++) cells.push(html`<span class="blank"></span>`);
-  for (let d = 1; d <= len; d++) cells.push(html`<span class="${byDay[d] ? 'event' : ''} ${y === t.y && m === t.m && d === t.d ? 'today' : ''}" ${byDay[d] ? raw(`data-day="${d}"`) : ''}>${faN(d)}</span>`);
+  for (let d = 1; d <= len; d++) {
+    const dateKey = `${y}-${mm}-${String(d).padStart(2, '0')}`;
+    const hasEvent = !!byDay[d], isToday = y === t.y && m === t.m && d === t.d;
+    const isNextEvent = dateKey === nextEventDate;
+    cells.push(html`<span class="day-cell ${hasEvent ? 'event' : ''} ${isToday ? 'today' : ''} ${isNextEvent ? 'next-event' : ''}" ${hasEvent ? raw(`data-day="${d}"`) : ''}><b class="day-number">${faN(d)}</b>${hasEvent ? html`<i class="event-dot ${isNextEvent ? 'pulse' : ''}" aria-hidden="true"></i>` : ''}</span>`);
+  }
   const prev = m === 1 ? [y - 1, 12] : [y, m - 1], next = m === 12 ? [y + 1, 1] : [y, m + 1];
   const eventFields = [
     { name: 'title', label: 'عنوان رویداد', required: true },
