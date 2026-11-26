@@ -40,12 +40,12 @@
 </div>
 </section><div class="footer">ساختمان نیکا</div></main>
 <script>
-const $=id=>document.getElementById(id), faDigits=s=>String(s).replace(/\\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
+const $=id=>document.getElementById(id), faDigits=s=>String(s).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
 const units=$('unit');
 function latinDigits(s){return String(s||'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))}
 function validJalaliDate(value){
  const v=latinDigits(value);
- if(!/^\\d{4}\\/\\d{2}\\/\\d{2}$/.test(v)) return false;
+ if(!/^\d{4}\/\d{2}\/\d{2}$/.test(v)) return false;
  const [year,month,day]=v.split('/').map(Number);
  if(year<1300||year>1500||month<1||month>12||day<1) return false;
  return day<=(month<=6?31:month<=11?30:30);
