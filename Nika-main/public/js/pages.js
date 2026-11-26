@@ -215,7 +215,6 @@ export async function financePage(fund) {
   const pct = dash && dash.charges.total ? Math.min(100, Math.round(dash.charges.paid / dash.charges.total * 100)) : null;
   const v = route('مالی', 'امور مالی', FUND_FA[fund], html`${funds.length > 1 ? html`<div class="seg">${funds.map(f => html`<button class="${f === fund ? 'on' : ''}" data-fund="${f}">${FUND_FA[f]}</button>`)}</div>` : ''}
     <div class="page-stat-grid"><div class="page-stat"><small>مانده بدهی واحد</small><strong class="${my.balance > 0 ? '' : 'green'}">${toman(Math.max(my.balance, 0))}</strong></div><div class="page-stat"><small>${my.balance < 0 ? 'اعتبار واحد' : 'در انتظار تأیید'}</small><strong class="blue">${toman(my.balance < 0 ? -my.balance : my.pending)}</strong></div><div class="page-stat"><small>کل شارژ</small><strong>${toman(my.charged)}</strong></div><div class="page-stat"><small>آخرین پرداخت</small><strong style="font-size:13px">${my.lastPaymentAt ? fdate(my.lastPaymentAt) : '—'}</strong></div></div>
-    ${fund === 'owner' ? html`<div class="page-card"><h3>تفکیک بدهی شارژ مالکانه به تفکیک سال</h3><div class="page-list">${my.annualBalances?.length ? my.annualBalances.map(y => html`<div class="page-row"><div class="page-row-main"><strong>سال ${fa(y.period)}</strong><small>شارژ: ${toman(y.charged)} · پرداخت و اعتبار تخصیص‌یافته: ${toman(y.paid)}</small></div><div style="text-align:left"><strong class="${y.balance > 0 ? '' : 'green'}">${toman(Math.abs(y.balance))}</strong><small>${y.balance > 0 ? 'بدهی این سال' : y.balance < 0 ? 'بستانکاری این سال' : 'تسویه‌شده'}</small></div></div>`) : html`<div class="page-empty">برای سال‌های ثبت‌شده، بدهی مالکانه‌ای وجود ندارد.</div>`}</div>${my.unassignedPayments > 0 ? html`<p class="muted" style="margin-top:10px">پرداخت‌های قدیمی فاقد سال تخصیص: ${toman(my.unassignedPayments)} تومان. این مبلغ در مانده کل حساب منظور شده، اما به هیچ سالی نسبت داده نشده است.</p>` : ''}</div>` : ''}
     ${can(`finance.${fund}.pay`) && S.user.unit_id ? html`<button class="page-btn full" id="payBtn" style="margin:0 0 12px">ثبت پرداخت و ارسال رسید</button>` : ''}
     ${pct != null ? html`<div class="page-card"><h3>وصول شارژ ساختمان · ${(fund === 'owner' ? fa(dash.period || jToday().y) : periodLabel(dash.period || curPeriod()))}</h3><div class="bar"><div style="width:${pct}%"></div></div><p>${fa(pct)}٪ وصول‌شده · ${fa(dash.charges.paidUnits)} از ${fa(dash.charges.units)} واحد تسویه‌اند</p></div>` : ''}
     <div class="page-card"><h3>تراکنش‌های واحد شما</h3><div class="page-list">${tx.transactions.length ? tx.transactions.map(t => txRow(t, true)) : html`<div class="page-empty">تراکنشی ثبت نشده است.</div>`}</div></div>
@@ -229,11 +228,11 @@ function payPage(fund, balance) {
   const v = route('مالی', 'ثبت پرداخت', FUND_FA[fund], html`<form class="page-card page-form" novalidate><p>پس از پرداخت (کارت‌به‌کارت یا واریز)، مبلغ و شماره پیگیری را ثبت کنید. پرداخت پس از بررسی مدیر مالی در حساب شما اعمال می‌شود.</p>${fields([
     { name: 'amount', label: 'مبلغ (تومان)', inputmode: 'numeric', required: true, value: balance > 0 ? fa(balance).replace(/٬/g, '') : '', dir: 'ltr' },
     { name: 'reference', label: 'شماره پیگیری / ۴ رقم آخر کارت', required: true, dir: 'ltr' },
-    ...(fund === 'owner' ? [{ name: 'period', label: 'بابت سال شارژ مالکانه', type: 'select', value: String(jToday().y), options: Array.from({ length: Math.max(1, jToday().y - 1399) }, (_, i) => { const year = String(1400 + i); return [year, fa(year)]; }) }] : [{ name: 'period', label: 'بابت دوره', type: 'select', value: curPeriod(), options: JM.map((month, i) => [`${curPeriod().slice(0, 4)}-${String(i + 1).padStart(2, '0')}`, month]) }]),
+    ...(fund === 'owner' ? [] : [{ name: 'period', label: 'بابت دوره', type: 'select', value: curPeriod(), options: JM.map((month, i) => [`${curPeriod().slice(0, 4)}-${String(i + 1).padStart(2, '0')}`, month]) }]),
     { name: 'note', label: 'توضیحات (اختیاری)', type: 'textarea', rows: 3 }])}<button class="page-btn full" type="submit">ثبت پرداخت</button></form>`);
   onSubmit($('form', v), async d => {
     const amount = parseAmount(d.amount); if (!amount) throw new Error('مبلغ را به‌صورت عدد وارد کنید');
-    await api('/transactions', { method: 'POST', body: { kind: 'payment', fund, amount, reference: d.reference, period: d.period || undefined, note: d.note || undefined } });
+    await api('/transactions', { method: 'POST', body: { kind: 'payment', fund, amount, reference: d.reference, ...(fund === 'owner' ? {} : { period: d.period || undefined }), note: d.note || undefined } });
     toast('پرداخت ثبت شد و در انتظار تأیید است'); open(() => financePage(fund), { replace: true }); refreshSummary();
   });
 }
@@ -338,7 +337,7 @@ export async function settingsPage() {
   ${delegationCard}
   <form class="page-card page-form" novalidate><h3>تغییر رمز عبور</h3>${fields([
     { name: 'currentPassword', label: 'رمز فعلی', type: 'password', required: true, dir: 'ltr', autocomplete: 'current-password' },
-    { name: 'newPassword', label: 'رمز جدید (حداقل ۱۰ کاراکتر، نه فقط عدد)', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' },
+    { name: 'newPassword', label: 'رمز جدید (حداقل ۸ کاراکتر، نه فقط عدد)', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' },
     { name: 'again', label: 'تکرار رمز جدید', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' }])}<button class="page-btn full" type="submit">تغییر رمز</button><p class="nika-footnote">پس از تغییر رمز، نشست سایر دستگاه‌ها بسته می‌شود.</p></form>
 `);
   const themeToggle = $('#themeToggle', v);

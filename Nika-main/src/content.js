@@ -3,15 +3,23 @@ import { R } from './router.js';
 import { err, reply, readJson, str, optStr, int, jdate, audit } from './lib.js';
 import { can } from './perms.js';
 import { OFFICIAL_CALENDAR } from './holidays.js';
+import { occurrencesBetween } from './jcal.js';
 
 // ---------- اطلاعیه‌ها ----------
 const NOTICE_KINDS = ['اطلاعیه', 'جلسه', 'عمومی', 'فوری'];
 const AUDIENCES = ['all', 'owner', 'resident', 'staff'];
 
 R('GET', '/api/notices', async c => {
-  const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 100, 1), 100), t = c.user.account_type;
+  const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 100, 1), 100);
+  // مخاطب بر اساس «نقش‌ها» تعیین می‌شود نه نوع حساب: حساب «مالک و ساکن» اطلاعیه‌ی هر دو گروه را می‌بیند
+  // و ساکنی که عضو هیئت‌مدیره هم هست اطلاعیه‌ی مدیران را هم می‌بیند. حساب مدیر/کارکنان همه‌چیز را می‌بیند.
+  const aud = new Set(['all']);
+  for (const r of c.user.roles) if (r === 'owner' || r === 'resident') aud.add(r);
+  const seeAll = c.user.account_type === 'staff';
+  if (seeAll || c.user.roles.some(r => !['owner', 'resident'].includes(r))) aud.add('staff');
+  const list = [...aud];
   const r = await c.db.prepare(
-    `SELECT id,title,body,audience,kind,created_at FROM notices WHERE (?='staff' OR audience IN ('all',?)) ORDER BY created_at DESC,rowid DESC LIMIT ?`).bind(t, t, limit).all();
+    `SELECT id,title,body,audience,kind,created_at FROM notices WHERE (?=1 OR audience IN (${list.map(() => '?').join(',')})) ORDER BY created_at DESC,rowid DESC LIMIT ?`).bind(seeAll ? 1 : 0, ...list, limit).all();
   return reply({ notices: r.results });
 });
 R('POST', '/api/notices', { perm: 'notices.manage' }, async c => {
@@ -116,39 +124,20 @@ R('POST', '/api/messages/:id/read', { perm: 'messages.use' }, async c => {
 // ---------- محتوای ساختمان: CRUD عمومی ----------
 const shortTime = v => { const s = String(v ?? '').trim(); if (!s) return null; const t = s.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw err(400, 'INVALID_TIME', 'ساعت باید به شکل ۱۸:۳۰ باشد'); return t; };
 const httpsUrl = v => { const s = String(v ?? '').trim(); try { const u = new URL(s); if (u.protocol !== 'https:' || s.length > 500) throw 0; return u.href; } catch { throw err(400, 'INVALID_URL', 'نشانی باید با https شروع شود'); } };
-const JALALI_FORMAT = new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'});
-const jalaliParts = value => { const [y,m,d]=String(value).split('-').map(Number); return {y,m,d}; };
-const jalaliToDate = (y,m,d) => {
-  const start=Date.UTC(y+621,2,15);
-  for(let i=0;i<370;i++){const dt=new Date(start+i*86400000),p=JALALI_FORMAT.formatToParts(dt),o=Object.fromEntries(p.map(x=>[x.type,x.value]));if(+o.year===y&&+o.month===m&&+o.day===d)return dt;}
-  return null;
-};
-const dateToJalali = dt => { const p=new Intl.DateTimeFormat('en-u-ca-persian',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(dt),o=Object.fromEntries(p.map(x=>[x.type,x.value])); return String(+o.year)+'-'+String(+o.month).padStart(2,'0')+'-'+String(+o.day).padStart(2,'0'); };
-const jalaliMonthDay = (y,m,d) => { for(let day=d;day>=1;day--){if(jalaliToDate(y,m,day))return day;} return 28; };
-const nextOccurrence = (date, recurrence) => {
-  const {y,m,d}=jalaliParts(date);
-  if(recurrence==='weekly'){const dt=jalaliToDate(y,m,d);if(!dt)return null;return dateToJalali(new Date(dt.getTime()+7*86400000));}
-  if(recurrence==='monthly'){const nm=m===12?1:m+1,ny=m===12?y+1:y,day=jalaliMonthDay(ny,nm,d);return String(ny)+'-'+String(nm).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
-  if(recurrence==='yearly'){const ny=y+1,day=jalaliMonthDay(ny,m,d);return String(ny)+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
-  return null;
-};
 R('GET','/api/events',async c=>{
   const month=c.url.searchParams.get('month');
   if(!month||!/^1[34]\d{2}-\d{2}$/.test(month)) throw err(400,'INVALID_MONTH','ماه نامعتبر است');
   const [yy,mm]=month.split('-').map(Number),first=month+'-01',next=mm===12?String(yy+1)+'-01':String(yy)+'-'+String(mm+1).padStart(2,'0');
   const end=next+'-01';
   const rows=await c.db.prepare("SELECT * FROM events WHERE event_date<? AND (recurrence='none' OR recurrence_until IS NULL OR recurrence_until>=?) ORDER BY event_date,event_time").bind(end,first).all();
+  // همه‌ی استثناهای نوبت‌ها با یک Query (نه یک Query برای هر نوبت)
+  const ovRows=rows.results.length?await c.db.prepare(`SELECT * FROM event_occurrences WHERE event_id IN (${rows.results.map(()=>'?').join(',')})`).bind(...rows.results.map(e=>e.id)).all():{results:[]};
+  const overrides=new Map(ovRows.results.map(o=>[o.event_id+'|'+o.occurrence_date,o]));
   const out=[];
   for(const e of rows.results){
-    let date=e.event_date, guard=0;
-    while(date<end && guard++<5000){
-      if(date>=first && (!e.recurrence_until || date<=e.recurrence_until)){
-        const ov=await c.db.prepare('SELECT * FROM event_occurrences WHERE event_id=? AND occurrence_date=?').bind(e.id,date).first();
-        const displayDate=ov?.event_date||date;
-        if(!ov?.cancelled && displayDate>=first && displayDate<end) out.push({...e,id:e.id,series_event_date:e.event_date,series_event_time:e.event_time,series_title:e.title,series_body:e.body,series_recurrence_until:e.recurrence_until,occurrence_date:date,event_date:displayDate,event_time:ov?.event_time??e.event_time,title:ov?.title||e.title,body:ov?.body??e.body,recurrence_date:date,occurrence_id:ov?.id||null});
-      }
-      if(e.recurrence==='none')break;
-      const nextDate=nextOccurrence(date,e.recurrence);if(!nextDate||nextDate<=date)break;date=nextDate;
+    for(const date of occurrencesBetween(e.event_date,e.recurrence,e.recurrence_until,first,end)){
+      const ov=overrides.get(e.id+'|'+date),displayDate=ov?.event_date||date;
+      if(!ov?.cancelled && displayDate>=first && displayDate<end) out.push({...e,id:e.id,series_event_date:e.event_date,series_event_time:e.event_time,series_title:e.title,series_body:e.body,series_recurrence_until:e.recurrence_until,occurrence_date:date,event_date:displayDate,event_time:ov?.event_time??e.event_time,title:ov?.title||e.title,body:ov?.body??e.body,recurrence_date:date,occurrence_id:ov?.id||null});
     }
   }
   const moved=await c.db.prepare("SELECT e.*,o.occurrence_date,o.event_date occurrence_display_date,o.event_time occurrence_time,o.title occurrence_title,o.body occurrence_body,o.id occurrence_id,o.cancelled FROM event_occurrences o JOIN events e ON e.id=o.event_id WHERE o.event_date>=? AND o.event_date<? AND o.cancelled=0").bind(first,end).all();

@@ -20,6 +20,8 @@ crons = ["30 4 * * *"]
 ENVIRONMENT = "production"
 # فقط برای ساختمان‌های کوچک که یک نفر هم ثبت‌کننده و هم تأییدکننده است؛ به‌صورت پیش‌فرض ممنوع.
 ALLOW_SELF_APPROVAL = "false"
+# رمز اولیه‌ی مالک/ساکن: "random" (پیش‌فرض، امن) یا "phone" (رمز اولیه = شماره موبایل؛ قبل از فعال‌سازی قابل حدس است)
+INITIAL_PASSWORD_MODE = "random"
 
 [observability]
 enabled = true

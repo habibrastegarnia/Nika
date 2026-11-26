@@ -1,6 +1,6 @@
 // مدیریت کاربران، واحدها و گزارش ممیزی
 import { R } from './router.js';
-import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, tempPassword, hashPassword, newSalt, safeEqual, audit, jdate } from './lib.js';
+import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, tempPassword, hashPassword, newSalt, safeEqual, audit, jdate, initialPasswordMode, verifyUserPassword } from './lib.js';
 import { can, EXTRA_ROLES, assignableExtraRoles, canManageTarget } from './perms.js';
 
 const rolesOf = async (db, id) => (await db.prepare('SELECT role FROM user_roles WHERE user_id=?').bind(id).all()).results.map(r => r.role);
@@ -55,15 +55,16 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
     if (accountType === 'both') {
       if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident')").bind(unitId).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد قبلاً حساب مالک یا ساکن ساخته شده است؛ برای یک شخص مشترک، نقش دوم را به همان حساب اضافه کنید');
     } else if (await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=?').bind(unitId, accountType).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد، حسابی با همین نوع (مالک یا ساکن) از قبل ثبت شده است');
-    if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND phone=?").bind(unitId, phone).first()) throw err(409, 'SHARED_INITIAL_PASSWORD', 'شماره موبایل مالک و ساکن یک واحد باید متفاوت باشد');
+    if (initialPasswordMode(c.env) === 'phone' && await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND phone=?").bind(unitId, phone).first()) throw err(409, 'SHARED_INITIAL_PASSWORD', 'شماره موبایل مالک و ساکن یک واحد باید متفاوت باشد');
   }
-  const uid = crypto.randomUUID(), initialPassword = accountType === 'staff' ? tempPassword() : phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
+  const needsTemp = accountType === 'staff' || initialPasswordMode(c.env) === 'random';
+  const uid = crypto.randomUUID(), initialPassword = needsTemp ? tempPassword() : phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
     c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,secondary_phone,gender,password_hash,password_salt,must_change_password,contract_start_date,contract_end_date) VALUES(?,?,?,?,?,?,?,?,?,1,?,?)').bind(uid, unitId, storedType, name, phone, secondaryPhone, gender, ph, salt, contractStartDate, contractEndDate),
     ...roles.map(r => c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, r))
   ]);
   await audit(c.db, c.user.id, 'user.create', 'user', uid, { accountType, unit: x.unit || null, roles });
-  return reply({ ok: true, id: uid, ...(accountType === 'staff' ? { tempPassword: initialPassword } : { initialPasswordIsPhone: true }) }, 201);
+  return reply({ ok: true, id: uid, ...(needsTemp ? { tempPassword: initialPassword } : { initialPasswordIsPhone: true }) }, 201);
 });
 
 async function targetOrFail(c) {
@@ -129,8 +130,9 @@ R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async
   const t = await targetOrFail(c);
   if (t.id === c.user.id) throw err(400, 'SELF_CHANGE', 'رمز خودتان را از بخش تنظیمات تغییر دهید');
   const row = await c.db.prepare('SELECT phone,account_type FROM users WHERE id=?').bind(t.id).first();
-  const initialPassword = row.account_type === 'staff' ? tempPassword() : row.phone;
-  if (t.account_type !== 'staff') {
+  const needsTemp = row.account_type === 'staff' || initialPasswordMode(c.env) === 'random';
+  const initialPassword = needsTemp ? tempPassword() : row.phone;
+  if (!needsTemp) {
     const other = await c.db.prepare("SELECT password_hash,password_salt FROM users WHERE unit_id=(SELECT unit_id FROM users WHERE id=?) AND account_type IN ('owner','resident') AND id!=? AND active=1 LIMIT 1").bind(t.id, t.id).first();
     if (other && safeEqual(await hashPassword(initialPassword, other.password_salt), other.password_hash)) throw err(409, 'SHARED_UNIT_PASSWORD', 'رمز فعلی مالک یا ساکن دیگر با این شماره موبایل یکسان است؛ ابتدا رمز آن حساب را تغییر دهید');
   }
@@ -140,7 +142,7 @@ R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async
     c.db.prepare('DELETE FROM sessions WHERE user_id=?').bind(t.id)
   ]);
   await audit(c.db, c.user.id, 'user.reset_password', 'user', t.id);
-  return reply({ ok: true, ...(row.account_type === 'staff' ? { tempPassword: initialPassword } : { initialPasswordIsPhone: true }) });
+  return reply({ ok: true, ...(needsTemp ? { tempPassword: initialPassword } : { initialPasswordIsPhone: true }) });
 });
 
 // غیرفعال‌سازی حساب؛ سوابق مالی و مدیریتی کاربر حفظ می‌شوند.
@@ -158,9 +160,22 @@ R('DELETE', '/api/admin/users/:id', { perm: 'users.delete' }, async c => {
 });
 
 // پاک‌سازی کامل داده‌های آزمایشی؛ حساب رئیس فعلی و صندوق‌های پایه حفظ می‌شوند.
+// عملیات غیرقابل بازگشت است (حتی گزارش ممیزی پاک می‌شود)، پس علاوه بر نقش رئیس، عبارت تأیید و رمز فعلی هم لازم است.
+// پیش‌تر: بدون تأیید اجرا می‌شد و به‌دلیل کلید خارجی (درخواست‌های هزینه، جانشینی، پشتیبان‌ها، ...) با خطای ۵۰۰ شکست می‌خورد.
 R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
   if (!can(c.user, 'roles.assign')) throw err(403, 'FORBIDDEN', 'فقط رئیس هیئت‌مدیره اجازه‌ی پاک‌سازی کامل را دارد');
+  const x = await readJson(c.request);
+  if (x.confirm !== 'RESET-ALL-DATA') throw err(400, 'CONFIRM_REQUIRED', 'برای تأیید پاک‌سازی کامل، عبارت RESET-ALL-DATA را بفرستید');
+  if (!await verifyUserPassword(c.db, c.user.id, x.currentPassword)) throw err(403, 'WRONG_PASSWORD', 'رمز عبور فعلی نادرست است');
   await c.db.batch([
+    c.db.prepare('DELETE FROM expense_request_files'),
+    c.db.prepare('DELETE FROM expense_request_history'),
+    c.db.prepare('DELETE FROM expense_request_versions'),
+    c.db.prepare('DELETE FROM expense_requests'),
+    c.db.prepare('DELETE FROM backup_runs'),
+    c.db.prepare('DELETE FROM event_occurrences'),
+    c.db.prepare('DELETE FROM manager_delegations'),
+    c.db.prepare('DELETE FROM finance_settings'),
     c.db.prepare('DELETE FROM transactions'),
     c.db.prepare('DELETE FROM messages'),
     c.db.prepare('DELETE FROM requests'),
@@ -176,7 +191,9 @@ R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
     c.db.prepare("DELETE FROM user_roles WHERE user_id=? AND role!='chair'").bind(c.user.id),
     c.db.prepare("INSERT OR IGNORE INTO user_roles(user_id,role) VALUES(?,'chair')").bind(c.user.id),
     c.db.prepare('DELETE FROM users WHERE id!=?').bind(c.user.id),
-    c.db.prepare('DELETE FROM units WHERE id NOT IN (SELECT unit_id FROM users WHERE id=? AND unit_id IS NOT NULL)').bind(c.user.id)
+    c.db.prepare('DELETE FROM units WHERE id NOT IN (SELECT unit_id FROM users WHERE id=? AND unit_id IS NOT NULL)').bind(c.user.id),
+    c.db.prepare('UPDATE funds SET cash_balance=0'),
+    c.db.prepare('UPDATE expense_request_sequences SET next_value=1')
   ]);
   await audit(c.db, c.user.id, 'system.test_data_reset', 'system', null);
   return reply({ ok: true, preservedUser: c.user.id });

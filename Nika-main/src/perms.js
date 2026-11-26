@@ -88,9 +88,12 @@ export function assignableExtraRoles(user) {
   return can(user, 'roles.assign') ? EXTRA_ROLES : [];
 }
 
-// مدیران دارای مجوز مدیریت کاربران می‌توانند اطلاعات حساب‌ها را مدیریت کنند؛
-// حساب رئیس هیئت‌مدیره فقط توسط خود رئیس قابل مدیریت است.
+// نقش‌های مدیریتی؛ حساب‌های دارای این نقش‌ها فقط توسط رئیس هیئت‌مدیره قابل مدیریت‌اند.
+// (در غیر این صورت مدیر اجرایی یا مدیر سامانه می‌توانست رمز مدیر مالی را بازنشانی کند و با حساب او وارد شود
+//  و جداسازی وظایف «ثبت‌کننده / تأییدکننده» را دور بزند.)
+export const PRIVILEGED_ROLES = ['chair', 'finance', 'board', 'executive', 'system_admin'];
 export function canManageTarget(actor, targetRoles) {
   if (!can(actor, 'users.manage')) return false;
-  return !targetRoles.includes('chair') || can(actor, 'roles.assign');
+  if (can(actor, 'roles.assign')) return true;
+  return !targetRoles.some(r => PRIVILEGED_ROLES.includes(r));
 }

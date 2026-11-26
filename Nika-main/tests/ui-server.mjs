@@ -38,33 +38,37 @@ export async function seed() {
   let cookie = '';
   const call = async (method, p, body, headers = {}) => {
     const r = await worker.fetch(new Request('http://localhost:8787' + p, { method, headers: { 'Content-Type': 'application/json', 'X-Nika-Client': '1', Cookie: cookie, ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }), env);
-    const sc = r.headers.get('Set-Cookie'); if (sc) cookie = sc.split(';')[0];
-    const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(p + ' ' + JSON.stringify(d)); return d;
+    const sc = r.headers.get('Set-Cookie'); if (sc) cookie = sc.startsWith('nika_session=;') ? '' : sc.split(';')[0];
+    const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(method + ' ' + p + ' ' + r.status + ' ' + JSON.stringify(d)); return d;
   };
-  const out = { chair: { phone: '09120000001', password: 'Chair-Long-Pass-91' } };
-  await call('POST', '/api/setup', { name: 'رئیس هیأت‌مدیره', ...out.chair }, { 'X-Setup-Key': 'dev-setup' });
-  await call('POST', '/api/login', { accountType: 'staff', phone: out.chair.phone, password: out.chair.password });
-  const mk = async (b) => (await call('POST', '/api/admin/users', b)).tempPassword;
-  out.fin = { phone: '09120000011', temp: await mk({ name: 'مدیر مالی', accountType: 'staff', phone: '09120000011', roles: ['finance'] }) };
-  out.exec = { phone: '09120000012', temp: await mk({ name: 'مدیر اجرایی', accountType: 'staff', phone: '09120000012', roles: ['executive'] }) };
-  out.res = { unit: '12', phone: '09121111111', temp: await mk({ name: 'علی رضایی', accountType: 'resident', unit: '12', phone: '09121111111', roles: [] }) };
-  out.res2 = { unit: '13', phone: '09123333333', temp: await mk({ name: 'سارا احمدی', accountType: 'resident', unit: '13', phone: '09123333333', roles: [] }) };
-  const login = async (who, type, pw) => { cookie = ''; await call('POST', '/api/login', { accountType: type, unit: who.unit, phone: who.phone, password: who.temp }); await call('POST', '/api/password', { newPassword: pw }); who.password = pw; };
-  await login(out.fin, 'staff', 'Finance-Pass-555'); await login(out.exec, 'staff', 'Exec-Pass-66666');
-  // دادهٔ مالی و محتوا
-  cookie = ''; await call('POST', '/api/login', { accountType: 'staff', phone: out.fin.phone, password: out.fin.password });
+  const as = async (identifier, password) => { cookie = ''; await call('POST', '/api/login', { identifier, password }); };
+  const R = 'داده‌ی نمونه';
+  const out = { chair: { identifier: 'Admin', password: 'Chair-Long-Pass-91' } };
+  const setup = await call('POST', '/api/setup', {}, { 'X-Setup-Key': 'dev-setup' });
+  await as('Admin', setup.tempPassword); await call('POST', '/api/password', { newPassword: out.chair.password });
+  const mk = async b => (await call('POST', '/api/admin/users', { reason: R, ...b })).tempPassword;
+  const activate = async (who, newPw) => { await as(who.identifier, who.temp); await call('POST', '/api/password', { newPassword: newPw }); who.password = newPw; delete who.temp; };
+  out.fin = { identifier: '09120000011', temp: await mk({ name: 'مدیر مالی', accountType: 'staff', phone: '09120000011', roles: ['finance'] }) };
+  out.exec = { identifier: '09120000012', temp: await mk({ name: 'مدیر اجرایی', accountType: 'staff', phone: '09120000012', roles: ['executive'] }) };
+  out.res = { identifier: '12', phone: '09121111111', temp: await mk({ name: 'علی رضایی', accountType: 'resident', unit: '12', phone: '09121111111', roles: [] }) };
+  out.res2 = { identifier: '13', phone: '09123333333', temp: await mk({ name: 'سارا احمدی', accountType: 'resident', unit: '13', phone: '09123333333', roles: [] }) };
+  await activate(out.fin, 'Finance-Pass-555'); await activate(out.exec, 'Exec-Pass-66666');
+  await as(out.chair.identifier, out.chair.password);
   await call('POST', '/api/finance/charges', { fund: 'monthly', period: '1405-09', amount: 4000000, title: 'شارژ آذر' });
-  cookie = ''; await call('POST', '/api/login', { accountType: 'staff', phone: out.exec.phone, password: out.exec.password });
-  const e1 = (await call('POST', '/api/transactions', { fund: 'monthly', kind: 'expense', amount: 990000, title: 'قبض آب', category: 'آب', period: '1405-09' })).id;
-  const e2 = (await call('POST', '/api/transactions', { fund: 'monthly', kind: 'expense', amount: 450000, title: 'قبض برق', category: 'برق', period: '1405-09' })).id;
-  cookie = ''; await call('POST', '/api/login', { accountType: 'staff', phone: out.fin.phone, password: out.fin.password });
-  for (const id of [e1, e2]) await call('POST', `/api/transactions/${id}/decision`, { status: 'approved' });
-  cookie = ''; await call('POST', '/api/login', { accountType: 'staff', phone: out.chair.phone, password: out.chair.password });
-  await call('POST', '/api/notices', { title: 'اطلاعیه سرویس آسانسور', body: 'به اطلاع ساکنان می‌رساند سرویس دوره‌ای آسانسور روز شنبه انجام می‌شود.', kind: 'اطلاعیه' });
+  await call('POST', '/api/notices', { title: 'اطلاعیه سرویس آسانسور', body: 'سرویس دوره‌ای آسانسور روز شنبه انجام می‌شود.', kind: 'اطلاعیه' });
   await call('POST', '/api/rules', { title: 'ساعات سکوت', body: 'از ساعت ۲۲ تا ۸ صبح از ایجاد سر و صدا خودداری شود.', sort_order: 1 });
   await call('POST', '/api/resolutions', { title: 'سرویس دوره‌ای آسانسور', body: 'سرویس هر سه ماه انجام شود.', decided_on: '1405/08/15' });
-  await call('POST', '/api/events', { title: 'جلسه هم‌اندیشی', body: 'سالن اجتماعات', event_date: '1405-09-05', event_time: '18:30' });
+  await call('POST', '/api/events', { reason: R, title: 'جلسه هم‌اندیشی', body: 'سالن اجتماعات', event_date: '1405-09-05', event_time: '18:30' });
   await call('POST', '/api/documents', { title: 'آیین‌نامه داخلی', url: 'https://example.com/rules.pdf' });
+  // یک پرداخت تأییدشده (برای موجودی صندوق) و یک درخواست هزینه‌ی تأییدشده
+  await activate(out.res, 'Resident-Pass-22');
+  await as(out.res.identifier, out.res.password);
+  const pay = await call('POST', '/api/transactions', { fund: 'monthly', kind: 'payment', amount: 4000000, reference: '123456', period: '1405-09' });
+  await as(out.fin.identifier, out.fin.password); await call('POST', `/api/transactions/${pay.id}/decision`, { status: 'approved' });
+  await as(out.exec.identifier, out.exec.password);
+  const er = await call('POST', '/api/expense-requests', { fund: 'monthly', amount: 990000, documentTitle: 'قبض آب', documentDate: '1405-09-02', description: 'قبض آب آذر' });
+  await as(out.fin.identifier, out.fin.password); await call('POST', `/api/expense-requests/${er.id}/finance-decision`, { status: 'approved' });
+  await as(out.chair.identifier, out.chair.password); await call('POST', `/api/expense-requests/${er.id}/chair-decision`, { status: 'approved', reason: R });
   return out;
 }
 

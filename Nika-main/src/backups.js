@@ -48,7 +48,7 @@ R('GET', '/api/backups/export', { perm: 'backup.manage' }, async c => {
     }
     // فایل آرشیو برای گزارش‌گیری است؛ هیچ اعتبارنامه یا رمز هش‌شده‌ای وارد آن نمی‌شود.
     if (table === 'users') {
-      rows = rows.map(({ password_hash, password_salt, ...user }) => user);
+      rows = rows.map(({ password_hash, password_salt, avatar_data, ...user }) => user); // تصویر پروفایل در آرشیو لازم نیست و حجم را زیاد می‌کند
     }
     tables[table] = rows;
   }
