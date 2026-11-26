@@ -5,11 +5,11 @@ import { can, EXTRA_ROLES, assignableExtraRoles, canManageTarget } from './perms
 
 const rolesOf = async (db, id) => (await db.prepare('SELECT role FROM user_roles WHERE user_id=?').bind(id).all()).results.map(r => r.role);
 
-function validateExtras(actor, extras) {
+function validateExtras(actor, extras, allowChairBootstrap = false) {
   if (!Array.isArray(extras)) throw err(400, 'INVALID_INPUT', 'نقش‌ها نامعتبر است');
   const set = [...new Set(extras)];
   if (set.some(r => !EXTRA_ROLES.includes(r))) throw err(400, 'INVALID_ROLE', 'نقش نامعتبر است');
-  const allowed = assignableExtraRoles(actor);
+  const allowed = allowChairBootstrap ? [...assignableExtraRoles(actor), 'chair'] : assignableExtraRoles(actor);
   if (set.some(r => !allowed.includes(r))) throw err(403, 'ROLE_NOT_ASSIGNABLE', 'اجازه‌ی تعیین این نقش را ندارید');
   return set;
 }
@@ -23,9 +23,12 @@ R('GET', '/api/admin/users', { perm: 'users.read' }, async c => {
      FROM users u LEFT JOIN units n ON n.id=u.unit_id
      WHERE (?='' OR u.name LIKE ? OR u.phone LIKE ? OR n.unit_number LIKE ?)
      ORDER BY u.created_at DESC LIMIT 500`).bind(q, like, like, like).all();
+  const bootstrapChairAvailable = c.user.account_type === 'staff' && c.user.roles.length === 1 &&
+    c.user.roles[0] === 'system_admin' &&
+    !await c.db.prepare("SELECT 1 FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role='chair' AND u.active=1 LIMIT 1").first();
   return reply({
     users: r.results.map(u => ({ ...u, active: !!u.active, must_change_password: !!u.must_change_password, roles: (u.roles || '').split(',').filter(Boolean) })),
-    assignable: assignableExtraRoles(c.user)
+    assignable: bootstrapChairAvailable ? ['chair'] : assignableExtraRoles(c.user)
   });
 });
 
@@ -39,7 +42,13 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   const contractStartDate = x.contractStartDate ? jdate(x.contractStartDate, '-') : null;
   const contractEndDate = x.contractEndDate ? jdate(x.contractEndDate, '-') : null;
   if (contractStartDate && contractEndDate && contractEndDate < contractStartDate) throw err(400, 'INVALID_CONTRACT_DATES', 'تاریخ پایان قرارداد نمی‌تواند قبل از تاریخ شروع باشد');
-  const extras = validateExtras(c.user, x.roles ?? []);
+  const bootstrapChairAvailable = accountType === 'staff' && c.user.account_type === 'staff' &&
+    c.user.roles.length === 1 && c.user.roles[0] === 'system_admin' &&
+    !await c.db.prepare("SELECT 1 FROM users u JOIN user_roles r ON r.user_id=u.id WHERE r.role='chair' AND u.active=1 LIMIT 1").first();
+  const extras = validateExtras(c.user, x.roles ?? [], bootstrapChairAvailable);
+  if (bootstrapChairAvailable && (extras.length !== 1 || extras[0] !== 'chair')) {
+    throw err(403, 'BOOTSTRAP_CHAIR_ONLY', 'مدیر سامانه در این مرحله فقط می‌تواند رئیس هیئت‌مدیره جدید را تعریف کند');
+  }
   if (extras.includes('system_admin') && (accountType !== 'staff' || extras.length !== 1)) throw err(400, 'SYSTEM_ADMIN_MUST_BE_STANDALONE', 'مدیر سامانه باید یک حساب مستقل و بدون نقش مدیریتی دیگر باشد');
   if (accountType === 'staff' && !extras.length) throw err(400, 'ROLE_REQUIRED', 'برای حساب مدیر/کارکنان حداقل یک نقش انتخاب کنید');
   const storedType = accountType === 'both' ? 'owner' : accountType;
