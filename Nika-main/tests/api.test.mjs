@@ -473,7 +473,7 @@ test('خروجی فهرست ثبت‌نام‌ها دسترسی کنترل‌ش�
   assert.equal((await res1.get('/api/public/user-submissions/export')).status, 403);
   const exported = await chair.get('/api/public/user-submissions/export');
   assert.equal(exported.status, 200);
-  assert.match(exported.res.headers.get('Content-Type'), /text\\/csv/);
+  assert.ok(exported.res.headers.get('Content-Type').includes('text/csv'));
   const csv = await exported.res.text();
   assert.match(csv, /شماره واحد/);
   assert.match(csv, /تاریخ اتمام قرارداد/);
