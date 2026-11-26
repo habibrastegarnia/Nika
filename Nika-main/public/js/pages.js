@@ -114,7 +114,7 @@ export async function calendarPage(y, m) {
     { name: 'event_time', label: 'ساعت (اختیاری)', dir: 'ltr', placeholder: '18:30' },
     { name: 'body', label: 'توضیحات', type: 'textarea', rows: 2 },
     { name: 'recurrence', label: 'تکرار رویداد', type: 'select', value: 'none', options: [['none','بدون تکرار'],['weekly','هفتگی'],['monthly','ماهانه'],['yearly','سالانه']] },
-    { name: 'recurrenceUntil', label: 'پایان تکرار (اختیاری)', type: 'date', dateSeparator: '-', dir: 'ltr' }
+    { name: 'recurrenceUntil', label: 'پایان تکرار (اختیاری)', type: 'date', dateSeparator: '-', dir: 'ltr', optional: true }
   ];
   const v = route('خانه', 'تقویم ساختمان', 'جلسات، سرویس‌ها و رویدادهای پیش‌رو', html`${canEdit ? html`<div class="page-card"><h3>ثبت رویداد جدید</h3><form id="eventNew" class="page-form" novalidate>${fields(eventFields)}<button class="page-btn full" type="submit">ثبت رویداد</button></form></div>` : ''}
     <div class="page-card"><div class="cal-nav"><button class="page-btn sm secondary" id="calPrev">‹ ماه قبل</button><strong>${JM[m - 1]} ${faN(y)}</strong><button class="page-btn sm secondary" id="calNext">ماه بعد ›</button></div><div class="page-calendar">${cells}</div></div>

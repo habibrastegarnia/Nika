@@ -142,9 +142,10 @@ export function fields(list, cls = 'page') {
     const req = f.required ? raw(' required') : '', ph = f.placeholder ? raw(` placeholder="${esc(f.placeholder)}"`) : '', dir = f.dir ? raw(` dir="${f.dir}"`) : '';
     let ctl;
     if (f.type === 'date') {
-      const s=normDigits(f.value || ''), match=s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/), p=match?{y:+match[1],m:+match[2],d:+match[3]}:jToday();
-      const sep=f.dateSeparator || '-', y=String(p.y).padStart(4,'0'), m=String(p.m).padStart(2,'0'), d=String(p.d).padStart(2,'0');
-      ctl=html`<div class="jalali-date-field"><input class="${inp}" type="text" readonly data-jalali-date data-jalali-separator="${sep}" value="${fa(p.y)}/${fa(p.m).padStart(2,'۰')}/${fa(p.d).padStart(2,'۰')}" placeholder="انتخاب تاریخ" aria-label="${f.label}" autocomplete="off"><input type="hidden" name="${f.name}" data-jalali-value value="${y}${sep}${m}${sep}${d}"${req}></div>`;
+      const s=normDigits(f.value || ''), match=s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/), p=match?{y:+match[1],m:+match[2],d:+match[3]}:(f.optional&&!String(f.value||'').trim()?null:jToday());
+      const sep=f.dateSeparator || '-', y=p?String(p.y).padStart(4,'0'):'', m=p?String(p.m).padStart(2,'0'):'', d=p?String(p.d).padStart(2,'0'):'';
+      const display=p?fa(p.y)+'/'+fa(p.m).padStart(2,'۰')+'/'+fa(p.d).padStart(2,'۰'):'';
+      ctl=html`<div class="jalali-date-field"><input class="${inp}" type="text" readonly data-jalali-date data-jalali-separator="${sep}" value="${display}" placeholder="انتخاب تاریخ" aria-label="${f.label}" autocomplete="off"><input type="hidden" name="${f.name}" data-jalali-value value="${y?`${y}${sep}${m}${sep}${d}`:''}"${req}></div>`;
     }
     else if (f.type === 'select') ctl = html`<select class="${sel}" name="${f.name}"${req}>${f.options.map(([v, l]) => html`<option value="${v}" ${String(f.value) === String(v) ? raw('selected') : ''}>${l}</option>`)}</select>`;
     else if (f.type === 'textarea') ctl = html`<textarea class="${ta}" name="${f.name}" rows="${f.rows || 4}"${req}${ph}>${f.value ?? ''}</textarea>`;
