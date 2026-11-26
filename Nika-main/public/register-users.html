@@ -23,8 +23,8 @@
 <div class="field"><label for="phone">شماره تماس <span class="req">*</span></label><input class="control" id="phone" inputmode="tel" autocomplete="tel" placeholder="مثلاً ۰۹۱۲۱۲۳۴۵۶۷" required></div>
 <div class="field"><label for="secondaryPhone">شماره تماس پشتیبان</label><input class="control" id="secondaryPhone" inputmode="tel" placeholder="در صورت تمایل وارد کنید"></div>
 <div class="grid" id="contractFields">
-<div class="field"><label for="contractStartDate">تاریخ شروع قرارداد <span class="req">*</span></label><button class="control date-trigger" type="button" id="contractStartDate">انتخاب تاریخ شمسی</button></div>
-<div class="field"><label for="contractEndDate">تاریخ اتمام قرارداد <span class="req">*</span></label><button class="control date-trigger" type="button" id="contractEndDate">انتخاب تاریخ شمسی</button></div>
+<div class="field"><label for="contractStartDate">تاریخ شروع قرارداد <span class="req">*</span></label><button class="control date-trigger" type="button" id="contractStartDate" onclick="window.openNikaCalendar('contractStartDate')">انتخاب تاریخ شمسی</button></div>
+<div class="field"><label for="contractEndDate">تاریخ اتمام قرارداد <span class="req">*</span></label><button class="control date-trigger" type="button" id="contractEndDate" onclick="window.openNikaCalendar('contractEndDate')">انتخاب تاریخ شمسی</button></div>
 </div>
 <p class="hint" id="contractHint">لطفاً تاریخ شروع و اتمام قرارداد را از تقویم شمسی انتخاب کنید.</p>
 <div class="trap" aria-hidden="true"><label>وب‌سایت<input id="website" tabindex="-1" autocomplete="off"></label></div>
@@ -66,6 +66,7 @@ $('nextMonth').onclick=()=>{calendarMonth++;if(calendarMonth>12){calendarMonth=1
 $('todayBtn').onclick=()=>{const t=jalaliToday();calendarYear=t.y;calendarMonth=t.m;drawCalendar()};
 $('closeCalendar').onclick=hideCalendar;$('cancelCalendar').onclick=hideCalendar;
 $('calendarBackdrop').addEventListener('click',e=>{if(e.target===$('calendarBackdrop'))hideCalendar()});
+window.openNikaCalendar=showCalendar;
 ['contractStartDate','contractEndDate'].forEach(id=>$(id).addEventListener('click',()=>showCalendar(id)));
 function updateContractFields(){['contractStartDate','contractEndDate'].forEach(id=>{const el=$(id);el.disabled=false;el.textContent=el.dataset.jdate?faDigits(el.dataset.jdate):'انتخاب تاریخ شمسی'});$('contractHint').textContent='لطفاً تاریخ شروع و اتمام قرارداد را از تقویم شمسی انتخاب کنید.'}
 function latinDigits(s){return String(s||'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))}
