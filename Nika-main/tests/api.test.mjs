@@ -215,6 +215,21 @@ test('مالی: شارژ → پرداخت → تأیید و جداسازی ثب�
   ]);
   assert.deepEqual(decisions.map(x => x.status).sort(), [200, 409]);
   assert.equal((await res1.get('/api/finance/my?fund=monthly')).data.balance, 1000000, 'رد هم‌زمان نباید مانده مالی را تغییر دهد');
+
+  // تأیید هم‌زمان نیز باید فقط یک‌بار موجودی صندوق را افزایش دهد.
+  const cashBefore = (await env.DB.prepare("SELECT cash_balance FROM funds WHERE id='monthly'").first()).cash_balance;
+  const concurrentApproval = await res1.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 2345 });
+  const approvals = await Promise.all([
+    fin.post(`/api/transactions/${concurrentApproval.data.id}/decision`, { status: 'approved' }),
+    fin.post(`/api/transactions/${concurrentApproval.data.id}/decision`, { status: 'approved' })
+  ]);
+  assert.deepEqual(approvals.map(x => x.status).sort(), [200, 409]);
+  const cashAfter = (await env.DB.prepare("SELECT cash_balance FROM funds WHERE id='monthly'").first()).cash_balance;
+  assert.equal(cashAfter, cashBefore + 2345, 'واریز هم‌زمان فقط یک‌بار باید در صندوق منظور شود');
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM transactions WHERE id=?').bind(concurrentApproval.data.id),
+    env.DB.prepare("UPDATE funds SET cash_balance=? WHERE id='monthly'").bind(cashBefore)
+  ]);
   // رد با دلیل
   r = await res1.post('/api/transactions', { fund: 'monthly', kind: 'payment', amount: 700000 });
   assert.equal((await fin.post(`/api/transactions/${r.data.id}/decision`, { status: 'rejected', note: 'رسید ناخوانا' })).status, 200);
