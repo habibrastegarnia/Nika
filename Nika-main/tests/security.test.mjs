@@ -225,9 +225,10 @@ test('حساب bootstrap با نام کاربری Admin فقط پس از تعی�
   const chairId = (await env.DB.prepare("SELECT user_id FROM user_roles WHERE role='chair' LIMIT 1").first()).user_id;
   await env.DB.prepare("INSERT INTO finance_settings(id,effective_from,created_by,monthly_amount) VALUES('test-reset-setting','1405-01-01',?,500000)").bind(chairId).run();
 
+  const systemAdminId = (await S.sys.get('/api/me')).data.user.id;
   const ok = await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-KEEP-SYSTEM-ADMIN', currentPassword: 'Sys-Strong-Pass-12' });
   assert.equal(ok.status, 200, JSON.stringify(ok.data));
-  assert.equal(ok.data.preservedUser, S.sys.userId || ok.data.preservedUser);
+  assert.equal(ok.data.preservedUser, systemAdminId);
   assert.equal((await S.sys.get('/api/me')).status, 200, 'نشست مدیر سامانه حفظ می‌شود');
   assert.equal((await chair.get('/api/me')).status, 401, 'نشست رئیس قبلی باطل می‌شود');
 
