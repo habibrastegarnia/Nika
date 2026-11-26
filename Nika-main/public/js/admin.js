@@ -362,10 +362,18 @@ async function financeTab() {
    const toggles=$$('[data-finance-toggle]',box);
    toggles.forEach(button=>button.addEventListener('click',()=>{
     const target=`[data-finance-panel="${button.dataset.financeToggle}"]`;
-    const opening=$(target,box).hidden;
-    $$('[data-finance-panel]',box).forEach(panel=>{panel.hidden=true;});
+    const panel=$(target,box);
+    if(!panel)return;
+    const opening=panel.hidden;
+    $('[data-finance-panel]',box).forEach(item=>{item.hidden=true;});
     toggles.forEach(b=>{b.setAttribute('aria-expanded','false');b.classList.remove('nika-primary');b.classList.add('nika-secondary');});
-    if(opening){$(target,box).hidden=false;button.setAttribute('aria-expanded','true');button.classList.remove('nika-secondary');button.classList.add('nika-primary');}
+    if(opening){
+     panel.hidden=false;
+     button.setAttribute('aria-expanded','true');
+     button.classList.remove('nika-secondary');
+     button.classList.add('nika-primary');
+     panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
    }));
    paymentOut?.bind?.(box); approvalsOut?.bind?.(box); expenseOut?.bind?.(box); reviewOut?.bind?.(box); finalOut?.bind?.(box);
   }
@@ -390,7 +398,10 @@ async function registerUnitPaymentTab() {
   </form>`)
  ,
   bind(box) {
-   const form = $('#unitPaymentNew', box), fund = $('select[name="fund"]', form), periodField = $('input[name="period"]', form);
+   const form = $('#unitPaymentNew', box);
+   if (!form) return;
+   const fund = $('select[name="fund"]', form), periodField = $('input[name="period"]', form);
+   if (!fund || !periodField) return;
    fund.addEventListener('change', () => { periodField.value = fund.value === 'owner' ? String(jToday().y) : curPeriod(); });
    onSubmit(form, async d => {
     const body = { kind:'payment', unitNumber:d.unitNumber, fund:d.fund, amount:parseAmount(d.amount), period:d.period, reference:d.reference, note:d.note };
