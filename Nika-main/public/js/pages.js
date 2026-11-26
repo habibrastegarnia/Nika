@@ -127,7 +127,9 @@ export async function calendarPage(y, m) {
     if (!S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
     await api('/events', { method: 'POST', body });
     toast('رویداد ثبت شد');
-    open(() => calendarPage(y, m), { replace: true });
+    // پس از ذخیره، ماهِ تاریخ انتخاب‌شده را باز کن؛ نه لزوماً ماهی که فرم از آن شروع شده بود.
+    const [savedYear, savedMonth] = normDigits(body.event_date).replace(/\//g, '-').split('-').map(Number);
+    open(() => calendarPage(savedYear, savedMonth), { replace: true });
   });
   $$('[data-event-edit-occ]', v).forEach(b => b.onclick = () => {
     const event=items.find(e=>e.id===b.dataset.eventEditOcc&&e.recurrence_date===b.dataset.occDate);
