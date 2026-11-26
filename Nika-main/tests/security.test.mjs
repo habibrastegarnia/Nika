@@ -190,7 +190,7 @@ test('مدیر سامانه باید یک حساب مستقل باشد', async (
 
 test('بازنشانی اطلاعات آزمایشی فقط با حساب مستقل مدیر سامانه انجام می‌شود و واحدها را حفظ می‌کند', async () => {
   assert.equal((await S.exec.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'x' })).status, 403);
-  assert.equal((await chair.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'Chair-Strong-Pass-1' })).status, 403, 'رئیس هیئت‌مدیره اجازه بازنشانی ندارد');
+  assert.equal((await chair.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'Chair-Strong-Pass-1', reason: 'آزمون عدم دسترسی رئیس' })).status, 403, 'رئیس هیئت‌مدیره اجازه بازنشانی ندارد');
   assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'WRONG-PHRASE', currentPassword: 'Sys-Strong-Pass-12' })).data.error, 'CONFIRM_REQUIRED');
   assert.equal((await S.sys.post('/api/admin/reset-test-data', { confirm: 'RESET-NIKA-TEST-DATA', currentPassword: 'wrong-wrong-1' })).data.error, 'WRONG_PASSWORD');
 
