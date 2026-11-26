@@ -102,7 +102,8 @@ export async function calendarPage(y, m) {
   const items = Array.isArray(response?.items) ? response.items : [];
   const canEdit = canManageCalendarEvents();
   const buildingItems = items.filter(event => !event.isHoliday);
-  const byDay = {}; items.forEach(e => (byDay[+e.event_date.slice(8, 10)] ||= []).push(e));
+  // فقط رویدادهای ساختمان در خانه‌های تقویم علامت‌گذاری شوند؛ مناسبت‌ها و تعطیلات رسمی برجسته نشوند.
+  const byDay = {}; buildingItems.forEach(e => (byDay[+e.event_date.slice(8, 10)] ||= []).push(e));
   const start = monthStart(y, m), len = Math.round(((m === 12 ? monthStart(y + 1, 1) : monthStart(y, m + 1)) - start) / 864e5), lead = (start.getUTCDay() + 1) % 7;
   const cells = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map(d => html`<span class="dow">${d}</span>`);
   for (let i = 0; i < lead; i++) cells.push(html`<span class="blank"></span>`);
