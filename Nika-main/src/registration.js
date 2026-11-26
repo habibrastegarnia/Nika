@@ -4,6 +4,37 @@ import { err, reply, readJson, str, phoneOrFail, jdate } from './lib.js';
 
 const UNITS = new Set(Array.from({ length: 32 }, (_, i) => String((Math.floor(i / 4) + 1) * 100 + (i % 4) + 1)));
 
+// خروجی فهرست متمرکز؛ فقط کاربران دارای مجوز مشاهده کاربران می‌توانند دریافت کنند.
+R('GET', '/api/public/user-submissions/export', { perm: 'users.read' }, async c => {
+  const result = await c.db.prepare(
+    "SELECT unit_number,user_type,full_name,gender,phone,secondary_phone,contract_start_date,contract_end_date FROM public_user_submissions ORDER BY CAST(unit_number AS INTEGER), CASE user_type WHEN 'owner' THEN 0 ELSE 1 END, rowid"
+  ).all();
+  const headers = ['شماره واحد','نوع کاربر','نام و نام خانوادگی','جنسیت','شماره تماس','شماره تماس پشتیبان','تاریخ شروع قرارداد','تاریخ اتمام قرارداد'];
+  const safe = value => {
+    let text = String(value ?? '');
+    if (/^[=+@\\-\\t\\r]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+  };
+  const rows = (result.results || []).map(row => [
+    row.unit_number,
+    row.user_type === 'owner' ? 'مالک' : 'ساکن',
+    row.full_name,
+    row.gender === 'female' ? 'زن' : 'مرد',
+    row.phone,
+    row.secondary_phone,
+    row.contract_start_date,
+    row.contract_end_date
+  ]);
+  const csv = '\\uFEFF' + [headers, ...rows].map(row => row.map(safe).join(',')).join('\\r\\n');
+  return new Response(csv, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': "attachment; filename=n ika-users.csv; filename*=UTF-8''%D9%81%D9%87%D8%B1%D8%B3%D8%AA-%DA%A9%D8%A7%D8%B1%D8%A8%D8%B1%D8%A7%D9%86-%D9%86%DB%8C%DA%A9%D8%A7.csv".replace('n ika','nika'),
+      'Cache-Control': 'no-store'
+    }
+  });
+});
+
 R('POST', '/api/public/user-submissions', { public: true }, async c => {
   const x = await readJson(c.request);
   if (x.website) throw err(400, 'INVALID_SUBMISSION', 'اطلاعات ارسالی معتبر نیست');
