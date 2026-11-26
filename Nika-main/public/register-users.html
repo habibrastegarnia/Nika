@@ -49,7 +49,13 @@
 <script>
 const $=id=>document.getElementById(id), faDigits=s=>String(s).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
 const months=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
-const fmt=new Intl.DateTimeFormat('en-u-ca-persian-nu-latn',{year:'numeric',month:'numeric',day:'numeric'});
+let fmt;
+try{
+ fmt=new Intl.DateTimeFormat('en-u-ca-persian-nu-latn',{year:'numeric',month:'numeric',day:'numeric'});
+}catch(intlError){
+ try{fmt=new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn',{year:'numeric',month:'numeric',day:'numeric'});}
+ catch(fallbackError){console.error('Persian calendar initialization failed:',intlError,fallbackError);}
+}
 function jparts(date){const o={};for(const p of fmt.formatToParts(date))if(p.type!=='literal')o[p.type]=+p.value;return {y:o.year,m:o.month,d:o.day}}
 function monthDates(y,m){const result=[];const start=new Date(y+621,1,15),end=new Date(y+623,4,15);for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){const p=jparts(d);if(p.y===y&&p.m===m)result.push(new Date(d.getFullYear(),d.getMonth(),d.getDate()))}return result}
 function jalaliToday(){return jparts(new Date())}
