@@ -4,7 +4,7 @@ import { S, can, canAny, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { iconMarkup, applyIcons } from './icons.js?v=2';
 import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
-import * as P from './pages.js?v=13';
+import * as P from './pages.js?v=14';
 import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=21';
 
 let managerMode = false;
