@@ -3,6 +3,17 @@ import assert from 'node:assert/strict';
 import { makeEnv, Client, bootstrap, makeUser, activate } from './helpers.mjs';
 import { runReminders } from '../src/reminders.js';
 import { jTehran } from '../src/jcal.js';
+import { ROLE_PERMS, delegatedPerms } from '../src/perms.js';
+
+test('مدیریت رویداد تقویم فقط برای رئیس و مدیر اجرایی مستقیم فعال است', () => {
+  assert.ok(ROLE_PERMS.chair.includes('events.manage'));
+  assert.ok(ROLE_PERMS.executive.includes('events.manage'));
+  for (const role of ['owner', 'resident', 'finance', 'board', 'system_admin', 'caretaker']) {
+    assert.ok(!(ROLE_PERMS[role] || []).includes('events.manage'), role + ' نباید رویداد مدیریت کند');
+  }
+  assert.ok(!delegatedPerms(['executive']).includes('events.manage'), 'جانشین مدیر اجرایی حق مدیریت رویداد ندارد');
+  assert.ok(!delegatedPerms(['chair']).includes('events.manage'), 'جانشین رئیس حق مدیریت رویداد ندارد');
+});
 
 const env = makeEnv();
 let chair, S = {};
