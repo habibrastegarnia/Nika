@@ -70,7 +70,7 @@ export async function runReminders(env,now=new Date()){
   const resident=await env.DB.prepare("SELECT u.id,u.name FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='resident' WHERE u.unit_id=? AND u.active=1 LIMIT 1").bind(r.unit_id).first();
   if(!resident)continue;
   const t=templates[stage],body='ساکن محترم واحد '+r.unit_number+'،\n\n'+t[2].replace('AMOUNT',amount(balance))+'\n\nمدیریت ساختمان نیکا';
-  const msgKey='monthly:'+r.unit_id+':'+r.period+':'+(stage==='late7'?'daily:'+keyDate(now):stage);
+  const msgKey='monthly:'+r.unit_id+':'+r.period+':'+(stage==='lateDaily'||stage==='late7'?'daily:'+keyDate(now):stage);
   await send(env.DB,sender.id,resident.id,t[0],body,t[1],msgKey);sent++;
   if(days>=7){
    const owner=await env.DB.prepare("SELECT u.id FROM users u JOIN user_roles x ON x.user_id=u.id AND x.role='owner' WHERE u.unit_id=? AND u.active=1 LIMIT 1").bind(r.unit_id).first();
