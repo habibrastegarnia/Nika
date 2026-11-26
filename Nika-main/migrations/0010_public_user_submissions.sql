@@ -8,6 +8,6 @@ CREATE TABLE IF NOT EXISTS public_user_submissions (
   gender TEXT NOT NULL CHECK(gender IN ('female','male')),
   phone TEXT NOT NULL,
   secondary_phone TEXT,
-  contract_start_date TEXT NOT NULL
+  contract_start_date TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_public_user_submissions_unit ON public_user_submissions(unit_number);
