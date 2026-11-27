@@ -198,11 +198,13 @@ R('GET', '/api/finance/expense-distribution', async c => {
     `SELECT COALESCE(NULLIF(TRIM(title),''),'بدون عنوان') category,SUM(amount) total FROM transactions
      WHERE fund_id='owner' AND kind='expense' AND status='approved'
      GROUP BY 1 ORDER BY total DESC`).all()).results;
+  const balances = (await c.db.prepare("SELECT id,cash_balance FROM funds WHERE id IN ('monthly','owner')").all()).results;
+  const balanceOf = id => Number(balances.find(x => x.id === id)?.cash_balance || 0);
   const monthlyPeriods = (await c.db.prepare(
     `SELECT DISTINCT period FROM transactions WHERE fund_id='monthly' AND kind='payment'
      AND status IN ('approved','pending') AND period IS NOT NULL ORDER BY period DESC LIMIT 12`).all()).results.map(x => x.period);
-  return reply({ monthly:{expenses:monthly,total:monthly.reduce((sum,x)=>sum+Number(x.total||0),0)},
-    owner:{expenses:owner,total:owner.reduce((sum,x)=>sum+Number(x.total||0),0)}, monthlyPeriods });
+  return reply({ monthly:{expenses:monthly,total:monthly.reduce((sum,x)=>sum+Number(x.total||0),0),balance:balanceOf('monthly')},
+    owner:{expenses:owner,total:owner.reduce((sum,x)=>sum+Number(x.total||0),0),balance:balanceOf('owner')}, monthlyPeriods });
 });
 
 // داشبورد: وضعیت مالی دوره‌ای برای گزارش‌های مدیریتی
