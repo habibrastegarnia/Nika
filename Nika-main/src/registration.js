@@ -60,10 +60,12 @@ R('POST', '/api/public/user-submissions', { public: true }, async c => {
   const phone = phoneOrFail(x.phone);
   const secondaryPhone = x.secondaryPhone ? phoneOrFail(x.secondaryPhone) : null;
 
-  // تاریخ‌های قرارداد برای مالک و ساکن هر دو دریافت و در رکورد اولیه نگهداری می‌شوند.
-  const contractStartDate = jdate(x.contractStartDate, '/');
-  const contractEndDate = jdate(x.contractEndDate, '/');
-  if (contractEndDate < contractStartDate) {
+  // تاریخ‌های قرارداد اختیاری‌اند؛ هر تاریخِ واردشده جداگانه اعتبارسنجی می‌شود.
+  const startRaw = x.contractStartDate == null ? '' : String(x.contractStartDate).trim();
+  const endRaw = x.contractEndDate == null ? '' : String(x.contractEndDate).trim();
+  const contractStartDate = startRaw ? jdate(startRaw, '/') : null;
+  const contractEndDate = endRaw ? jdate(endRaw, '/') : null;
+  if (contractStartDate && contractEndDate && contractEndDate < contractStartDate) {
     throw err(400, 'INVALID_CONTRACT_RANGE', 'تاریخ اتمام قرارداد نمی‌تواند پیش از تاریخ شروع باشد');
   }
 
