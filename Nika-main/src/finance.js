@@ -18,6 +18,15 @@ const fundPeriod = (fund, value, required = true) => fund === 'owner'
 const canReadFund = (u, f) => can(u, `finance.${f}.read`);
 const canSeeAggregates = (u, f) => canReadFund(u, f) || canAny(u, ['reports.read', 'finance.reports']);
 const privileged = u => canAny(u, ['finance.approve', 'finance.transactions.read', 'expenses.approve']);
+const MONTHLY_UNIT_NUMBERS = Array.from({ length: 8 }, (_, floor) =>
+  Array.from({ length: 4 }, (_, slot) => String((floor + 1) * 100 + slot + 1))
+).flat();
+const currentMonthlyPeriod = () => {
+  const parts = new Intl.DateTimeFormat('en-u-ca-persian', {
+    timeZone: 'Asia/Tehran', year: 'numeric', month: '2-digit'
+  }).formatToParts(new Date());
+  return `${parts.find(x => x.type === 'year').value}-${parts.find(x => x.type === 'month').value}`;
+};
 
 const COLS = `t.id,t.fund_id,t.kind,t.amount,t.title,t.period,t.status,t.reference,t.category,t.note,t.created_at,t.approved_at,t.created_by,
               n.unit_number,cu.name created_name,au.name approved_name`;
@@ -195,4 +204,55 @@ R('GET', '/api/dashboard', async c => {
     charges = { ...s, unpaid: s.total - s.paid, unpaidUnits: s.units - s.paidUnits };
   }
   return reply({ fund, periods, period: cur, expenses, expenseTotal: expenses.reduce((a, e) => a + e.total, 0), charges });
+});
+
+// وضعیت عمومی پرداخت شارژ ماهیانه برای همه کاربران واردشده؛ مبنا ۳۲ واحد ثابت ساختمان است.
+R('GET', '/api/finance/monthly-status', async c => {
+  const per = fundPeriod('monthly', c.url.searchParams.get('period') || currentMonthlyPeriod());
+  const setting = await c.db.prepare(
+    'SELECT monthly_amount FROM finance_settings WHERE monthly_effective_from<=? ORDER BY monthly_effective_from DESC,created_at DESC LIMIT 1'
+  ).bind(`${per}-31`).first();
+  const monthlyAmount = Number(setting?.monthly_amount || 0);
+  const total = monthlyAmount * MONTHLY_UNIT_NUMBERS.length;
+  const rows = await c.db.prepare(
+    `SELECT n.unit_number,
+            COALESCE(SUM(CASE WHEN t.status='approved' THEN t.amount ELSE 0 END),0) approved_amount,
+            COALESCE(SUM(CASE WHEN t.status='pending' THEN t.amount ELSE 0 END),0) pending_amount,
+            COALESCE(SUM(CASE WHEN t.status='approved' THEN 1 ELSE 0 END),0) approved_count,
+            COALESCE(SUM(CASE WHEN t.status='pending' THEN 1 ELSE 0 END),0) pending_count
+     FROM units n
+     LEFT JOIN transactions t
+       ON t.unit_id=n.id AND t.fund_id='monthly' AND t.kind='payment'
+       AND t.period=? AND t.status IN ('approved','pending')
+     GROUP BY n.id,n.unit_number`
+  ).bind(per).all();
+
+  const byUnit = new Map(rows.results.map(row => [String(row.unit_number), row]));
+  const paidUnitNumbers = [], pendingUnitNumbers = [], unpaidUnitNumbers = [];
+  let paid = 0, pending = 0;
+  for (const unitNumber of MONTHLY_UNIT_NUMBERS) {
+    const row = byUnit.get(unitNumber);
+    if (Number(row?.approved_count || 0) > 0) {
+      paidUnitNumbers.push(unitNumber);
+      paid += Number(row.approved_amount || 0);
+    } else if (Number(row?.pending_count || 0) > 0) {
+      pendingUnitNumbers.push(unitNumber);
+      pending += Number(row.pending_amount || 0);
+    } else {
+      unpaidUnitNumbers.push(unitNumber);
+    }
+  }
+  const unpaid = Math.max(0, total - paid - pending);
+  return reply({
+    fund: 'monthly',
+    period: per,
+    monthlyAmount,
+    charges: {
+      units: MONTHLY_UNIT_NUMBERS.length, total, paid, pending, unpaid,
+      paidUnits: paidUnitNumbers.length,
+      pendingUnits: pendingUnitNumbers.length,
+      unpaidUnits: unpaidUnitNumbers.length,
+      paidUnitNumbers, pendingUnitNumbers, unpaidUnitNumbers
+    }
+  });
 });
