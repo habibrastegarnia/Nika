@@ -41,7 +41,7 @@ R('PUT', '/api/delegations/:role', async c => {
     await c.db.prepare(
       'UPDATE manager_delegations SET enabled=0,updated_at=CURRENT_TIMESTAMP WHERE delegator_user_id=? AND delegator_role=?'
     ).bind(c.user.id, role).run();
-    await audit(c.db, c.user.id, 'delegation.disable', 'delegation', role, { role });
+    await audit(c.db, c.user.id, 'delegation.disable', 'delegation', role, { role }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
     return reply({ ok: true, enabled: false });
   }
 
@@ -61,6 +61,6 @@ R('PUT', '/api/delegations/:role', async c => {
      ON CONFLICT(delegator_user_id,delegator_role) DO UPDATE SET
        delegate_user_id=excluded.delegate_user_id,enabled=1,updated_at=CURRENT_TIMESTAMP`
   ).bind(c.user.id, role, delegateId).run();
-  await audit(c.db, c.user.id, 'delegation.enable', 'delegation', role, { role, delegateId });
+  await audit(c.db, c.user.id, 'delegation.enable', 'delegation', role, { role, delegateId }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, enabled: true, delegateId });
 });
