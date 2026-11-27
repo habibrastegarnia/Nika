@@ -1,8 +1,19 @@
 // فرم عمومی گردآوری اولیه اطلاعات مالکان و ساکنان؛ مستقل از حساب‌های واقعی سامانه
 import { R } from './router.js';
-import { err, reply, readJson, str, phoneOrFail, jdate } from './lib.js';
+import { err, reply, readJson, str, phoneOrFail, normDigits, jdate } from './lib.js';
 
 const UNITS = new Set(Array.from({ length: 32 }, (_, i) => String((Math.floor(i / 4) + 1) * 100 + (i % 4) + 1)));
+
+// اعتبارسنجی مستقل شماره‌های فرم عمومی؛ منطق شماره تلفن سایر بخش‌های سامانه تغییر نمی‌کند.
+function registrationPhoneOrFail(value) {
+  let s = normDigits(value).trim().replace(/[\\s().-]/g, '');
+  if (s.startsWith('+98') || s.startsWith('0098') || /^98\\d{10}$/.test(s) || /^09\\d{9}$/.test(s)) {
+    return phoneOrFail(s);
+  }
+  if (s.startsWith('00')) s = '+' + s.slice(2);
+  if (/^\\+[1-9]\\d{7,14}$/.test(s)) return s;
+  throw err(400, 'INVALID_PHONE', 'شماره ایران را به شکل ۰۹۱۲۳۴۵۶۷۸۹ و شماره خارجی را همراه با پیش‌شماره کشور، مانند ‎+994501234567، وارد کنید');
+}
 
 // خروجی فهرست متمرکز؛ فقط کاربران دارای مجوز مشاهده کاربران می‌توانند دریافت کنند.
 R('GET', '/api/public/user-submissions/export', { perm: 'users.read' }, async c => {
@@ -57,8 +68,8 @@ R('POST', '/api/public/user-submissions', { public: true }, async c => {
   const lastName = str(x.lastName, { max: 70, field: 'نام خانوادگی' });
   const fullName = str(`${firstName} ${lastName}`, { max: 120, field: 'نام و نام خانوادگی' });
   if (!['female', 'male'].includes(x.gender)) throw err(400, 'INVALID_GENDER', 'جنسیت را انتخاب کنید');
-  const phone = phoneOrFail(x.phone);
-  const secondaryPhone = x.secondaryPhone ? phoneOrFail(x.secondaryPhone) : null;
+  const phone = registrationPhoneOrFail(x.phone);
+  const secondaryPhone = x.secondaryPhone ? registrationPhoneOrFail(x.secondaryPhone) : null;
 
   // تاریخ‌های قرارداد اختیاری‌اند؛ هر تاریخِ واردشده جداگانه اعتبارسنجی می‌شود.
   const startRaw = x.contractStartDate == null ? '' : String(x.contractStartDate).trim();
