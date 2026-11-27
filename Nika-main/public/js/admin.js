@@ -123,16 +123,16 @@ async function usersTab() {
       <div class="nika-footnote">برای حساب مالک یا ساکن، گزینه مربوط را انتخاب کنید. تعیین نقش‌های مدیریتی فقط در اختیار رئیس هیئت‌مدیره است.</div>
       <div class="nika-actions"><button class="nika-primary" type="submit">ساخت حساب</button></div></form>`) : '';
   return {
-    html: html\`<div class="nika-admincard">
+    html: html`<div class="nika-admincard">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
         <h3 style="margin:0">فهرست کاربران</h3>
-        <button type="button" id="uAdd" class="nika-secondary sm" \${canManageUsers ? '' : 'disabled'} style="display:inline-flex;align-items:center;gap:7px;opacity:\${canManageUsers ? '1' : '.45'};cursor:\${canManageUsers ? 'pointer' : 'not-allowed'}">
-          <span style="color:#36C98F;display:inline-flex">\${raw(iconMarkup('user-round-plus'))}</span><span>ثبت کاربر جدید</span>
+        <button type="button" id="uAdd" class="nika-secondary sm" ${canManageUsers ? '' : 'disabled'} style="display:inline-flex;align-items:center;gap:7px;opacity:${canManageUsers ? '1' : '.45'};cursor:${canManageUsers ? 'pointer' : 'not-allowed'}">
+          <span style="color:#36C98F;display:inline-flex">${raw(iconMarkup('user-round-plus'))}</span><span>ثبت کاربر جدید</span>
         </button>
       </div>
       <input class="nika-input" id="uSearch" placeholder="جست‌وجوی نام، شماره یا واحد">
-      <div class="nika-users" id="uList">\${users.length ? users.map(userCard) : empty('کاربری ثبت نشده است.')}</div>
-    </div>\`,
+      <div class="nika-users" id="uList">${users.length ? users.map(userCard) : empty('کاربری ثبت نشده است.')}</div>
+    </div>`,
     bind(box) {
       const add = $('#uAdd', box);
       if (add && canManageUsers) add.onclick = () => {
@@ -152,50 +152,50 @@ async function usersTab() {
     }
   };
 }
-const userCard = u => html\`<button type="button" class="nika-usercard" data-open-user="\${u.id}" data-q="\${normDigits(\`\${u.name} \${u.phone} \${u.unit || ''}\`).toLowerCase()}" style="width:100%;text-align:right;color:inherit;cursor:pointer;border:1px solid #ffffff10">
-  <strong>\${u.name} \${u.active ? '' : html\`<span class="page-chip red">غیرفعال</span>\`} \${u.must_change_password ? html\`<span class="page-chip amber">تغییر رمز الزامی</span>\` : ''}</strong>
-  <small>\${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}\${u.unit ? ' · واحد ' + u.unit : ''} · \${u.phone}</small>
-  <div class="nika-rolechips">\${u.roles.map(r => html\`<span>\${ROLE_FA[r] || r}</span>\`)}</div>
-</button>\`;
+const userCard = u => html`<button type="button" class="nika-usercard" data-open-user="${u.id}" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}" style="width:100%;text-align:right;color:inherit;cursor:pointer;border:1px solid #ffffff10">
+  <strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong>
+  <small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}</small>
+  <span class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</span>
+</button>`;
 function showUserDetails(u, opts) {
   if (!u) return;
   const privileged = u.roles.some(r => ['chair','finance','board','executive','system_admin'].includes(r));
   const canManageTarget = can('users.manage') && (can('roles.assign') || !privileged);
   const canReset = canManageTarget && u.id !== S.user.id && u.account_type !== 'staff' && !u.roles.includes('system_admin');
   const canDelete = can('users.delete') && can('roles.assign') && u.id !== S.user.id && !u.roles.includes('system_admin');
-  const modal = openModal('اطلاعات کاربر', html\`<div class="profile-panel">
-    <div class="profile-cover"><div><strong>\${u.name}</strong><small>\${u.roles.map(r => ROLE_FA[r] || r).join('، ') || ACCOUNT_FA[u.account_type]}</small></div></div>
+  const modal = openModal('اطلاعات کاربر', html`<div class="profile-panel">
+    <div class="profile-cover"><div><strong>${u.name}</strong><small>${u.roles.map(r => ROLE_FA[r] || r).join('، ') || ACCOUNT_FA[u.account_type]}</small></div></div>
     <div class="profile-details">
-      <div class="profile-detail"><small>شماره واحد</small><strong>\${u.unit || '—'}</strong></div>
-      <div class="profile-detail"><small>نوع حساب</small><strong>\${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}</strong></div>
-      <div class="profile-detail"><small>شماره موبایل</small><strong>\${u.phone || '—'}</strong></div>
-      <div class="profile-detail"><small>شماره تماس پشتیبان</small><strong>\${u.secondary_phone || '—'}</strong></div>
-      <div class="profile-detail"><small>جنسیت</small><strong>\${({female:'خانم',male:'آقا',unspecified:'اعلام نشده'})[u.gender] || '—'}</strong></div>
-      <div class="profile-detail"><small>وضعیت حساب</small><strong>\${u.active ? 'فعال' : 'غیرفعال'}</strong></div>
-      <div class="profile-detail"><small>شروع قرارداد</small><strong>\${u.contract_start_date || '—'}</strong></div>
-      <div class="profile-detail"><small>پایان قرارداد</small><strong>\${u.contract_end_date || '—'}</strong></div>
+      <div class="profile-detail"><small>شماره واحد</small><strong>${u.unit || '—'}</strong></div>
+      <div class="profile-detail"><small>نوع حساب</small><strong>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}</strong></div>
+      <div class="profile-detail"><small>شماره موبایل</small><strong>${u.phone || '—'}</strong></div>
+      <div class="profile-detail"><small>شماره تماس پشتیبان</small><strong>${u.secondary_phone || '—'}</strong></div>
+      <div class="profile-detail"><small>جنسیت</small><strong>${({female:'خانم',male:'آقا',unspecified:'اعلام نشده'})[u.gender] || '—'}</strong></div>
+      <div class="profile-detail"><small>وضعیت حساب</small><strong>${u.active ? 'فعال' : 'غیرفعال'}</strong></div>
+      <div class="profile-detail"><small>شروع قرارداد</small><strong>${u.contract_start_date || '—'}</strong></div>
+      <div class="profile-detail"><small>پایان قرارداد</small><strong>${u.contract_end_date || '—'}</strong></div>
     </div>
   </div>
   <div class="profile-actions">
-    <button type="button" class="page-row" data-profile-edit \${canManageTarget ? '' : 'disabled'} style="opacity:\${canManageTarget ? '1' : '.42'};cursor:\${canManageTarget ? 'pointer' : 'not-allowed'}">
-      <span class="profile-action-icon" style="background:transparent;color:#65A9F5">\${raw(iconMarkup('user-round-pen'))}</span><span class="page-row-main"><strong>ویرایش اطلاعات</strong><small>مشخصات و نقش‌های مجاز کاربر</small></span><span class="page-row-tail">›</span>
+    <button type="button" class="page-row" data-profile-edit ${canManageTarget ? '' : 'disabled'} style="opacity:${canManageTarget ? '1' : '.42'};cursor:${canManageTarget ? 'pointer' : 'not-allowed'}">
+      <span class="profile-action-icon" style="background:transparent;color:#65A9F5">${raw(iconMarkup('user-round-pen'))}</span><span class="page-row-main"><strong>ویرایش اطلاعات</strong><small>مشخصات و نقش‌های مجاز کاربر</small></span><span class="page-row-tail">›</span>
     </button>
-    <button type="button" class="page-row" data-profile-reset \${canReset ? '' : 'disabled'} style="opacity:\${canReset ? '1' : '.42'};cursor:\${canReset ? 'pointer' : 'not-allowed'}">
-      <span class="profile-action-icon" style="background:transparent;color:#D6A64A">\${raw(iconMarkup('key-round'))}</span><span class="page-row-main"><strong>بازنشانی رمز عبور</strong><small>تعیین رمز جدید و بستن نشست‌های قبلی</small></span><span class="page-row-tail">›</span>
+    <button type="button" class="page-row" data-profile-reset ${canReset ? '' : 'disabled'} style="opacity:${canReset ? '1' : '.42'};cursor:${canReset ? 'pointer' : 'not-allowed'}">
+      <span class="profile-action-icon" style="background:transparent;color:#D6A64A">${raw(iconMarkup('key-round'))}</span><span class="page-row-main"><strong>بازنشانی رمز عبور</strong><small>تعیین رمز جدید و بستن نشست‌های قبلی</small></span><span class="page-row-tail">›</span>
     </button>
-    <button type="button" class="page-row" data-profile-delete disabled title="چرخه حذف سه‌روزه و بازیابی هنوز آماده نیست" style="opacity:\${canDelete ? '.55' : '.35'};cursor:not-allowed">
-      <span class="profile-action-icon" style="background:transparent;color:#E66B79">\${raw(iconMarkup('user-round-x'))}</span><span class="page-row-main"><strong>حذف کاربر</strong><small>\${canDelete ? 'پس از آماده‌شدن حذف سه‌روزه فعال می‌شود' : 'فقط رئیس هیأت‌مدیره مجاز خواهد بود'}</small></span><span class="page-row-tail">›</span>
+    <button type="button" class="page-row" data-profile-delete disabled title="چرخه حذف سه‌روزه و بازیابی هنوز آماده نیست" style="opacity:${canDelete ? '.55' : '.35'};cursor:not-allowed">
+      <span class="profile-action-icon" style="background:transparent;color:#E66B79">${raw(iconMarkup('user-round-x'))}</span><span class="page-row-main"><strong>حذف کاربر</strong><small>${canDelete ? 'پس از آماده‌شدن حذف سه‌روزه فعال می‌شود' : 'فقط رئیس هیأت‌مدیره مجاز خواهد بود'}</small></span><span class="page-row-tail">›</span>
     </button>
-  </div>\`);
+  </div>`);
   const edit = $('[data-profile-edit]', modal);
   if (edit && canManageTarget) edit.onclick = () => { closeModal(); editUser(u, opts); };
   const reset = $('[data-profile-reset]', modal);
   if (reset && canReset) reset.onclick = () => {
     closeModal();
-    const resetModal = openModal('تعیین رمز جدید برای ' + u.name, html\`<form class="nika-form" novalidate>\${fields([
+    const resetModal = openModal('تعیین رمز جدید برای ' + u.name, html`<form class="nika-form" novalidate>${fields([
       { name: 'newPassword', label: 'رمز عبور جدید', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' },
       { name: 'confirmPassword', label: 'تکرار رمز عبور جدید', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' }
-    ], 'nika')}<p class="nika-footnote">رمز باید حداقل ۸ کاراکتر داشته باشد، فقط عدد نباشد و شماره موبایل کاربر را در بر نگیرد. این رمز را پس از ثبت به خود کاربر تحویل دهید.</p><div class="nika-actions"><button class="nika-primary" type="submit">ثبت رمز جدید</button></div></form>\`);
+    ], 'nika')}<p class="nika-footnote">رمز باید حداقل ۸ کاراکتر داشته باشد، فقط عدد نباشد و شماره موبایل کاربر را در بر نگیرد. این رمز را پس از ثبت به خود کاربر تحویل دهید.</p><div class="nika-actions"><button class="nika-primary" type="submit">ثبت رمز جدید</button></div></form>`);
     onSubmit($('form', resetModal), async data => {
       if (data.newPassword !== data.confirmPassword) throw new Error('رمز جدید و تکرار آن یکسان نیستند.');
       await api('/admin/users/' + u.id + '/reset-password', { method: 'POST', body: { newPassword: data.newPassword, confirmPassword: data.confirmPassword } });
