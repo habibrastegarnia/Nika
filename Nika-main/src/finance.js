@@ -243,23 +243,26 @@ R('GET', '/api/finance/monthly-status', async c => {
      LEFT JOIN transactions t
        ON t.unit_id=n.id AND t.fund_id='monthly' AND t.kind='payment'
        AND t.period=? AND t.status IN ('approved','pending')
-     GROUP BY n.id,n.unit_number`
+     GROUP BY n.id,n.unit_number
+     ORDER BY CAST(n.unit_number AS INTEGER),n.unit_number`
   ).bind(per).all();
 
-  const byUnit = new Map(rows.results.map(row => [String(row.unit_number), row]));
+  // مبالغ هر وضعیت مستقل جمع می‌شوند؛ یک واحد می‌تواند هم پرداخت تأییدشده و هم در انتظار تأیید داشته باشد.
+  // فهرست واحدها فقط از واحدهای واقعاً ثبت‌شده در نسخه آزمایشی ساخته می‌شود؛ مخرج مالی همچنان ۳۲ واحد است.
   const paidUnitNumbers = [], pendingUnitNumbers = [], unpaidUnitNumbers = [];
   let paid = 0, pending = 0;
-  for (const unitNumber of MONTHLY_UNIT_NUMBERS) {
-    const row = byUnit.get(unitNumber);
-    if (Number(row?.approved_count || 0) > 0) {
-      paidUnitNumbers.push(unitNumber);
-      paid += Number(row.approved_amount || 0);
-    } else if (Number(row?.pending_count || 0) > 0) {
-      pendingUnitNumbers.push(unitNumber);
-      pending += Number(row.pending_amount || 0);
-    } else {
-      unpaidUnitNumbers.push(unitNumber);
-    }
+  for (const row of rows.results) {
+    const unitNumber = String(row.unit_number);
+    const approvedAmount = Number(row.approved_amount || 0);
+    const pendingAmount = Number(row.pending_amount || 0);
+    const approvedCount = Number(row.approved_count || 0);
+    const pendingCount = Number(row.pending_count || 0);
+
+    paid += approvedAmount;
+    pending += pendingAmount;
+    if (approvedCount > 0) paidUnitNumbers.push(unitNumber);
+    if (pendingCount > 0) pendingUnitNumbers.push(unitNumber);
+    if (approvedCount === 0 && pendingCount === 0) unpaidUnitNumbers.push(unitNumber);
   }
   const unpaid = Math.max(0, total - paid - pending);
   return reply({
@@ -267,7 +270,9 @@ R('GET', '/api/finance/monthly-status', async c => {
     period: per,
     monthlyAmount,
     charges: {
-      units: MONTHLY_UNIT_NUMBERS.length, total, paid, pending, unpaid,
+      units: MONTHLY_UNIT_NUMBERS.length,
+      registeredUnits: rows.results.length,
+      total, paid, pending, unpaid,
       paidUnits: paidUnitNumbers.length,
       pendingUnits: pendingUnitNumbers.length,
       unpaidUnits: unpaidUnitNumbers.length,
