@@ -122,17 +122,89 @@ function initNav() {
 
 }
 function initCarousel() {
-  const track = $('#track'), dots = $('.slide-dot'), carousel = $('#carousel');
+  const track = $('#track'), carousel = $('#carousel');
   const next = $('#next'), prev = $('#prev');
-  if (!track || !carousel || !next || !prev) { console.warn('Nika: عناصر اسلایدر در HTML پیدا نشدند؛ راه‌اندازی اسلایدر رد شد.'); return; }
-  let i = 0, x0 = null;
-  const go = n => { i = (n + 3) % 3; track.style.transform = `translate3d(${i * 100}%,0,0)`; dots.forEach((d, j) => d.classList.toggle('active', j === i)); };
-  next.onclick = () => go(i + 1); prev.onclick = () => go(i - 1); dots.forEach(d => d.onclick = () => go(+d.dataset.index));
-  carousel.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
-  carousel.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(i + (dx > 0 ? 1 : -1)); x0 = null; });
+  const dots = Array.from(document.querySelectorAll('.slide-dot'));
+  if (!track || !carousel || !next || !prev) {
+    console.warn('Nika: عناصر اسلایدر در HTML پیدا نشدند؛ راه‌اندازی اسلایدر رد شد.');
+    return;
+  }
+
+  const originalSlides = Array.from(track.children).filter(el => el.classList.contains('slide'));
+  const count = originalSlides.length;
+  if (count < 2) return;
+
+  // دو نسخهٔ کمکی در ابتدا و انتها، برای حلقهٔ پیوسته بدون پرش
+  const makeClone = slide => {
+    const clone = slide.cloneNode(true);
+    clone.setAttribute('aria-hidden', 'true');
+    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    clone.removeAttribute('id');
+    return clone;
+  };
+  track.insertBefore(makeClone(originalSlides[count - 1]), track.firstChild);
+  track.appendChild(makeClone(originalSlides[0]));
+
+  let index = 1;
+  let pointerStart = null;
+  let movedBySwipe = false;
+  const setPosition = (animate = true) => {
+    track.style.transition = animate ? '' : 'none';
+    track.style.transform = `translate3d(${index * 100}%,0,0)`;
+    dots.forEach((dot, j) => dot.classList.toggle('active', j === ((index - 1 + count) % count)));
+  };
+  const go = direction => {
+    index += direction;
+    setPosition(true);
+  };
+
+  setPosition(false);
+  requestAnimationFrame(() => requestAnimationFrame(() => { track.style.transition = ''; }));
+
+  track.addEventListener('transitionend', event => {
+    if (event.target !== track || event.propertyName !== 'transform') return;
+    if (index === 0) {
+      index = count;
+      setPosition(false);
+    } else if (index === count + 1) {
+      index = 1;
+      setPosition(false);
+    }
+  });
+
+  next.addEventListener('click', () => go(1));
+  prev.addEventListener('click', () => go(-1));
+  dots.forEach((dot, j) => dot.addEventListener('click', () => {
+    index = j + 1;
+    setPosition(true);
+  }));
+
+  carousel.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    if (event.target.closest('button, select, input, textarea, a')) return;
+    pointerStart = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    movedBySwipe = false;
+  });
+  carousel.addEventListener('pointerup', event => {
+    if (!pointerStart || event.pointerId !== pointerStart.id) return;
+    const dx = event.clientX - pointerStart.x;
+    const dy = event.clientY - pointerStart.y;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      go(dx < 0 ? 1 : -1);
+      movedBySwipe = true;
+    }
+    pointerStart = null;
+  });
+  carousel.addEventListener('pointercancel', () => { pointerStart = null; });
+  carousel.addEventListener('click', event => {
+    if (!movedBySwipe) return;
+    event.preventDefault();
+    event.stopPropagation();
+    movedBySwipe = false;
+  }, true);
 }
 
-// ---------- شروع ----------
+ // ---------- شروع ----------
 function applySavedTheme() {
   let theme = 'dark';
   try { if (localStorage.getItem('nika-theme') === 'light') theme = 'light'; } catch {}
