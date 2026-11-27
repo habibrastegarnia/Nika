@@ -659,3 +659,36 @@ html[data-theme="light"] .page-view.active .page-top{background:linear-gradient(
   .page-view.active{width:calc(100vw - 16px)!important;height:min(88dvh,820px)!important;padding:14px 10px 22px!important;border-radius:21px}
   .page-view.active .page-top{top:-14px}
 }
+
+
+/* True modal window controls for dashboard destinations */
+.page-view.active{
+  z-index:40!important;
+}
+.page-view.active .page-top{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+}
+.page-view.active .page-heading{min-width:0;flex:1 1 auto}
+.page-view.active .page-close{
+  display:grid!important;
+  place-items:center!important;
+  flex:0 0 36px!important;
+  width:36px!important;
+  height:36px!important;
+  padding:0!important;
+  border:1px solid rgba(220,230,250,.16)!important;
+  border-radius:12px!important;
+  background:rgba(255,255,255,.07)!important;
+  color:#e8edf8!important;
+  cursor:pointer!important;
+}
+.page-view.active .page-close svg{width:19px;height:19px}
+.page-view.active .page-close:active{transform:scale(.94)}
+html[data-theme="light"] .page-view.active .page-close{
+  color:#33415c!important;
+  border-color:#dfe6f0!important;
+  background:#f0f3f8!important;
+}
