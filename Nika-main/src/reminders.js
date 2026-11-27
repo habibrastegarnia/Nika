@@ -37,7 +37,7 @@ R('POST','/api/finance/reminder-settings',{perm:'finance.settings'},async c=>{
  const id=crypto.randomUUID();
  await c.db.prepare('INSERT INTO finance_settings(id,monthly_amount,monthly_due_day,owner_amount,owner_due_date,monthly_effective_from,owner_effective_from,effective_from,created_by) VALUES(?,?,?,?,?,?,?,?,?)')
   .bind(id,monthlyAmount,monthlyDueDay,ownerAmount,ownerDueDate,monthlyEffectiveFrom,ownerEffectiveFrom,monthlyEffectiveFrom,c.user.id).run();
- await audit(c.db,c.user.id,'finance.settings.create','finance_settings',id,{monthlyEffectiveFrom,ownerEffectiveFrom,ownerDueDate});
+ await audit(c.db, c.user.id, 'finance.settings.create', 'finance_settings', id, {monthlyEffectiveFrom,ownerEffectiveFrom,ownerDueDate}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
  return reply({ok:true,id},201);
 });
 export async function runReminders(env,now=new Date()){
