@@ -116,7 +116,7 @@ R('POST', '/api/expense-requests', { perm: 'expenses.create' }, async c => {
     throw e;
   }
   await audit(c.db, c.user.id, 'expense_request.create', 'expense_request', id,
-    { referenceNo, fund, amount }, c.overrideReason ? actorMeta(c.user, 'executive', c.overrideReason) : { actorRole: 'executive' });
+    { referenceNo, fund, amount }, c.overrideReason ? actorMeta(c.user, 'executive', c.overrideReason) : { actorRole: c.user.roles.includes('chair') ? 'chair' : 'executive' });
   return reply({ ok: true, id, referenceNo, status: 'pending_finance' }, 201);
 });
 
@@ -259,7 +259,7 @@ R('POST', '/api/expense-requests/:id/finance-decision', { perm: 'expenses.approv
   ]);
   if (!results[0]?.meta?.changes) throw err(409, 'NOT_PENDING', 'وضعیت درخواست تغییر کرده است');
   await audit(c.db, c.user.id, 'expense_request.finance_decision', 'expense_request', row.id,
-    { referenceNo: row.reference_no, status: next }, c.overrideReason ? actorMeta(c.user, 'finance', c.overrideReason) : { actorRole: 'finance', reason });
+    { referenceNo: row.reference_no, status: next }, c.overrideReason ? actorMeta(c.user, 'finance', c.overrideReason) : { actorRole: c.user.roles.includes('chair') ? 'chair' : 'finance', reason });
   return reply({ ok: true, status: next });
 });
 
