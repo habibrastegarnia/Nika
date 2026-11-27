@@ -1,5 +1,5 @@
 // صفحه‌های کاربری: خانه، مقررات، مصوبات، تقویم، تابلو، درخواست‌ها، مالی، پیام‌ها، پروفایل، تنظیمات
-import { api } from './api.js';
+import { api } from './api.js?v=2';
 import { S, can, canManageCalendarEvents, readableFunds, dashFunds, isManager } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, isRecent, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
   FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
