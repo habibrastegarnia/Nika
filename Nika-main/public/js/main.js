@@ -150,7 +150,10 @@ function initCarousel() {
   let movedBySwipe = false;
   const setPosition = (animate = true) => {
     track.style.transition = animate ? '' : 'none';
-    track.style.transform = `translate3d(${index * 100}%,0,0)`;
+    // درصد translate نسبت به عرض کل track محاسبه می‌شود، نه عرض هر اسلاید؛
+    // بنابراین جابه‌جایی را بر اساس عرض واقعی viewport انجام می‌دهیم.
+    track.style.width = '100%';
+    track.style.transform = `translate3d(${index * carousel.clientWidth}px,0,0)`;
     dots.forEach((dot, j) => dot.classList.toggle('active', j === ((index - 1 + count) % count)));
   };
   const go = direction => {
@@ -196,6 +199,7 @@ function initCarousel() {
     pointerStart = null;
   });
   carousel.addEventListener('pointercancel', () => { pointerStart = null; });
+  window.addEventListener('resize', () => setPosition(false));
   carousel.addEventListener('click', event => {
     if (!movedBySwipe) return;
     event.preventDefault();
