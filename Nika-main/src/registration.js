@@ -6,12 +6,12 @@ const UNITS = new Set(Array.from({ length: 32 }, (_, i) => String((Math.floor(i 
 
 // اعتبارسنجی مستقل شماره‌های فرم عمومی؛ منطق شماره تلفن سایر بخش‌های سامانه تغییر نمی‌کند.
 function registrationPhoneOrFail(value) {
-  let s = normDigits(value).trim().replace(/[\\s().-]/g, '');
-  if (s.startsWith('+98') || s.startsWith('0098') || /^98\\d{10}$/.test(s) || /^09\\d{9}$/.test(s)) {
+  let s = normDigits(value).trim().replace(/[\s().-]/g, '');
+  if (s.startsWith('+98') || s.startsWith('0098') || /^98\d{10}$/.test(s) || /^09\d{9}$/.test(s)) {
     return phoneOrFail(s);
   }
   if (s.startsWith('00')) s = '+' + s.slice(2);
-  if (/^\\+[1-9]\\d{7,14}$/.test(s)) return s;
+  if (/^\+[1-9]\d{7,14}$/.test(s)) return s;
   throw err(400, 'INVALID_PHONE', 'شماره ایران را به شکل ۰۹۱۲۳۴۵۶۷۸۹ و شماره خارجی را همراه با پیش‌شماره کشور، مانند ‎+994501234567، وارد کنید');
 }
 
