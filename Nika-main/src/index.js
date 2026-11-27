@@ -47,7 +47,7 @@ async function handle(request, env, url) {
     // اگر انجام‌دهنده مسئول اصلی این مجوز نباشد، ثبت دلیل پیش از عملیات الزامی است.
     const ownerRole = mutating && perm ? PERMISSION_OWNER[perm] : null;
     ownerRoles = Array.isArray(ownerRole) ? ownerRole : (ownerRole ? [ownerRole] : []);
-    if (ownerRoles.length && !ownerRoles.some(role => c.user.roles.includes(role))) {
+    if (ownerRoles.length && !ownerRoles.some(role => c.user.roles.includes(role) || c.user.delegatedRoles?.includes(role))) {
       let body = {};
       try { body = await request.clone().json(); } catch {}
       const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
