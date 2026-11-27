@@ -110,7 +110,6 @@ R('POST', '/api/backups/:id/confirm', { perm: 'backup.manage' }, async c => {
   ]);
   if (!results[0]?.meta?.changes) throw err(409, 'BACKUP_ALREADY_PROCESSED', 'این فایل پشتیبان هم‌زمان تعیین تکلیف شده است');
 
-  await audit(c.db, c.user.id, 'backup.confirm', 'backup', run.id,
-    { archivedImages: Number(results[1]?.meta?.changes || 0), checksum: run.checksum });
+  await audit(c.db, c.user.id, 'backup.confirm', 'backup', run.id, { archivedImages: Number(results[1]?.meta?.changes || 0), checksum: run.checksum }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, archivedImages: Number(results[1]?.meta?.changes || 0), retainedRecords: true });
 });
