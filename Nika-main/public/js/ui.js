@@ -140,8 +140,10 @@ export function initRouter() {
   });
   document.addEventListener('click', e => {
     const view = $('#pageView');
-    if (!view?.classList.contains('active') || view.contains(e.target)) return;
-    back();
+    if (!view?.classList.contains('active')) return;
+    const r = view.getBoundingClientRect();
+    const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inside) back();
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && $('#pageView')?.classList.contains('active')) back();
