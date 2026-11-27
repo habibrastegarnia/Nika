@@ -692,3 +692,27 @@ html[data-theme="light"] .page-view.active .page-close{
   border-color:#dfe6f0!important;
   background:#f0f3f8!important;
 }
+
+/* Mobile-only: keep modal windows within the viewport; wide tables scroll locally */
+@media(max-width:480px){
+  .page-view.active{
+    max-width:calc(100vw - 16px)!important;
+    min-width:0!important;
+    overflow-x:hidden!important;
+  }
+  .page-view.active table{
+    display:block;
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  .page-view.active .page-card,
+  .page-view.active .page-row,
+  .page-view.active .page-stat-grid,
+  .page-view.active .quick-grid{
+    min-width:0;
+    max-width:100%;
+  }
+}
