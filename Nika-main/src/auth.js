@@ -171,7 +171,7 @@ async function updateProfile(c) {
   }
   if (!sets.length) return reply({ ok: true });
   await c.db.prepare(`UPDATE users SET ${sets.join(',')},updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(...vals, c.user.id).run();
-  await audit(c.db, c.user.id, 'profile.update', 'user', c.user.id, { fields: Object.keys(x).filter(k => k !== 'currentPassword') });
+  await audit(c.db, c.user.id, 'profile.update', 'user', c.user.id, { fields: Object.keys(x).filter(k => k !== 'currentPassword') }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, user: await loadUser(c.db, c.user.id) });
 }
 
@@ -202,7 +202,7 @@ R('POST', '/api/password', async c => {
     c.db.prepare('DELETE FROM sessions WHERE user_id=? AND id!=?').bind(c.user.id, c.user.sid),
     c.db.prepare('DELETE FROM login_attempts WHERE key=?').bind(pwKey)
   ]);
-  await audit(c.db, c.user.id, 'password.change', 'user', c.user.id);
+  await audit(c.db, c.user.id, 'password.change', 'user', c.user.id, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, user: await loadUser(c.db, c.user.id) });
 });
 
