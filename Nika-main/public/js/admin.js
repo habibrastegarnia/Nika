@@ -132,7 +132,7 @@ async function usersTab() {
         if (accountType === 'staff' && !canAssignRoles) throw new Error('ساخت حساب مدیریتی و تعیین نقش فقط در اختیار رئیس هیئت‌مدیره است.');
         if (accountType === 'staff' && !(d.roles || []).length) throw new Error('برای حساب مستقل، حداقل یک نقش انتخاب کنید.');
         const body = { unit: d.unit, name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone, contractStartDate: d.contractStartDate, contractEndDate: d.contractEndDate, accountType, roles: d.roles || [] };
-        if (!can('roles.assign')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران ایجاد می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+        if (!can('roles.assign') && !S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران ایجاد می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
         const r = await api('/admin/users', { method: 'POST', body });
         if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
         else toast(accountType === 'staff' ? 'حساب مستقل ساخته شد.' : 'حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.');
@@ -144,13 +144,13 @@ async function usersTab() {
       act(box, '[data-delete-user]', async b => {
         if (!await ask('غیرفعال‌سازی حساب کاربر', 'حساب این کاربر غیرفعال شود؟ سوابق مالی و مدیریتی او حفظ خواهد شد.', 'غیرفعال‌سازی', true)) return;
         const body = {};
-        if (!can('roles.assign')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران غیرفعال می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+        if (!can('roles.assign') && !S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران غیرفعال می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
         await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE', body }); toast('حساب غیرفعال شد؛ سوابق حفظ شدند'); reload();
       });
       act(box, '[data-reset]', async b => {
         if (!await ask('بازنشانی رمز', 'یک رمز موقت جدید ساخته می‌شود و همه‌ی نشست‌های این کاربر بسته می‌شود. رمز فقط همین یک‌بار نمایش داده می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
         const body = {};
-        if (!can('roles.assign')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا رمز این کاربر را به‌جای مسئول اصلی مدیریت کاربران بازنشانی می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+        if (!can('roles.assign') && !S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا رمز این کاربر را به‌جای مسئول اصلی مدیریت کاربران بازنشانی می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
         const r = await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST', body });
         if (r.tempPassword) showSecret('رمز موقت جدید', 'این رمز را به کاربر بدهید؛ فقط همین یک‌بار نمایش داده می‌شود.', r.tempPassword);
         else toast('رمز به شماره موبایل ثبت‌شده کاربر بازنشانی شد.');
@@ -173,7 +173,7 @@ function editUser(u, opts) {
     const body = { name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone, contractStartDate: d.contractStartDate, contractEndDate: d.contractEndDate };
     if (baseOptions.length && d.addBaseRoles?.length) body.addBaseRoles = d.addBaseRoles;
     if (opts.length) body.roles = d.roles; if (d.active !== u.active) body.active = d.active;
-    if (!can('roles.assign')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این اطلاعات را به‌جای مسئول اصلی مدیریت کاربران تغییر می‌دهید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+    if (!can('roles.assign') && !S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این اطلاعات را به‌جای مسئول اصلی مدیریت کاربران تغییر می‌دهید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
     await api(`/admin/users/${u.id}`, { method: 'PATCH', body }); closeModal(); toast('ذخیره شد؛ تغییرات نقش اعمال شد.'); reload();
   });
 }
@@ -430,12 +430,6 @@ async function registerUnitPaymentTab() {
    onSubmit(form, async d => {
     const body = { kind:'payment', unitNumber:d.unitNumber, fund:d.fund, amount:parseAmount(d.amount), period:d.period, reference:d.reference, note:d.note };
     if (!body.amount) throw new Error('مبلغ را به‌صورت عدد وارد کنید');
-    const financeRole = S.user.roles.includes('finance') || (S.user.delegatedRoles || []).includes('finance');
-    if (!financeRole) {
-     const reason = await promptText('دلیل ثبت خارج از مسئولیت', 'چرا این پرداخت را به‌جای مدیر مالی ثبت می‌کنید؟', 'ثبت دلیل');
-     if (!reason) return;
-     body.reason = reason;
-    }
     await api('/transactions', { method:'POST', body });
     toast('پرداخت واحد ثبت شد و برای تأیید ارسال شد');
     reload();
@@ -696,10 +690,10 @@ async function noticesTab() {
 
 // ====================== محتوا (مقررات، مصوبات، رویدادها، اسناد) ======================
 const CONTENT = {
-  rules: { label: 'مقررات', perm: 'content.manage', fields: [{ name: 'title', label: 'عنوان', required: true }, { name: 'body', label: 'متن', type: 'textarea', required: true }, { name: 'sort_order', label: 'ترتیب نمایش (عدد)', inputmode: 'numeric', value: '0' }], line: r => r.body },
+  rules: { label: 'مقررات', perm: 'rules.manage', fields: [{ name: 'title', label: 'عنوان', required: true }, { name: 'body', label: 'متن', type: 'textarea', required: true }, { name: 'sort_order', label: 'ترتیب نمایش (عدد)', inputmode: 'numeric', value: '0' }], line: r => r.body },
   resolutions: { label: 'مصوبات', perm: 'resolutions.manage', fields: [{ name: 'title', label: 'عنوان', required: true }, { name: 'body', label: 'متن مصوبه', type: 'textarea', required: true }, { name: 'decided_on', label: 'تاریخ مصوبه', type: 'date', dateSeparator: '/', dir: 'ltr', required: true }], line: r => `${r.decided_on} · ${r.body}` },
   events: { label: 'رویدادها', perm: 'events.manage', fields: [{ name: 'title', label: 'عنوان', required: true }, { name: 'event_date', label: 'تاریخ (شمسی)', type: 'date', dateSeparator: '-', dir: 'ltr', required: true }, { name: 'event_time', label: 'ساعت (اختیاری)', dir: 'ltr', placeholder: '18:30' }, { name: 'body', label: 'توضیحات', type: 'textarea', rows: 2 }, { name: 'recurrence', label: 'تکرار', type: 'select', value: 'none', options: [['none','بدون تکرار'],['weekly','هفتگی'],['monthly','ماهانه'],['yearly','سالانه']] }, { name: 'recurrenceUntil', label: 'پایان تکرار (اختیاری)', type: 'date', dateSeparator: '-', dir: 'ltr' }], line: r => `${r.event_date}${r.event_time ? ' ' + r.event_time : ''}${r.recurrence && r.recurrence !== 'none' ? ' · تکرار: ' + r.recurrence : ''}${r.body ? ' · ' + r.body : ''}` },
-  documents: { label: 'اسناد', perm: 'content.manage', fields: [{ name: 'title', label: 'عنوان', required: true }, { name: 'url', label: 'پیوند (https)', dir: 'ltr', required: true, placeholder: 'https://…' }, { name: 'description', label: 'توضیحات (اختیاری)' }], line: r => r.url }
+  documents: { label: 'اسناد', perm: 'documents.manage', fields: [{ name: 'title', label: 'عنوان', required: true }, { name: 'url', label: 'پیوند (https)', dir: 'ltr', required: true, placeholder: 'https://…' }, { name: 'description', label: 'توضیحات (اختیاری)' }], line: r => r.url }
 };
 async function contentTab() {
   const kinds = Object.entries(CONTENT).filter(([, c]) => can(c.perm)), k = kinds.some(([n]) => n === sub.content) ? sub.content : kinds[0][0], def = CONTENT[k];
