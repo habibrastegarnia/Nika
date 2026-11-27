@@ -28,21 +28,35 @@ export function fillHeader() {
 
 function renderExpenseChart(data, donutId, legendId, totalId, balanceId) {
   const total = Number(data?.total || 0), balance = Number(data?.balance || 0), expenses = Array.isArray(data?.expenses) ? data.expenses : [];
+  const available = total + balance;
   const donut = $(donutId), legend = $(legendId), totalNode = $(totalId), balanceNode = $(balanceId);
   if (!donut || !legend || !totalNode || !balanceNode) return;
   donut.innerHTML = ''; legend.innerHTML = ''; totalNode.textContent = toman(total); balanceNode.textContent = toman(balance);
-  if (!expenses.length || !total) { legend.innerHTML = '<div class="legend-row"><span class="legend-name">هزینه قطعی ثبت نشده است</span></div>'; return; }
+  if (available <= 0) {
+    legend.innerHTML = '<div class="legend-row"><span class="legend-name">هنوز موجودی یا هزینه‌ای ثبت نشده است</span></div>';
+    return;
+  }
   let offset = 0;
   expenses.forEach((expense, index) => {
-    const amount = Number(expense.total || 0), percent = amount / total * 100, length = CIRC * percent / 100;
+    const amount = Number(expense.total || 0), percent = amount / available * 100, length = CIRC * percent / 100;
+    if (length <= 0) return;
     const arc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     for (const [key,value] of Object.entries({cx:80,cy:80,r:56,fill:'none',stroke:COLORS[index%COLORS.length],'stroke-width':24,'stroke-dasharray':`${Math.max(length-1.5,.5)} ${CIRC}`,'stroke-dashoffset':-offset})) arc.setAttribute(key,value);
     donut.appendChild(arc); offset += length;
   });
-  legend.innerHTML = join(expenses.map((expense,index) => {
-    const percent = Math.round(Number(expense.total || 0) / total * 100);
-    return html`<div class="legend-row"><span class="legend-dot" style="background:${COLORS[index%COLORS.length]}"></span><span class="legend-name">${expense.category}</span><span class="legend-value">${fa(percent)}٪ · ${fa(expense.total)} تومان</span></div>`;
-  }));
+  const remainingLength = CIRC * balance / available;
+  if (remainingLength > 0) {
+    const remainingArc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    for (const [key,value] of Object.entries({cx:80,cy:80,r:56,fill:'none',stroke:'#33415c','stroke-width':24,'stroke-dasharray':`${Math.max(remainingLength-1.5,.5)} ${CIRC}`,'stroke-dashoffset':-offset})) remainingArc.setAttribute(key,value);
+    donut.appendChild(remainingArc);
+  }
+  legend.innerHTML = join([
+    ...expenses.map((expense,index) => {
+      const percent = Number(expense.total || 0) / available * 100;
+      return html`<div class="legend-row"><span class="legend-dot" style="background:${COLORS[index%COLORS.length]}"></span><span class="legend-name">${expense.category}</span><span class="legend-value">${fa(percent.toFixed(1))}٪ · ${fa(expense.total)} تومان</span></div>`;
+    }),
+    html`<div class="legend-row"><span class="legend-dot" style="background:#33415c"></span><span class="legend-name">موجودی باقی‌مانده</span><span class="legend-value">${fa((balance / available * 100).toFixed(1))}٪ · ${fa(balance)} تومان</span></div>`
+  ]);
 }
 function renderUnpaidUnitSummary(status) {
   const button = $('#unpaidUnitsButton'), count = $('#unpaidUnitCount');
