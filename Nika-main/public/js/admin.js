@@ -61,11 +61,6 @@ export function showAdmin(want) {
   const tabs = TABS(); if (!tabs.some(t => t[0] === want)) return;
   tab = want;
   $('#nikaAdmin').classList.add('nika-hide');
-  $('.phone > .carousel').classList.add('nika-dashboard-hidden');
-  $('.phone > .slide-controls').classList.add('nika-dashboard-hidden');
-  $('.phone > .categories').classList.add('nika-dashboard-hidden');
-  $('#noticeHead')?.classList.add('nika-dashboard-hidden');
-  $('#noticeCard')?.classList.add('nika-dashboard-hidden');
   const box = $('.phone > .page-view');
   box.classList.remove('nika-dashboard-hidden');
   box.classList.add('active');
@@ -94,11 +89,11 @@ export function showResidentMode() {
 async function loadTab() {
   const box = $('.phone > .page-view');
   box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>در حال بارگذاری…</h2></div></div>'; applyIcons(box);
-  $('#managerPageBack').onclick = hideAdmin;
+  $('#managerPageBack').onclick = () => history.back();
   try {
     const out = await RENDER[tab]();
     box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>' + ({settings:'تنظیمات',users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری',system:'مدیریت سامانه'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>'; applyIcons(box);
-    $('#managerPageBack',box).onclick = hideAdmin;
+    $('#managerPageBack',box).onclick = () => history.back();
     out.bind && out.bind(box);
   } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); applyIcons(box); $('#managerPageBack',box).onclick=hideAdmin; }
 }
