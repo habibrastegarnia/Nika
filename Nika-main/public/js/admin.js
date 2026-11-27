@@ -128,14 +128,12 @@ async function usersTab() {
     bind(box) {
       const form = $('#uNew', box);
       if (form) onSubmit(form, async d => {
-        const accountType = d.owner && d.resident ? 'both' : (d.owner ? 'owner' : (d.resident ? 'resident' : 'staff'));
-        if (accountType === 'staff' && !canAssignRoles) throw new Error('ساخت حساب مدیریتی و تعیین نقش فقط در اختیار رئیس هیئت‌مدیره است.');
-        if (accountType === 'staff' && !(d.roles || []).length) throw new Error('برای حساب مستقل، حداقل یک نقش انتخاب کنید.');
+        if (!d.owner && !d.resident) throw new Error('نوع حساب را مشخص کنید: مالک یا ساکن.');
+        const accountType = d.owner && d.resident ? 'both' : (d.owner ? 'owner' : 'resident');
         const body = { unit: d.unit, name: d.name, gender: d.gender, phone: d.phone, secondaryPhone: d.secondaryPhone, contractStartDate: d.contractStartDate, contractEndDate: d.contractEndDate, accountType, roles: d.roles || [] };
         if (!can('roles.assign') && !S.user.roles.includes('executive') && !(S.user.delegatedRoles || []).includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این حساب را به‌جای مسئول اصلی مدیریت کاربران ایجاد می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
         const r = await api('/admin/users', { method: 'POST', body });
-        if (r.tempPassword) showSecret('حساب ساخته شد', 'این رمز موقت را به کاربر بدهید. پس از بستن این پنجره دیگر نمایش داده نمی‌شود.', r.tempPassword);
-        else toast(accountType === 'staff' ? 'حساب مستقل ساخته شد.' : 'حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.');
+        toast('حساب ساخته شد؛ نام کاربری شماره واحد و رمز اولیه شماره موبایل ثبت‌شده است.');
         reload();
       });
       const userSearch = $('#uSearch', box);
@@ -148,17 +146,22 @@ async function usersTab() {
         await api(`/admin/users/${b.dataset.deleteUser}`, { method: 'DELETE', body }); toast('حساب غیرفعال شد؛ سوابق حفظ شدند'); reload();
       });
       act(box, '[data-reset]', async b => {
-        if (!await ask('بازنشانی رمز', 'یک رمز موقت جدید ساخته می‌شود و همه‌ی نشست‌های این کاربر بسته می‌شود. رمز فقط همین یک‌بار نمایش داده می‌شود. ادامه می‌دهید؟', 'بازنشانی')) return;
-        const body = {};
-        if (!can('roles.assign') && !S.user.roles.includes('executive') && !(S.user.delegatedRoles || []).includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا رمز این کاربر را به‌جای مسئول اصلی مدیریت کاربران بازنشانی می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
-        const r = await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST', body });
-        if (r.tempPassword) showSecret('رمز موقت جدید', 'این رمز را به کاربر بدهید؛ فقط همین یک‌بار نمایش داده می‌شود.', r.tempPassword);
-        else toast('رمز به شماره موبایل ثبت‌شده کاربر بازنشانی شد.');
+        const user = users.find(u => u.id === b.dataset.reset);
+        if (!user || user.roles.includes('system_admin') || user.account_type === 'staff') throw new Error('این حساب مستقل از بازنشانی کاربران ساختمان مستثنا است.');
+        const modal = openModal('تعیین رمز جدید برای ' + user.name, html`<form class="nika-form" novalidate>${fields([
+          { name: 'newPassword', label: 'رمز عبور جدید', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' },
+          { name: 'confirmPassword', label: 'تکرار رمز عبور جدید', type: 'password', required: true, dir: 'ltr', autocomplete: 'new-password' }
+        ], 'nika')}<p class="nika-footnote">رمز باید حداقل ۸ کاراکتر داشته باشد، فقط عدد نباشد و شماره موبایل کاربر را در بر نگیرد. این رمز را پس از ثبت به خود کاربر تحویل دهید.</p><div class="nika-actions"><button class="nika-primary" type="submit">ثبت رمز جدید</button></div></form>`);
+        onSubmit($('form', modal), async data => {
+          if (data.newPassword !== data.confirmPassword) throw new Error('رمز جدید و تکرار آن یکسان نیستند.');
+          await api(`/admin/users/${b.dataset.reset}/reset-password`, { method: 'POST', body: { newPassword: data.newPassword, confirmPassword: data.confirmPassword } });
+          closeModal(); toast('رمز جدید ثبت شد؛ نشست‌های قبلی کاربر بسته شدند. رمز را به خود کاربر تحویل دهید.'); reload();
+        });
       });
     }
   };
 }
-const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.secondary_phone ? ' · تماس پشتیبان: ' + u.secondary_phone : ''}</small>${u.contract_start_date || u.contract_end_date ? html`<small>قرارداد: ${u.contract_start_date || '—'} تا ${u.contract_end_date || '—'}</small>` : ''}<div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div>${can('users.manage') && (can('roles.assign') || !u.roles.some(r => ['chair','finance','board','executive','system_admin'].includes(r))) ? html`<div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button><button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button>${can('users.delete') && u.id !== S.user.id ? html`<button class="nika-secondary sm danger" data-delete-user="${u.id}">غیرفعال‌سازی</button>` : ''}</div>` : ''}</div>`;
+const userCard = u => html`<div class="nika-usercard" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}"><strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong><small>${u.roles.includes('owner') && u.roles.includes('resident') ? 'مالک و ساکن' : ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}${u.secondary_phone ? ' · تماس پشتیبان: ' + u.secondary_phone : ''}</small>${u.contract_start_date || u.contract_end_date ? html`<small>قرارداد: ${u.contract_start_date || '—'} تا ${u.contract_end_date || '—'}</small>` : ''}<div class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</div>${can('users.manage') && (can('roles.assign') || !u.roles.some(r => ['chair','finance','board','executive','system_admin'].includes(r))) ? html`<div class="row-actions"><button class="nika-secondary sm" data-edit="${u.id}">ویرایش</button>${!u.roles.includes('system_admin') && u.account_type !== 'staff' ? html`<button class="nika-secondary sm" data-reset="${u.id}">بازنشانی رمز</button>` : ''}${can('users.delete') && u.id !== S.user.id ? html`<button class="nika-secondary sm danger" data-delete-user="${u.id}">غیرفعال‌سازی</button>` : ''}</div>` : ''}</div>`;
 
 function editUser(u, opts) {
   const baseOptions = u.account_type === 'staff' ? [] : [['owner', 'مالک'], ['resident', 'ساکن']].filter(([r]) => !u.roles.includes(r));
