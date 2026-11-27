@@ -63,6 +63,7 @@ export function showAdmin(want) {
   $('#nikaAdmin').classList.add('nika-hide');
   const box = $('.phone > .page-view');
   box.classList.remove('nika-dashboard-hidden');
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'مدیریت');
   box.classList.add('active');
   loadTab();
 }
@@ -88,14 +89,14 @@ export function showResidentMode() {
 }
 async function loadTab() {
   const box = $('.phone > .page-view');
-  box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>در حال بارگذاری…</h2></div></div>'; applyIcons(box);
-  $('#managerPageBack').onclick = () => history.back();
+  box.innerHTML = '<div class="page-top"><div class="page-heading"><h2>در حال بارگذاری…</h2></div><button class="page-close" type="button" data-page-close aria-label="بستن پنجره"><span data-icon="x"></span></button></div>'; applyIcons(box);
+  box.querySelector('[data-page-close]').onclick = () => history.back();
   try {
     const out = await RENDER[tab]();
-    box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>' + ({settings:'تنظیمات',users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری',system:'مدیریت سامانه'}[tab] || 'مدیریت') + '</h2></div></div><div class="manager-page-content">' + String(out.html) + '</div>'; applyIcons(box);
-    $('#managerPageBack',box).onclick = () => history.back();
+    box.innerHTML = '<div class="page-top"><div class="page-heading"><h2>' + ({settings:'تنظیمات',users:'کاربران',units:'واحدها',finance:'مالی',reports:'گزارش عملکرد',archive:'پشتیبان‌گیری',system:'مدیریت سامانه'}[tab] || 'مدیریت') + '</h2></div><button class="page-close" type="button" data-page-close aria-label="بستن پنجره"><span data-icon="x"></span></button></div><div class="manager-page-content">' + String(out.html) + '</div>'; applyIcons(box);
+    box.querySelector('[data-page-close]').onclick = () => history.back();
     out.bind && out.bind(box);
-  } catch (e) { box.innerHTML = '<div class="page-top"><button class="page-back" id="managerPageBack" aria-label="بازگشت"><span data-icon="chevron-right"></span></button><div class="page-heading"><h2>خطا</h2></div></div>' + String(card('خطا', empty(e.message))); applyIcons(box); $('#managerPageBack',box).onclick=hideAdmin; }
+  } catch (e) { box.innerHTML = '<div class="page-top"><div class="page-heading"><h2>خطا</h2></div><button class="page-close" type="button" data-page-close aria-label="بستن پنجره"><span data-icon="x"></span></button></div>' + String(card('خطا', empty(e.message))); applyIcons(box); box.querySelector('[data-page-close]').onclick=() => history.back(); }
 }
 const reload = () => { closeModal(); return loadTab(); };
 const act = (box, sel, fn) => $$(sel, box).forEach(b => b.onclick = () => fn(b).catch(e => toast(e.message)));
