@@ -4,6 +4,13 @@ import { err, reply, readJson, str, optStr, int, jdate, audit } from './lib.js';
 import { can } from './perms.js';
 
 const FUNDS = ['owner', 'monthly'];
+const MONTHLY_EXPENSE_CATEGORIES = ['قبوض و خدمات', 'حقوق و دستمزد', 'نظافت و نگهداری', 'تعمیرات و تأسیسات', 'سایر هزینه‌ها'];
+const expenseCategory = (fund, value) => {
+  if (fund === 'owner') return null;
+  const category = str(value || 'سایر هزینه‌ها', { max: 40, field: 'دسته‌بندی هزینه' });
+  if (!MONTHLY_EXPENSE_CATEGORIES.includes(category)) throw err(400, 'INVALID_EXPENSE_CATEGORY', 'دسته‌بندی هزینه معتبر نیست');
+  return category;
+};
 const fundOf = value => {
   if (!FUNDS.includes(value)) throw err(400, 'FUND_REQUIRED', 'صندوق پرداخت را انتخاب کنید');
   return value;
@@ -80,6 +87,7 @@ async function saveVersion(db, requestId, versionNo, snapshot, actorId, reason, 
 R('POST', '/api/expense-requests', { perm: 'expenses.create' }, async c => {
   const x = await readJson(c.request, 2500000);
   const fund = fundOf(x.fund), amount = int(x.amount, { field: 'مبلغ درخواست' });
+  const category = expenseCategory(fund, x.category);
   const title = str(x.documentTitle, { max: 120, field: 'عنوان سند' });
   const documentDate = jdate(x.documentDate, '-');
   const description = str(x.description, { max: 2000, multiline: true, field: 'شرح درخواست' });
@@ -92,11 +100,11 @@ R('POST', '/api/expense-requests', { perm: 'expenses.create' }, async c => {
   const referenceNo = `${year}-${String(sequence.value).padStart(6, '0')}`;
   const id = crypto.randomUUID(), versionNo = 1;
   const files = storeFiles(id, versionNo, Array.isArray(x.files) ? x.files : []);
-  const snapshot = { fund, amount, documentTitle: title, documentDate, description };
+  const snapshot = { fund, category, amount, documentTitle: title, documentDate, description };
   try {
     await c.db.batch([
-      c.db.prepare(`INSERT INTO expense_requests(id,reference_no,fund_id,amount,document_title,document_date,description,status,created_by)
-                    VALUES(?,?,?,?,?,?,?,'pending_finance',?)`).bind(id, referenceNo, fund, amount, title, documentDate, description, c.user.id),
+      c.db.prepare(`INSERT INTO expense_requests(id,reference_no,fund_id,category,amount,document_title,document_date,description,status,created_by)
+                    VALUES(?,?,?,?,?,?,?,?,'pending_finance',?)`).bind(id, referenceNo, fund, category, amount, title, documentDate, description, c.user.id),
       c.db.prepare('INSERT INTO expense_request_versions(id,request_id,version_no,snapshot,changed_by,reason) VALUES(?,?,?,?,?,?)')
         .bind(crypto.randomUUID(), id, versionNo, JSON.stringify(snapshot), c.user.id, reason),
       ...files.map(f => c.db.prepare('INSERT INTO expense_request_files(id,request_id,version_no,object_key,filename,content_type,size,data_base64) VALUES(?,?,?,?,?,?,?,?)')
@@ -131,7 +139,7 @@ R('GET', '/api/expense-requests', async c => {
 
   const r = await c.db.prepare(
     `SELECT er.id,er.reference_no,er.fund_id,f.title fund_title,f.cash_balance,
-            er.amount,er.document_title,er.document_date,er.description,er.status,
+            er.amount,er.category,er.document_title,er.document_date,er.description,er.status,
             er.created_by,er.created_at,er.updated_at,er.finalized_at,u.name creator_name,
             (SELECT COUNT(*) FROM expense_request_files x WHERE x.request_id=er.id) file_count
      FROM expense_requests er JOIN funds f ON f.id=er.fund_id
@@ -186,18 +194,19 @@ R('PATCH', '/api/expense-requests/:id', { perm: 'expenses.create' }, async c => 
   if (!['revision_finance', 'revision_chair'].includes(row.status)) throw err(409, 'NOT_EDITABLE', 'این درخواست در وضعیت قابل اصلاح نیست');
 
   const fund = fundOf(x.fund ?? row.fund_id), amount = int(x.amount ?? row.amount, { field: 'مبلغ درخواست' });
+  const category = expenseCategory(fund, x.category ?? row.category ?? 'سایر هزینه‌ها');
   const title = str(x.documentTitle ?? row.document_title, { max: 120, field: 'عنوان سند' });
   const documentDate = jdate(x.documentDate ?? row.document_date, '-');
   const description = str(x.description ?? row.description, { max: 2000, multiline: true, field: 'شرح درخواست' });
   const versionNo = await c.db.prepare('SELECT COALESCE(MAX(version_no),0)+1 version_no FROM expense_request_versions WHERE request_id=?').bind(row.id).first();
   const files = storeFiles(row.id, versionNo.version_no, Array.isArray(x.files) ? x.files : []);
-  const snapshot = { fund, amount, documentTitle: title, documentDate, description };
+  const snapshot = { fund, category, amount, documentTitle: title, documentDate, description };
   const reason = optStr(x.reason, { max: 500, multiline: true, field: 'توضیح اصلاح' });
   try {
     const statements = [
-      c.db.prepare(`UPDATE expense_requests SET fund_id=?,amount=?,document_title=?,document_date=?,description=?,
+      c.db.prepare(`UPDATE expense_requests SET fund_id=?,category=?,amount=?,document_title=?,document_date=?,description=?,
                     status='pending_finance',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('revision_finance','revision_chair')`)
-        .bind(fund, amount, title, documentDate, description, row.id),
+        .bind(fund, category, amount, title, documentDate, description, row.id),
       c.db.prepare('INSERT INTO expense_request_versions(id,request_id,version_no,snapshot,changed_by,reason) SELECT ?,?,?,?,?,? WHERE changes()=1')
         .bind(crypto.randomUUID(), row.id, versionNo.version_no, JSON.stringify(snapshot), c.user.id, reason)
     ];
@@ -283,7 +292,9 @@ R('POST', '/api/expense-requests/:id/chair-decision', { perm: 'expenses.finalize
                      AND EXISTS(SELECT 1 FROM expense_requests WHERE id=? AND status='pending_chair')`)
       .bind(row.amount, row.fund_id, row.amount, row.id),
     c.db.prepare(`INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,category,note,created_by,approved_by,approved_at)
-                  SELECT ?,NULL,er.created_by,er.fund_id,'expense',?,er.document_title,?,'approved',?,'درخواست پرداخت',?,er.created_by,?,CURRENT_TIMESTAMP
+                  SELECT ?,NULL,er.created_by,er.fund_id,'expense',?,er.document_title,?,'approved',?,
+                         CASE WHEN er.fund_id='owner' THEN er.document_title ELSE COALESCE(NULLIF(er.category,''),'سایر هزینه‌ها') END,
+                         ?,er.created_by,?,CURRENT_TIMESTAMP
                   FROM expense_requests er WHERE er.id=? AND er.status='pending_chair' AND changes()=1`)
       .bind(crypto.randomUUID(), row.amount, period, row.reference_no, row.description, c.user.id, row.id),
     c.db.prepare("UPDATE expense_requests SET status='finalized',finalized_by=?,finalized_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_chair' AND changes()=1")
