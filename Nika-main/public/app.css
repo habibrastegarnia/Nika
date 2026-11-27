@@ -716,3 +716,18 @@ html[data-theme="light"] .page-view.active .page-close{
     max-width:100%;
   }
 }
+
+
+/* Monthly finance slide: three payment states and accessible unpaid-unit shortcut */
+.financial .fin-label{font-size:11px}
+.financial .fin-percent{font-size:20px}
+.financial .fin-detail{font-size:9px;white-space:normal}
+.summary-button{
+  appearance:none;-webkit-appearance:none;
+  display:block;margin:0;padding:0;
+  border:0;background:transparent;color:inherit;
+  font:inherit;cursor:pointer;
+}
+.summary-button:focus-visible{outline:2px solid rgba(131,184,255,.75);outline-offset:4px;border-radius:8px}
+.summary-button:disabled{opacity:.55;cursor:default}
+html[data-theme="light"] .summary-button{background:transparent;color:inherit}
