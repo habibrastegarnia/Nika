@@ -1,5 +1,5 @@
 // راه‌اندازی برنامه: ورود، تغییر رمز اجباری، ناوبری اصلی، اسلایدر خانه
-import { api, setHooks } from './api.js';
+import { api, setHooks } from './api.js?v=2';
 import { S, can, canAny, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { iconMarkup, applyIcons } from './icons.js?v=3';
