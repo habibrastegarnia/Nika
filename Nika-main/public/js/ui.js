@@ -138,13 +138,13 @@ export function initRouter() {
   window.addEventListener('popstate', () => {
     if (hist.length > 1) { hist.pop(); run(hist[hist.length - 1]); } else showHome();
   });
-  document.addEventListener('click', e => {
+  document.addEventListener('pointerdown', e => {
     const view = $('#pageView');
     if (!view?.classList.contains('active')) return;
     const r = view.getBoundingClientRect();
     const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-    if (!inside) back();
-  });
+    if (!inside) { e.preventDefault(); e.stopPropagation(); back(); }
+  }, true);
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && $('#pageView')?.classList.contains('active')) back();
   });
