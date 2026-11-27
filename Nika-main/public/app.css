@@ -577,3 +577,29 @@ html[data-theme="light"] .header .header-logout{background:transparent!important
 @media(prefers-reduced-motion:reduce){.page-calendar .event-dot.pulse{animation:none}}
 html[data-theme="light"] .page-calendar span.day-cell.event{background:#edf1f7;color:#53627a;box-shadow:none}
 html[data-theme="light"] .page-calendar span.day-cell.today .day-number{border-color:#16865a;color:#176b4b}
+
+/* Frameless navigation and dashboard shortcuts */
+.categories .category .cat-icon{
+  width:48px!important;height:42px!important;
+  border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+  transition:transform .18s ease,color .18s ease;
+}
+.categories .category .cat-icon svg{
+  width:27px!important;height:27px!important;
+  stroke:currentColor!important;stroke-width:1.75!important;
+  color:#9aaeea!important;
+}
+.categories .category{color:#e5eaf5!important;gap:5px!important}
+.categories .category:active .cat-icon{transform:scale(.91)!important}
+.categories .category:focus-visible{outline:2px solid rgba(145,165,241,.55);outline-offset:4px;border-radius:8px}
+.bottom-nav .nav-item{
+  border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+  color:#aeb8ca!important;transition:color .18s ease;
+}
+.bottom-nav .nav-item.active{
+  background:transparent!important;color:#f3f6ff!important;
+}
+.bottom-nav .nav-item.active svg{stroke:#91a5f1!important}
+.bottom-nav .nav-item:focus-visible{outline:2px solid rgba(145,165,241,.55);outline-offset:-3px;border-radius:9px}
