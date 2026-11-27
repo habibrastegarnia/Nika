@@ -95,16 +95,19 @@ let hist = [];
 const homeParts = () => $$('.phone > header, .phone > .carousel, .phone > .slide-controls, .phone > .categories, .phone > .notice-head, .phone > .notice');
 export function setNav(name) { $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name)); }
 export function showHome() {
-  hist = []; $('#pageView').classList.remove('active'); $('#pageView').innerHTML = '';
-  homeParts().forEach(x => x.style.display = ''); setNav('خانه'); window.scrollTo(0, 0);
+  hist = [];
+  const view = $('#pageView');
+  view.classList.remove('active', 'nika-dashboard-hidden');
+  view.innerHTML = '';
+  homeParts().forEach(x => { x.style.display = ''; x.classList.remove('nika-dashboard-hidden'); });
+  setNav('خانه'); window.scrollTo(0, 0);
 }
 // نمایش یک صفحه داخلی. content باید خروجی html`` باشد
 export function route(nav, title, sub, content) {
-  homeParts().forEach(x => x.style.display = 'none');
   const v = $('#pageView');
   v.innerHTML = String(html`<div class="page-top"><button class="page-back" id="pgBack" aria-label="بازگشت">${BACK}</button><div class="page-heading"><h2>${title}</h2>${sub ? html`<p>${sub}</p>` : ''}</div></div>${content}`);
   v.classList.add('active'); setNav(nav); window.scrollTo(0, 0);
-  $('#pgBack').onclick = () => { if (hist.length > 1) history.back(); else showHome(); };
+  $('#pgBack').onclick = back;
   return v;
 }
 async function run(fn) {
@@ -113,10 +116,22 @@ async function run(fn) {
 }
 // باز کردن یک صفحه (روی پشته‌ی تاریخچه)
 export function open(fn, { replace = false, root = false } = {}) {
-  if (root) hist = [];
-  if (replace && hist.length) { hist[hist.length - 1] = fn; history.replaceState({ nika: hist.length }, ''); }
-  else { hist.push(fn); history.pushState({ nika: hist.length }, ''); }
+  if (root) {
+    if (hist.length) history.replaceState({ nika: 1 }, '');
+    else history.pushState({ nika: 1 }, '');
+    hist = [fn];
+  } else if (replace && hist.length) {
+    hist[hist.length - 1] = fn;
+    history.replaceState({ nika: hist.length }, '');
+  } else {
+    hist.push(fn);
+    history.pushState({ nika: hist.length }, '');
+  }
   return run(fn);
+}
+export function back() {
+  if (hist.length) history.back();
+  else showHome();
 }
 export function initRouter() {
   window.addEventListener('popstate', () => {
