@@ -3,9 +3,9 @@ import { api, setHooks } from './api.js';
 import { S, can, canAny, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { iconMarkup, applyIcons } from './icons.js?v=3';
-import { toast, initModal, initRouter, open, showHome, resetRouter, setNav } from './ui.js';
+import { toast, initModal, initRouter, open, back, showHome, resetRouter, setNav } from './ui.js?v=2';
 import * as P from './pages.js?v=15';
-import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=22';
+import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=23';
 
 let managerMode = false;
 const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList.toggle('nika-hide', s !== id); $('.phone').classList.toggle('nika-hide', id !== '#app'); $('#nikaAdmin').classList.add('nika-hide'); };
@@ -78,7 +78,7 @@ function setupNav() {
     const b = document.createElement('button');
     b.className = 'category nika-manager-shortcut nika-hide'; b.dataset.adminTab = key;
     b.innerHTML = '<span class="cat-icon">' + iconMarkup(iconName) + '</span><span>' + label + '</span>';
-    b.onclick = () => showAdmin(key);
+    b.onclick = () => open(() => showAdmin(key), { root: true });
     shortcutHost.appendChild(b);
   }
   const shortcutByKey = new Map();
@@ -99,7 +99,7 @@ function setupNav() {
 function initNav() {
   $$('.nav-item').forEach(b => { if (b.id === 'admNavBtn') return; b.onclick = () => {
     const n = b.dataset.nav;
-    if (n === 'مالی' && managerMode) { showAdmin('finance'); return; }
+    if (n === 'مالی' && managerMode) { open(() => showAdmin('finance'), { root: true }); return; }
     if (managerMode) hideAdmin();
     if (n === 'خانه') { showHome(); P.loadHome(); }
     else if (n === 'حساب من') open(P.profilePage, { root: true });
@@ -118,7 +118,7 @@ function initNav() {
   $('#expMonth').onchange = e => P.loadDashboard('exp', e.target.value).catch(x => toast(x.message));
   $('#finMonth').onchange = e => P.loadDashboard('fin', e.target.value).catch(x => toast(x.message));
   document.addEventListener('nika:logout', logout);
-  document.addEventListener('nika:admin', e => showAdmin(e.detail));
+  document.addEventListener('nika:admin', e => open(() => showAdmin(e.detail), { root: true }));
 
 }
 function initCarousel() {
