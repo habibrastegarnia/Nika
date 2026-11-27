@@ -12,8 +12,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/nika-logo.webp?v=3">
 <link rel="apple-touch-icon" sizes="192x192" href="/assets/nika-logo.webp?v=3">
-<link rel="stylesheet" href="/app.css?v=23">
-<script type="module" src="/js/main.js?v=31"></script>
+<link rel="stylesheet" href="/app.css?v=24">
+<script type="module" src="/js/main.js?v=32"></script>
 </head>
 <body>
 <section id="nikaGate"><div class="nika-shell"><div class="nika-brand"><img class="nika-logo" src="/assets/nika-logo.webp?v=3" alt="نیکا"><div><h1>نیکا</h1><p>سامانه مدیریت مجتمع مسکونی</p></div></div>
@@ -48,11 +48,12 @@
    </article>
    <article class="slide financial" aria-label="وضعیت مالی">
     <header class="slide-head"><div><div class="slide-title" id="finTitle">وضعیت مالی</div><div class="total">شارژ قابل وصول<strong id="chargeTotal">—</strong></div></div><select class="month" aria-label="انتخاب ماه وضعیت مالی" id="finMonth"></select></header>
-    <div class="slide-body"><div class="donut-wrap"><svg class="donut" viewBox="0 0 160 160" aria-label="نمودار وصول شارژ"><circle cx="80" cy="80" r="56" fill="none" stroke="#aeb9ed" stroke-width="24"/><circle id="paidArc" cx="80" cy="80" r="56" fill="none" stroke="#7886d8" stroke-width="24" stroke-dasharray="0 352" transform="rotate(-90 80 80)"/></svg></div><div class="legend">
-     <div><div class="fin-label"><span class="legend-dot" style="display:inline-block;background:#7886d8;vertical-align:middle;margin-left:6px"></span>وصول‌شده</div><div class="fin-percent" id="paidPct">—</div><div class="fin-detail" id="paidDetail"> </div></div>
-     <div><div class="fin-label"><span class="legend-dot" style="display:inline-block;background:#aeb9ed;vertical-align:middle;margin-left:6px"></span>وصول‌نشده</div><div class="fin-percent" id="unpaidPct">—</div><div class="fin-detail" id="unpaidDetail"> </div></div>
-    </div><div class="summary"><div class="summary-icon"><span data-icon="building-2"></span></div><div class="summary-label">مجموع واحدها</div><div class="summary-value" id="unitCount">—</div></div></div>
-    <div class="tap-note">درصدها بر اساس مبلغ شارژ؛ تعداد واحدها جداگانه محاسبه می‌شود</div>
+    <div class="slide-body"><div class="donut-wrap"><svg class="donut" viewBox="0 0 160 160" aria-label="نمودار وضعیت پرداخت شارژ"><circle cx="80" cy="80" r="56" fill="none" stroke="#dce7e1" stroke-width="24"/><circle id="pendingArc" cx="80" cy="80" r="56" fill="none" stroke="#83b99a" stroke-width="24" stroke-dasharray="0 352" stroke-dashoffset="0" transform="rotate(-90 80 80)"/><circle id="paidArc" cx="80" cy="80" r="56" fill="none" stroke="#16845b" stroke-width="24" stroke-dasharray="0 352" transform="rotate(-90 80 80)"/></svg></div><div class="legend">
+     <div><div class="fin-label"><span class="legend-dot" style="display:inline-block;background:#16845b;vertical-align:middle;margin-left:6px"></span>وصول‌شده</div><div class="fin-percent" id="paidPct">—</div><div class="fin-detail" id="paidDetail"> </div></div>
+     <div id="pendingLegend"><div class="fin-label"><span class="legend-dot" style="display:inline-block;background:#83b99a;vertical-align:middle;margin-left:6px"></span>در انتظار تأیید</div><div class="fin-percent" id="pendingPct">—</div><div class="fin-detail" id="pendingDetail"> </div></div>
+     <div><div class="fin-label"><span class="legend-dot" style="display:inline-block;background:#dce7e1;vertical-align:middle;margin-left:6px"></span><span id="unpaidLabel">پرداخت ثبت‌نشده</span></div><div class="fin-percent" id="unpaidPct">—</div><div class="fin-detail" id="unpaidDetail"> </div></div>
+    </div><button class="summary summary-button" id="unpaidUnitsButton" type="button" aria-haspopup="dialog" aria-label="مشاهده واحدهای بدون پرداخت شارژ ماهیانه"><span class="summary-icon"><span data-icon="building-2"></span></span><span class="summary-label">واحدهای بدون پرداخت</span><span class="summary-value" id="unpaidUnitCount">—</span></button></div>
+    <div class="tap-note" id="finNote">مبنای محاسبه: مبلغ مصوب شارژ برای ۳۲ واحد</div>
    </article>
    <article class="slide board" aria-label="تابلوی ساختمان">
     <header class="slide-head"><div class="slide-title">تابلوی ساختمان</div><button class="board-all" id="boardAll">مشاهده همه ←</button></header>
