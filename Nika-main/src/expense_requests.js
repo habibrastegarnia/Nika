@@ -46,7 +46,7 @@ function actorMeta(user, ownerRole, reason) {
 // جداسازی وظایف (ثبت ← بررسی مالی ← تأیید نهایی) باید برای «شخص» برقرار باشد، نه فقط برای حساب ثبت‌کننده:
 // جانشین مدیر اجرایی که خودش مدیر مالی است می‌توانست درخواست را اصلاح و دوباره ارسال کند و سپس همان را تأیید کند.
 async function assertNoPriorRole(c, requestId, stages) {
-  if (c.env.ALLOW_SELF_APPROVAL === 'true') return;
+  if (c.user.roles.includes('chair') || c.env.ALLOW_SELF_APPROVAL === 'true') return;
   const marks = stages.map(() => '?').join(',');
   const prior = await c.db.prepare(`SELECT 1 x FROM expense_request_history WHERE request_id=? AND actor_id=? AND stage IN (${marks}) LIMIT 1`).bind(requestId, c.user.id, ...stages).first();
   if (prior) throw err(403, 'SELF_APPROVAL', 'شما پیش‌تر در یکی از مراحل قبلی همین درخواست (ثبت، اصلاح یا بررسی مالی) نقش داشته‌اید و نمی‌توانید مرحله‌ی بعد را تأیید کنید');
@@ -248,7 +248,7 @@ R('POST', '/api/expense-requests/:id/finance-decision', { perm: 'expenses.approv
   const row = await c.db.prepare('SELECT id,created_by,status,reference_no FROM expense_requests WHERE id=?').bind(c.params.id).first();
   if (!row) throw err(404, 'NOT_FOUND', 'درخواست پیدا نشد');
   if (row.status !== 'pending_finance') throw err(409, 'NOT_PENDING', 'این درخواست در انتظار بررسی مدیر مالی نیست');
-  if (row.created_by === c.user.id && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند درخواست خودش را بررسی کند');
+  if (row.created_by === c.user.id && !c.user.roles.includes('chair') && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند درخواست خودش را بررسی کند');
   await assertNoPriorRole(c, row.id, ['executive']);
   const reason = x.status === 'revision' ? str(x.reason, { max: 500, multiline: true, field: 'دلیل نیاز به اصلاح' }) : optStr(x.reason, { max: 500, multiline: true });
   const next = x.status === 'approved' ? 'pending_chair' : 'revision_finance';
@@ -269,7 +269,7 @@ R('POST', '/api/expense-requests/:id/chair-decision', { perm: 'expenses.finalize
   const row = await c.db.prepare('SELECT * FROM expense_requests WHERE id=?').bind(c.params.id).first();
   if (!row) throw err(404, 'NOT_FOUND', 'درخواست پیدا نشد');
   if (row.status !== 'pending_chair') throw err(409, 'NOT_PENDING', 'این درخواست در انتظار تأیید نهایی نیست');
-  if (row.created_by === c.user.id && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند درخواست خودش را تأیید نهایی کند');
+  if (row.created_by === c.user.id && !c.user.roles.includes('chair') && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند درخواست خودش را تأیید نهایی کند');
   await assertNoPriorRole(c, row.id, ['executive', 'finance']);
 
   if (x.status === 'revision') {
