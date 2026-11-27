@@ -26,19 +26,23 @@ export function fillHeader() {
   $('#hdrAvatar').innerHTML = avatarMarkup(u);
 }
 
-function renderExpenses(d) {
-  $('#expenseTotal').textContent = toman(d.expenseTotal);
-  $('#expTitle').textContent = 'توزیع هزینه‌ها' + (dashFunds().length > 1 ? ` · ${d.fund === 'owner' ? 'مالکانه' : 'شارژ'}` : '');
-  const g = $('#expenseDonut'), lg = $('#expenseLegend'); g.innerHTML = ''; lg.innerHTML = '';
-  if (!d.expenses.length) { lg.innerHTML = '<div class="legend-row"><span class="legend-name">هزینه‌ی تأییدشده‌ای ثبت نشده است</span></div>'; return; }
-  let off = 0;
-  d.expenses.forEach((e, i) => {
-    const len = CIRC * e.total / d.expenseTotal, col = COLORS[i % COLORS.length];
-    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    for (const [k, v] of Object.entries({ cx: 80, cy: 80, r: 56, fill: 'none', stroke: col, 'stroke-width': 24, 'stroke-dasharray': `${Math.max(len - 1.5, 0.5)} ${CIRC}`, 'stroke-dashoffset': -off })) c.setAttribute(k, v);
-    g.appendChild(c); off += len;
+function renderExpenseChart(data, donutId, legendId, totalId) {
+  const total = Number(data?.total || 0), expenses = Array.isArray(data?.expenses) ? data.expenses : [];
+  const donut = $(donutId), legend = $(legendId), totalNode = $(totalId);
+  if (!donut || !legend || !totalNode) return;
+  donut.innerHTML = ''; legend.innerHTML = ''; totalNode.textContent = toman(total);
+  if (!expenses.length || !total) { legend.innerHTML = '<div class="legend-row"><span class="legend-name">هزینه قطعی ثبت نشده است</span></div>'; return; }
+  let offset = 0;
+  expenses.forEach((expense, index) => {
+    const amount = Number(expense.total || 0), percent = amount / total * 100, length = CIRC * percent / 100;
+    const arc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    for (const [key,value] of Object.entries({cx:80,cy:80,r:56,fill:'none',stroke:COLORS[index%COLORS.length],'stroke-width':24,'stroke-dasharray':`${Math.max(length-1.5,.5)} ${CIRC}`,'stroke-dashoffset':-offset})) arc.setAttribute(key,value);
+    donut.appendChild(arc); offset += length;
   });
-  lg.innerHTML = join(d.expenses.map((e, i) => html`<div class="legend-row"><span class="legend-dot" style="background:${COLORS[i % COLORS.length]}"></span><span class="legend-name">${e.category}</span><span class="legend-value">${fa(e.total)} تومان</span></div>`));
+  legend.innerHTML = join(expenses.map((expense,index) => {
+    const percent = Math.round(Number(expense.total || 0) / total * 100);
+    return html`<div class="legend-row"><span class="legend-dot" style="background:${COLORS[index%COLORS.length]}"></span><span class="legend-name">${expense.category}</span><span class="legend-value">${fa(percent)}٪ · ${fa(expense.total)} تومان</span></div>`;
+  }));
 }
 function renderUnpaidUnitSummary(status) {
   const button = $('#unpaidUnitsButton'), count = $('#unpaidUnitCount');
@@ -88,26 +92,19 @@ function fillMonths(d) {
   }
 }
 export async function loadDashboard(which, period) {
-  const statusPeriod = S.fund === 'monthly'
-    ? (which === 'exp' ? ($('#finMonth').value || curPeriod()) : (period || $('#finMonth').value || curPeriod()))
-    : curPeriod();
-  let monthlyStatus = null;
-  try { monthlyStatus = await api(`/finance/monthly-status?period=${encodeURIComponent(statusPeriod)}`); } catch {}
-  renderUnpaidUnitSummary(monthlyStatus);
-
-  if (!canDash()) {
-    $('#expenseLegend').innerHTML = '<div class="legend-row"><span class="legend-name">اطلاعات مالی برای نقش شما نمایش داده نمی‌شود</span></div>';
-    $('#paidDetail').textContent = 'بدون دسترسی'; $('#expMonth').innerHTML = $('#finMonth').innerHTML = ''; return;
-  }
-  const funds = dashFunds(); if (!funds.includes(S.fund)) S.fund = funds[0];
-  const dashboardPeriod = period || (which === 'exp' ? $('#expMonth').value : $('#finMonth').value) || (S.fund === 'monthly' ? curPeriod() : null);
-  const d = await api(`/dashboard?fund=${S.fund}${dashboardPeriod ? '&period=' + dashboardPeriod : ''}`);
-  const chargeData = S.fund === 'monthly' && monthlyStatus
-    ? { ...d, period: monthlyStatus.period, charges: monthlyStatus.charges }
-    : d;
-  if (!which) { fillMonths({ ...d, period: dashboardPeriod || d.period }); renderExpenses(d); renderCharges(chargeData, monthlyStatus); }
-  else if (which === 'exp') { renderExpenses(d); $('#expMonth').value = d.period; }
-  else { renderCharges(chargeData, monthlyStatus); $('#finMonth').value = chargeData.period || d.period; }
+  const requestedPeriod = period || $('#finMonth')?.value || curPeriod();
+  const [monthlyStatus, distribution] = await Promise.all([
+    api(`/finance/monthly-status?period=${encodeURIComponent(requestedPeriod)}`),
+    api('/finance/expense-distribution')
+  ]);
+  renderCharges({fund:'monthly',charges:monthlyStatus.charges}, monthlyStatus);
+  const periods = [...new Set([...(distribution.monthlyPeriods || []),monthlyStatus.period])].filter(Boolean);
+  const monthSelect = $('#finMonth');
+  if (monthSelect) { monthSelect.innerHTML = join(periods.map(value => html`<option value="${value}">${periodLabel(value)}</option>`)); monthSelect.value = monthlyStatus.period; }
+  renderExpenseChart(distribution.monthly,'#expenseDonut','#expenseLegend','#expenseTotal');
+  renderExpenseChart(distribution.owner,'#ownerExpenseDonut','#ownerExpenseLegend','#ownerExpenseTotal');
+  $('#expTitle').textContent = 'توزیع هزینه‌های صندوق جاری';
+  $('#ownerExpTitle').textContent = 'توزیع هزینه‌های صندوق مالکانه';
 }
 export async function loadLatestNotice() {
   const { notices } = await api('/notices?limit=3'), n = notices[0];
