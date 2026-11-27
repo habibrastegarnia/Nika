@@ -1,5 +1,5 @@
 // پنل مدیریت: کاربران، واحدها، مالی، درخواست‌ها، پیام‌ها، اطلاعیه‌ها، محتوا و ممیزی
-import { api } from './api.js';
+import { api } from './api.js?v=2';
 import { S, can, canAny } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, JM, monthStart, monthLen, jToday, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js';
