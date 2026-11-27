@@ -293,7 +293,7 @@ R('POST', '/api/expense-requests/:id/chair-decision', { perm: 'expenses.finalize
       .bind(row.amount, row.fund_id, row.amount, row.id),
     c.db.prepare(`INSERT INTO transactions(id,unit_id,user_id,fund_id,kind,amount,title,period,status,reference,category,note,created_by,approved_by,approved_at)
                   SELECT ?,NULL,er.created_by,er.fund_id,'expense',?,er.document_title,?,'approved',?,
-                         CASE WHEN er.fund_id='owner' THEN er.document_title ELSE COALESCE(NULLIF(er.category,''),'سایر هزینه‌ها') END,
+                         CASE WHEN er.fund_id='owner' THEN er.document_title ELSE COALESCE(NULLIF(er.category,''),'دسته‌بندی قدیمی/ثبت‌نشده') END,
                          ?,er.created_by,?,CURRENT_TIMESTAMP
                   FROM expense_requests er WHERE er.id=? AND er.status='pending_chair' AND changes()=1`)
       .bind(crypto.randomUUID(), row.amount, period, row.reference_no, row.description, c.user.id, row.id),
