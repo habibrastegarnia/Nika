@@ -38,7 +38,7 @@ R('GET', '/api/transactions', async c => {
   if (all && !privileged(u) && !(q.get('unit') && can(u, 'units.read'))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
   if (!all && !(canReadFund(u, fund) || can(u, 'expenses.create'))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
   const where = ['t.fund_id=?'], vals = [fund];
-  if (!all) { where.push('(t.unit_id=? OR t.created_by=?)'); vals.push(u.unit_id ?? null, u.id); }
+  if (!all) { where.push('t.unit_id=?'); vals.push(u.unit_id ?? null); }
   const unitNumber = q.get('unit');
   if (unitNumber) {
     if (!all || !(privileged(u) || can(u, 'units.read'))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
@@ -111,7 +111,7 @@ R('POST', '/api/transactions/:id/decision', async c => {
   if (!can(c.user, t.kind === 'payment' ? 'finance.approve' : 'expenses.approve')) throw err(403, 'FORBIDDEN', 'اجازه‌ی تأیید این مورد را ندارید');
   // مجوز finance.approve قبلاً بررسی شده است؛ تأییدکننده مجاز نیازی به دلیل خارج از مسئولیت ندارد.
   const overrideReason = null;
-  if (t.created_by === c.user.id && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند مورد ثبت‌شده‌ی خودش را تأیید یا رد کند');
+  if (t.created_by === c.user.id && !c.user.roles.includes('chair') && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند مورد ثبت‌شده‌ی خودش را تأیید یا رد کند');
   if (!['approved', 'rejected'].includes(x.status)) throw err(400, 'INVALID_STATUS', 'وضعیت نامعتبر است');
   const note = x.status === 'rejected' ? str(x.note, { max: 300, field: 'دلیل رد', multiline: true }) : optStr(x.note, { max: 300, field: 'توضیحات', multiline: true });
   const statements = [
@@ -123,7 +123,7 @@ R('POST', '/api/transactions/:id/decision', async c => {
   );
   const results = await c.db.batch(statements);
   if (!results[0]?.meta?.changes) throw err(409, 'NOT_PENDING', 'این مورد در انتظار تأیید نیست');
-  const actorRole = c.user.roles.includes('finance') ? 'finance' : (c.user.delegatedRoles?.includes('finance') ? 'جانشین finance' : (c.user.roles[0] || 'manager'));
+  const actorRole = c.user.activeRole === 'chair' ? 'chair' : (c.user.activeRole || (c.user.delegatedRoles?.includes('finance') ? 'جانشین finance' : (c.user.roles[0] || 'manager')));
   await audit(c.db, c.user.id, 'transaction.decision', 'transaction', t.id, { status: x.status }, overrideReason ? { actorRole, isDelegate: true, reason: overrideReason } : {});
   return reply({ ok: true });
 });
