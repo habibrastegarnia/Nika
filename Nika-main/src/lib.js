@@ -155,8 +155,6 @@ export async function audit(db, actor, action, type, entity, details = {}, meta 
 export const FUNDS = ['owner', 'monthly'];
 export const FUND_TITLE = { owner: 'صندوق مالکانه', monthly: 'صندوق شارژ ماهیانه' };
 
-// رمز اولیه‌ی حساب‌های مالک/ساکن: 'random' (پیش‌فرض، امن) یا 'phone' (رمز اولیه = شماره موبایل؛ قبل از فعال‌سازی قابل حدس است)
-export const initialPasswordMode = env => env.INITIAL_PASSWORD_MODE === 'phone' ? 'phone' : 'random';
 export async function verifyUserPassword(db, userId, password) {
   const row = await db.prepare('SELECT password_hash,password_salt FROM users WHERE id=?').bind(userId).first();
   return !!row && typeof password === 'string' && password.length <= 128 && safeEqual(await hashPassword(password, row.password_salt), row.password_hash);
