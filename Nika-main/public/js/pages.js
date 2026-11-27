@@ -40,32 +40,74 @@ function renderExpenses(d) {
   });
   lg.innerHTML = join(d.expenses.map((e, i) => html`<div class="legend-row"><span class="legend-dot" style="background:${COLORS[i % COLORS.length]}"></span><span class="legend-name">${e.category}</span><span class="legend-value">${fa(e.total)} تومان</span></div>`));
 }
-function renderCharges(d) {
-  const c = d.charges, pct = c.total ? Math.min(100, Math.round(c.paid / c.total * 100)) : 0;
-  $('#chargeTotal').textContent = toman(c.total);
+function renderUnpaidUnitSummary(status) {
+  const button = $('#unpaidUnitsButton'), count = $('#unpaidUnitCount');
+  const c = status?.charges;
+  if (!button || !count) return;
+  count.textContent = c ? fa(c.unpaidUnits) : '—';
+  button.disabled = !c;
+  button.onclick = () => {
+    if (!c) return;
+    const units = Array.isArray(c.unpaidUnitNumbers) ? c.unpaidUnitNumbers : [];
+    const rows = units.length
+      ? html`<div class="page-list">${units.map(unit => html`<div class="page-row"><div class="page-row-icon">${raw(iconMarkup('building-2'))}</div><div class="page-row-main"><strong>واحد ${fa(unit)}</strong><small>برای این دوره پرداختی ثبت نشده است</small></div></div>`)}</div>`
+      : html`<div class="page-card"><div class="page-empty">برای این دوره واحدی بدون پرداخت ثبت‌نشده وجود ندارد.</div></div>`;
+    openModal(`واحدهای بدون پرداخت · ${periodLabel(status.period)}`, html`${rows}<p class="page-kicker">پرداخت‌های ثبت‌شده در انتظار تأیید، در این فهرست نمایش داده نمی‌شوند.</p>`);
+  };
+}
+function renderCharges(d, monthlyStatus) {
+  const c = d.charges || {}, isMonthly = d.fund === 'monthly';
+  const total = Number(c.total || 0), paid = Number(c.paid || 0);
+  const pending = isMonthly ? Number(c.pending || 0) : 0;
+  const paidPct = total ? Math.min(100, Math.round(paid / total * 100)) : 0;
+  const pendingPct = total ? Math.min(100 - paidPct, Math.round(pending / total * 100)) : 0;
+  const unpaidPct = total ? 100 - paidPct - pendingPct : 0;
+  const paidLen = CIRC * paidPct / 100, pendingLen = CIRC * pendingPct / 100;
+  $('#chargeTotal').textContent = toman(total);
   $('#finTitle').textContent = 'وضعیت مالی' + (dashFunds().length > 1 ? ` · ${d.fund === 'owner' ? 'مالکانه' : 'شارژ'}` : '');
-  $('#paidArc').setAttribute('stroke-dasharray', `${CIRC * pct / 100} ${CIRC}`);
-  $('#paidPct').textContent = `${fa(pct)}٪`; $('#unpaidPct').textContent = c.total ? `${fa(100 - pct)}٪` : '—';
-  $('#paidDetail').textContent = `${fa(c.paidUnits)} واحد · ${fa(c.paid)} تومان`;
-  $('#unpaidDetail').textContent = `${fa(c.unpaidUnits)} واحد · ${fa(c.unpaid)} تومان`;
-  $('#unitCount').textContent = `${fa(c.units)} واحد`;
+  $('#paidArc').setAttribute('stroke-dasharray', `${paidLen} ${CIRC}`);
+  $('#pendingArc').setAttribute('stroke-dasharray', `${pendingLen} ${CIRC}`);
+  $('#pendingArc').setAttribute('stroke-dashoffset', String(-paidLen));
+  $('#paidPct').textContent = total ? `${fa(paidPct)}٪` : '—';
+  $('#pendingPct').textContent = total ? `${fa(pendingPct)}٪` : '—';
+  $('#unpaidPct').textContent = total ? `${fa(unpaidPct)}٪` : '—';
+  $('#paidDetail').textContent = `${fa(c.paidUnits || 0)} واحد · ${fa(paid)} تومان`;
+  $('#pendingDetail').textContent = `${fa(c.pendingUnits || 0)} واحد · ${fa(pending)} تومان`;
+  $('#unpaidDetail').textContent = `${fa(c.unpaidUnits || 0)} واحد · ${fa(c.unpaid ?? Math.max(0, total - paid - pending))} تومان`;
+  $('#pendingLegend').style.display = isMonthly ? '' : 'none';
+  $('#unpaidLabel').textContent = isMonthly ? 'پرداخت ثبت‌نشده' : 'وصول‌نشده';
+  $('#finNote').textContent = isMonthly ? 'مبنای محاسبه: مبلغ مصوب شارژ برای ۳۲ واحد' : 'درصدها بر اساس مبلغ شارژ؛ تعداد واحدها جداگانه محاسبه می‌شود';
+  renderUnpaidUnitSummary(monthlyStatus);
 }
 function fillMonths(d) {
-  const list = d.periods.length ? d.periods : [d.period || curPeriod()];
+  const list = [...new Set(d.periods || [])];
+  if (d.period && !list.includes(d.period)) list.unshift(d.period);
+  if (!list.length) list.push(curPeriod());
   for (const id of ['#expMonth', '#finMonth']) {
     const s = $(id); s.innerHTML = join(list.map(p => html`<option value="${p}">${d.fund === 'owner' ? fa(p) : periodLabel(p)}</option>`)); s.value = d.period || list[0];
   }
 }
 export async function loadDashboard(which, period) {
+  const statusPeriod = S.fund === 'monthly'
+    ? (which === 'exp' ? ($('#finMonth').value || curPeriod()) : (period || $('#finMonth').value || curPeriod()))
+    : curPeriod();
+  let monthlyStatus = null;
+  try { monthlyStatus = await api(`/finance/monthly-status?period=${encodeURIComponent(statusPeriod)}`); } catch {}
+  renderUnpaidUnitSummary(monthlyStatus);
+
   if (!canDash()) {
     $('#expenseLegend').innerHTML = '<div class="legend-row"><span class="legend-name">اطلاعات مالی برای نقش شما نمایش داده نمی‌شود</span></div>';
     $('#paidDetail').textContent = 'بدون دسترسی'; $('#expMonth').innerHTML = $('#finMonth').innerHTML = ''; return;
   }
   const funds = dashFunds(); if (!funds.includes(S.fund)) S.fund = funds[0];
-  const d = await api(`/dashboard?fund=${S.fund}${period ? '&period=' + period : ''}`);
-  if (!which) { fillMonths(d); renderExpenses(d); renderCharges(d); }
+  const dashboardPeriod = period || (which === 'exp' ? $('#expMonth').value : $('#finMonth').value) || (S.fund === 'monthly' ? curPeriod() : null);
+  const d = await api(`/dashboard?fund=${S.fund}${dashboardPeriod ? '&period=' + dashboardPeriod : ''}`);
+  const chargeData = S.fund === 'monthly' && monthlyStatus
+    ? { ...d, period: monthlyStatus.period, charges: monthlyStatus.charges }
+    : d;
+  if (!which) { fillMonths({ ...d, period: dashboardPeriod || d.period }); renderExpenses(d); renderCharges(chargeData, monthlyStatus); }
   else if (which === 'exp') { renderExpenses(d); $('#expMonth').value = d.period; }
-  else { renderCharges(d); $('#finMonth').value = d.period; }
+  else { renderCharges(chargeData, monthlyStatus); $('#finMonth').value = chargeData.period || d.period; }
 }
 export async function loadLatestNotice() {
   const { notices } = await api('/notices?limit=3'), n = notices[0];
