@@ -28,13 +28,13 @@ R('POST', '/api/notices', { perm: 'notices.manage' }, async c => {
   if (!AUDIENCES.includes(audience) || !NOTICE_KINDS.includes(kind)) throw err(400, 'INVALID_INPUT', 'مخاطب یا نوع اطلاعیه نامعتبر است');
   await c.db.prepare('INSERT INTO notices(id,title,body,audience,kind,created_by) VALUES(?,?,?,?,?,?)')
     .bind(id, str(x.title, { max: 120, field: 'عنوان' }), str(x.body, { max: 2000, multiline: true, field: 'متن' }), audience, kind, c.user.id).run();
-  await audit(c.db, c.user.id, 'notice.create', 'notice', id);
+  await audit(c.db, c.user.id, 'notice.create', 'notice', id, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, id }, 201);
 });
 R('DELETE', '/api/notices/:id', { perm: 'notices.manage' }, async c => {
   const r = await c.db.prepare('DELETE FROM notices WHERE id=?').bind(c.params.id).run();
   if (!r.meta.changes) throw err(404, 'NOT_FOUND', 'اطلاعیه پیدا نشد');
-  await audit(c.db, c.user.id, 'notice.delete', 'notice', c.params.id);
+  await audit(c.db, c.user.id, 'notice.delete', 'notice', c.params.id, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true });
 });
 
@@ -62,7 +62,7 @@ R('POST', '/api/requests', { perm: 'requests.create' }, async c => {
   if (!REQ_KINDS.includes(kind) || !REQ_CATEGORIES.includes(category)) throw err(400, 'INVALID_INPUT', 'نوع یا دسته‌بندی نامعتبر است');
   await c.db.prepare('INSERT INTO requests(id,user_id,title,body,category,kind,board_requested) VALUES(?,?,?,?,?,?,?)')
     .bind(id, c.user.id, str(x.title, { max: 120, field: 'موضوع' }), str(x.body, { max: 2000, multiline: true, field: 'شرح' }), category, kind, x.boardRequested === true ? 1 : 0).run();
-  await audit(c.db, c.user.id, 'request.create', 'request', id, { kind, category });
+  await audit(c.db, c.user.id, 'request.create', 'request', id, { kind, category }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, id }, 201);
 });
 R('PATCH', '/api/requests/:id', { perm: 'requests.manage' }, async c => {
@@ -77,7 +77,7 @@ R('PATCH', '/api/requests/:id', { perm: 'requests.manage' }, async c => {
     stmts.push(c.db.prepare('INSERT INTO messages(id,sender_id,recipient_id,title,body) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(), c.user.id, r.user_id, `پاسخ به درخواست: ${r.title}`.slice(0, 120), response));
   }
   await c.db.batch(stmts);
-  await audit(c.db, c.user.id, 'request.update', 'request', r.id, { status });
+  await audit(c.db, c.user.id, 'request.update', 'request', r.id, { status }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true });
 });
 R('POST', '/api/requests/:id/publish', { perm: 'notices.manage' }, async c => {
@@ -89,7 +89,7 @@ R('POST', '/api/requests/:id/publish', { perm: 'notices.manage' }, async c => {
     c.db.prepare("INSERT INTO notices(id,title,body,audience,kind,created_by) VALUES(?,?,?,'all','عمومی',?)").bind(nid, r.title, r.body, c.user.id),
     c.db.prepare('UPDATE requests SET board_requested=2 WHERE id=?').bind(r.id)
   ]);
-  await audit(c.db, c.user.id, 'request.publish', 'request', r.id, { notice: nid });
+  await audit(c.db, c.user.id, 'request.publish', 'request', r.id, { notice: nid }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, id: nid }, 201);
 });
 
@@ -155,14 +155,14 @@ R('PATCH','/api/events/:id/occurrences/:date',{perm:'events.manage'},async c=>{
   const id=old?.id||crypto.randomUUID();
   await c.db.prepare('INSERT INTO event_occurrences(id,event_id,occurrence_date,event_date,event_time,title,body,cancelled,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,0,?,CURRENT_TIMESTAMP) ON CONFLICT(event_id,occurrence_date) DO UPDATE SET event_date=excluded.event_date,event_time=excluded.event_time,title=excluded.title,body=excluded.body,cancelled=0,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP')
    .bind(id,e.id,original,actual,x.event_time==null?null:shortTime(x.event_time),x.title==null?null:optStr(x.title,{max:120,field:'عنوان'}),x.body==null?null:optStr(x.body,{max:1000,multiline:true,field:'توضیحات'}),c.user.id).run();
-  await audit(c.db,c.user.id,'event.occurrence.update','event',e.id,{occurrence:original,eventDate:actual});return reply({ok:true});
+  await audit(c.db, c.user.id, 'event.occurrence.update', 'event', e.id, {occurrence:original,eventDate:actual}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });return reply({ok:true});
 });
 R('DELETE','/api/events/:id/occurrences/:date',{perm:'events.manage'},async c=>{
   const e=await c.db.prepare('SELECT id FROM events WHERE id=?').bind(c.params.id).first();if(!e)throw err(404,'NOT_FOUND','رویداد پیدا نشد');
   const date=jdate(c.params.date,'-');
   await c.db.prepare("INSERT INTO event_occurrences(id,event_id,occurrence_date,event_date,cancelled,updated_by,updated_at) VALUES(?,?,?,?,1,?,CURRENT_TIMESTAMP) ON CONFLICT(event_id,occurrence_date) DO UPDATE SET cancelled=1,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP")
    .bind(crypto.randomUUID(),e.id,date,date,c.user.id).run();
-  await audit(c.db,c.user.id,'event.occurrence.delete','event',e.id,{occurrence:date});return reply({ok:true});
+  await audit(c.db, c.user.id, 'event.occurrence.delete', 'event', e.id, {occurrence:date}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });return reply({ok:true});
 });
 const CONTENT = {
   rules: { perm: 'rules.manage', order: 'sort_order ASC,created_at ASC', parse: x => ({ title: str(x.title, { max: 120, field: 'عنوان' }), body: str(x.body, { max: 2000, multiline: true, field: 'متن' }), sort_order: x.sort_order == null || x.sort_order === '' ? 0 : int(x.sort_order, { min: 0, max: 9999 }) }) },
@@ -181,7 +181,7 @@ for (const [name, def] of Object.entries(CONTENT)) {
   R('POST', `/api/${name}`, { perm: def.perm }, async c => {
     const f = def.parse(await readJson(c.request)), id = crypto.randomUUID(), keys = Object.keys(f);
     await c.db.prepare(`INSERT INTO ${name}(id,${keys.join(',')},created_by) VALUES(?,${keys.map(() => '?').join(',')},?)`).bind(id, ...keys.map(k => f[k]), c.user.id).run();
-    await audit(c.db, c.user.id, `${name}.create`, name, id);
+    await audit(c.db, c.user.id, `${name}.create`, name, id, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
     return reply({ ok: true, id }, 201);
   });
   R('PUT', `/api/${name}/:id`, { perm: def.perm }, async c => {
@@ -190,13 +190,13 @@ for (const [name, def] of Object.entries(CONTENT)) {
     const r = await c.db.prepare(`UPDATE ${name} SET ${keys.map(k => k + '=?').join(',')} WHERE id=?`).bind(...keys.map(k => f[k]), c.params.id).run();
     if (!r.meta.changes) throw err(404, 'NOT_FOUND', 'مورد پیدا نشد');
     if (name === 'events' && previous && (previous.event_date !== f.event_date || previous.recurrence !== f.recurrence || previous.recurrence_until !== f.recurrence_until)) await c.db.prepare('DELETE FROM event_occurrences WHERE event_id=?').bind(c.params.id).run();
-    await audit(c.db, c.user.id, `${name}.update`, name, c.params.id);
+    await audit(c.db, c.user.id, `${name}.update`, name, c.params.id, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
     return reply({ ok: true });
   });
   R('DELETE', `/api/${name}/:id`, { perm: def.perm }, async c => {
     const r = await c.db.prepare(`DELETE FROM ${name} WHERE id=?`).bind(c.params.id).run();
     if (!r.meta.changes) throw err(404, 'NOT_FOUND', 'مورد پیدا نشد');
-    await audit(c.db, c.user.id, `${name}.delete`, name, c.params.id);
+    await audit(c.db, c.user.id, `${name}.delete`, name, c.params.id, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
     return reply({ ok: true });
   });
 }
