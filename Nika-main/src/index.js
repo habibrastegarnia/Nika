@@ -40,6 +40,17 @@ async function handle(request, env, url) {
     if (mutating && request.headers.get('X-Nika-Client') !== '1') throw err(403, 'BAD_ORIGIN', 'درخواست نامعتبر');
     c.user = await authenticate(c);
     if (!c.user) throw err(401, 'UNAUTHENTICATED', 'لطفاً وارد شوید');
+    const workspace = request.headers.get('X-Nika-Workspace') === 'manager' ? 'manager' : 'resident';
+    const managerRoles = ['chair', 'finance', 'executive', 'board', 'caretaker', 'system_admin'];
+    const routeOwner = mutating && route.opts.perm ? PERMISSION_OWNER[route.opts.perm] : null;
+    const owners = Array.isArray(routeOwner) ? routeOwner : (routeOwner ? [routeOwner] : []);
+    c.user.activeRole = workspace === 'manager'
+      ? (c.user.roles.includes('chair') ? 'chair'
+        : owners.find(role => c.user.roles.includes(role))
+        || managerRoles.find(role => c.user.roles.includes(role))
+        || managerRoles.find(role => c.user.delegatedRoles?.includes(role))
+        || null)
+      : (c.user.roles.includes('owner') ? 'owner' : c.user.roles.includes('resident') ? 'resident' : null);
     if (c.user.must_change_password && !ALLOWED_WHILE_FORCED.includes(url.pathname)) throw err(403, 'PASSWORD_CHANGE_REQUIRED', 'ابتدا رمز عبور خود را تغییر دهید');
     const { perm, any } = route.opts;
     if ((perm && !can(c.user, perm)) || (any && !canAny(c.user, any))) throw err(403, 'FORBIDDEN', 'دسترسی کافی ندارید');
