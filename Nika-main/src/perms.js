@@ -9,13 +9,13 @@ export const ROLE_PERMS = {
 
   // مدیر اجرایی: مدیریت کاربران عادی، مشاهده و ثبت امور مالی، تأیید پرداخت‌ها و مدیریت پیام‌ها و تابلو.
   // تعیین نقش‌های مدیریتی و مدیریت حساب مدیران همچنان فقط در اختیار رئیس هیئت‌مدیره است.
-  executive: ['users.read', 'users.manage', 'users.delete', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.reports', 'finance.approve', 'expenses.create', 'messages.manage', 'notices.manage'],
+  executive: ['users.read', 'users.manage', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.reports', 'finance.approve', 'expenses.create', 'messages.manage', 'notices.manage'],
 
   // مدیر مالی: مشاهده و ثبت امور مالی و رسیدگی به تأییدهای مالی؛ بدون دسترسی به تنظیمات ساختمان یا مدیریت کاربران.
-  finance: ['units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'],
+  finance: ['users.read', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'],
 
   // عضو هیئت‌مدیره فقط امکان مشاهده امور مالی را دارد.
-  board: ['finance.owner.read', 'finance.monthly.read', 'finance.reports'],
+  board: ['users.read', 'finance.owner.read', 'finance.monthly.read', 'finance.reports'],
 
   // مدیر سامانه فقط اختیارات فنی و مدیریت حساب‌ها را دارد؛ نه عملیات ساختمان و نه تعیین نقش.
   system_admin: ['users.read', 'system.settings', 'system.data.manage', 'backup.manage'],
@@ -53,7 +53,7 @@ export function delegatedPerms(roles) {
 // مسئول اصلی هر عملیات برای الزام ثبت دلیل در زمان اقدام خارج از مسئولیت
 export const PERMISSION_OWNER = {
   'users.manage': ['chair', 'executive'],
-  'users.delete': ['chair', 'executive'],
+  'users.delete': 'chair',
   'finance.approve': ['chair', 'finance', 'executive'],
   'expenses.approve': ['chair', 'finance'],
   'expenses.create': ['chair', 'finance', 'executive'],
