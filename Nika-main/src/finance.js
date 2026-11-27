@@ -99,7 +99,7 @@ R('POST', '/api/finance/charges', { perm: 'finance.charge' }, async c => {
      SELECT lower(hex(randomblob(16))),n.id,?,?,?,?,?,'approved',?,?,CURRENT_TIMESTAMP FROM units n
      WHERE n.id NOT IN (SELECT unit_id FROM transactions WHERE fund_id=? AND period=? AND kind=? AND title=? AND unit_id IS NOT NULL) ${filter}`)
     .bind(fund, kind, amount, title, per, c.user.id, c.user.id, fund, per, kind, title, ...nums).run();
-  await audit(c.db, c.user.id, 'charge.create', 'transaction', null, { fund, kind, amount, period: per, title, units: q.meta.changes });
+  await audit(c.db, c.user.id, 'charge.create', 'transaction', null, { fund, kind, amount, period: per, title, units: q.meta.changes }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, created: q.meta.changes }, 201);
 });
 
@@ -124,14 +124,14 @@ R('POST', '/api/transactions/:id/decision', async c => {
   const results = await c.db.batch(statements);
   if (!results[0]?.meta?.changes) throw err(409, 'NOT_PENDING', 'این مورد در انتظار تأیید نیست');
   const actorRole = c.user.activeRole === 'chair' ? 'chair' : (c.user.activeRole || (c.user.delegatedRoles?.includes('finance') ? 'جانشین finance' : (c.user.roles[0] || 'manager')));
-  await audit(c.db, c.user.id, 'transaction.decision', 'transaction', t.id, { status: x.status }, overrideReason ? { actorRole, isDelegate: true, reason: overrideReason } : {});
+  await audit(c.db, c.user.id, 'transaction.decision', 'transaction', t.id, { status: x.status }, { ...(overrideReason ? { actorRole, isDelegate: true, reason: overrideReason } : {}), ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true });
 });
 
 R('DELETE', '/api/transactions/:id', async c => {
   const r = await c.db.prepare("DELETE FROM transactions WHERE id=? AND created_by=? AND status='pending' AND kind IN ('payment','expense')").bind(c.params.id, c.user.id).run();
   if (!r.meta.changes) throw err(404, 'NOT_FOUND', 'مورد قابل لغو پیدا نشد');
-  await audit(c.db, c.user.id, 'transaction.cancel', 'transaction', c.params.id);
+  await audit(c.db, c.user.id, 'transaction.cancel', 'transaction', c.params.id, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true });
 });
 
