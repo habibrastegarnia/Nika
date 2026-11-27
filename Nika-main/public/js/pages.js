@@ -175,7 +175,7 @@ export async function calendarPage(y, m) {
   const form = $('#eventNew', v);
   if (form) onSubmit(form, async d => {
     const body = { ...d };
-    if (!S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+    if (!S.user.roles.includes('executive') && !S.user.roles.includes('chair')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
     await api('/events', { method: 'POST', body });
     toast('رویداد ثبت شد');
     // پس از ذخیره، ماهِ تاریخ انتخاب‌شده را باز کن؛ نه لزوماً ماهی که فرم از آن شروع شده بود.
@@ -187,7 +187,7 @@ export async function calendarPage(y, m) {
     const occurrenceFields=eventFields.slice(0,4).map(f=>({...f,value:f.name==='event_date'?event.event_date:(event[f.name]??'')}));
     const modal=openModal('تغییر یک نوبت رویداد',html`<form class="page-form" novalidate>${fields(occurrenceFields)}<button class="page-btn full" type="submit">ذخیره تغییر تاریخ</button></form>`);
     onSubmit($('form',modal),async d=>{
-      const body={...d};if(!S.user.roles.includes('executive')){const reason=await promptText('ثبت دلیل انجام خارج از مسئولیت','چرا این نوبت را به‌جای مدیر اجرایی تغییر می‌دهید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
+      const body={...d};if(!S.user.roles.includes('executive') && !S.user.roles.includes('chair')){const reason=await promptText('ثبت دلیل انجام خارج از مسئولیت','چرا این نوبت را به‌جای مدیر اجرایی تغییر می‌دهید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
       await api(`/events/${event.id}/occurrences/${event.recurrence_date}`,{method:'PATCH',body});
       closeModal();toast('تغییر این نوبت ثبت شد');open(()=>calendarPage(y,m),{replace:true});
     });
@@ -195,7 +195,7 @@ export async function calendarPage(y, m) {
   $$('[data-event-delete-occ]',v).forEach(b=>b.onclick=async()=>{
     if(!await ask('حذف یک نوبت','فقط این نوبت حذف شود و نوبت‌های بعدی باقی بمانند؟','حذف',true))return;
     const event=items.find(e=>e.id===b.dataset.eventDeleteOcc&&e.recurrence_date===b.dataset.occDate),body={};
-    if(!S.user.roles.includes('executive')){const reason=await promptText('ثبت دلیل انجام خارج از مسئولیت','چرا این نوبت را به‌جای مدیر اجرایی حذف می‌کنید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
+    if(!S.user.roles.includes('executive') && !S.user.roles.includes('chair')){const reason=await promptText('ثبت دلیل انجام خارج از مسئولیت','چرا این نوبت را به‌جای مدیر اجرایی حذف می‌کنید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
     await api(`/events/${event.id}/occurrences/${event.recurrence_date}`,{method:'DELETE',body});
     toast('این نوبت حذف شد');open(()=>calendarPage(y,m),{replace:true});
   });
@@ -204,7 +204,7 @@ export async function calendarPage(y, m) {
     const modal = openModal('ویرایش رویداد', html`<form class="page-form" novalidate>${fields(eventFields.map(f => ({ ...f, value: f.name === 'event_date' ? (event.series_event_date || event.event_date) : f.name === 'event_time' ? (event.series_event_time ?? event.event_time ?? '') : f.name === 'title' ? (event.series_title || event.title) : f.name === 'body' ? (event.series_body ?? event.body ?? '') : f.name === 'recurrenceUntil' ? (event.series_recurrence_until || event.recurrence_until || '') : (event[f.name] ?? '') })))}<button class="page-btn full" type="submit">ذخیره تغییرات</button></form>`);
     onSubmit($('form', modal), async d => {
       const body = { ...d };
-      if (!S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی ویرایش می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+      if (!S.user.roles.includes('executive') && !S.user.roles.includes('chair')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی ویرایش می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
       await api(`/events/${event.id}`, { method: 'PUT', body });
       closeModal(); toast('رویداد ویرایش شد');
       open(() => calendarPage(y, m), { replace: true });
@@ -213,7 +213,7 @@ export async function calendarPage(y, m) {
   $$('[data-event-delete]', v).forEach(b => b.onclick = async () => {
     if (!await ask('حذف رویداد', 'این رویداد از تقویم حذف شود؟', 'حذف', true)) return;
     const body = {};
-    if (!S.user.roles.includes('executive')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی حذف می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+    if (!S.user.roles.includes('executive') && !S.user.roles.includes('chair')) { const reason = await promptText('ثبت دلیل انجام خارج از مسئولیت', 'چرا این رویداد را به‌جای مدیر اجرایی حذف می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
     await api(`/events/${b.dataset.eventDelete}`, { method: 'DELETE', body });
     toast('رویداد حذف شد');
     open(() => calendarPage(y, m), { replace: true });
