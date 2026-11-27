@@ -53,5 +53,4 @@
   }
 
   load();
-  setInterval(load, 15000);
 })();
