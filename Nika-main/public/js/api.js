@@ -7,7 +7,7 @@ export async function api(path, { method = 'GET', body } = {}) {
   try {
     r = await fetch('/api' + path, {
       method, credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-Nika-Client': '1' },
+      headers: { 'Content-Type': 'application/json', 'X-Nika-Client': '1', 'X-Nika-Workspace': (globalThis.__nikaWorkspace?.() || 'resident') },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
   } catch { throw Object.assign(new Error('ارتباط با سرور برقرار نشد؛ اینترنت را بررسی کنید'), { code: 'NETWORK' }); }
