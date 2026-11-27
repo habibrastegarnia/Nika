@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/nika-logo.webp?v=3">
 <link rel="apple-touch-icon" sizes="192x192" href="/assets/nika-logo.webp?v=3">
 <link rel="stylesheet" href="/app.css?v=24">
-<script type="module" src="/js/main.js?v=32"></script>
+<script type="module" src="/js/main.js?v=33"></script>
 </head>
 <body>
 <section id="nikaGate"><div class="nika-shell"><div class="nika-brand"><img class="nika-logo" src="/assets/nika-logo.webp?v=3" alt="نیکا"><div><h1>نیکا</h1><p>سامانه مدیریت مجتمع مسکونی</p></div></div>
@@ -41,11 +41,6 @@
 
  <section class="panel carousel" id="carousel" aria-label="اسلایدهای داشبورد">
   <div class="track" id="track">
-   <article class="slide" aria-label="توزیع هزینه‌ها">
-    <header class="slide-head"><div><div class="slide-title" id="expTitle">توزیع هزینه‌ها</div><div class="total">مجموع هزینه‌ها<strong id="expenseTotal">—</strong></div></div><select class="month" aria-label="انتخاب ماه هزینه‌ها" id="expMonth"></select></header>
-    <div class="slide-body"><div class="donut-wrap"><svg class="donut" viewBox="0 0 160 160" aria-label="نمودار دایره‌ای هزینه‌ها"><circle cx="80" cy="80" r="56" fill="none" stroke="#33415c" stroke-width="24"/><g id="expenseDonut" transform="rotate(-90 80 80)"></g></svg></div><div class="legend" id="expenseLegend"></div></div>
-    <div class="tap-note">برای مشاهده جزئیات، روی هر دسته از نمودار بزنید</div>
-   </article>
    <article class="slide financial" aria-label="وضعیت مالی">
     <header class="slide-head"><div><div class="slide-title" id="finTitle">وضعیت مالی</div><div class="total">شارژ قابل وصول<strong id="chargeTotal">—</strong></div></div><select class="month" aria-label="انتخاب ماه وضعیت مالی" id="finMonth"></select></header>
     <div class="slide-body"><div class="donut-wrap"><svg class="donut" viewBox="0 0 160 160" aria-label="نمودار وضعیت پرداخت شارژ"><circle cx="80" cy="80" r="56" fill="none" stroke="#dce7e1" stroke-width="24"/><circle id="pendingArc" cx="80" cy="80" r="56" fill="none" stroke="#83b99a" stroke-width="24" stroke-dasharray="0 352" stroke-dashoffset="0" transform="rotate(-90 80 80)"/><circle id="paidArc" cx="80" cy="80" r="56" fill="none" stroke="#16845b" stroke-width="24" stroke-dasharray="0 352" transform="rotate(-90 80 80)"/></svg></div><div class="legend">
@@ -55,14 +50,23 @@
     </div><button class="summary summary-button" id="unpaidUnitsButton" type="button" aria-haspopup="dialog" aria-label="مشاهده واحدهای بدون پرداخت شارژ ماهیانه"><span class="summary-icon"><span data-icon="building-2"></span></span><span class="summary-label">واحدهای بدون پرداخت</span><span class="summary-value" id="unpaidUnitCount">—</span></button></div>
     <div class="tap-note" id="finNote">مبنای محاسبه: مبلغ مصوب شارژ برای ۳۲ واحد</div>
    </article>
-   <article class="slide board" aria-label="تابلوی ساختمان">
+   <article class="slide" aria-label="توزیع هزینه‌های صندوق جاریی صندوق جاری">
+    <header class="slide-head"><div><div class="slide-title" id="expTitle">توزیع هزینه‌ها</div><div class="total">مجموع هزینه‌ها<strong id="expenseTotal">—</strong></div></div></header>
+    <div class="slide-body"><div class="donut-wrap"><svg class="donut" viewBox="0 0 160 160" aria-label="نمودار دایره‌ای هزینه‌ها"><circle cx="80" cy="80" r="56" fill="none" stroke="#33415c" stroke-width="24"/><g id="expenseDonut" transform="rotate(-90 80 80)"></g></svg></div><div class="legend" id="expenseLegend"></div></div>
+    <div class="tap-note">درصد و مبلغ هر یک از پنج دسته هزینه‌های قطعی</div>
+   </article>
+   <article class="slide" aria-label="توزیع هزینه‌های صندوق مالکانه">
+    <header class="slide-head"><div><div class="slide-title" id="ownerExpTitle">توزیع هزینه‌های صندوق مالکانه</div><div class="total">مجموع هزینه‌های قطعی<strong id="ownerExpenseTotal">—</strong></div></div></header>
+    <div class="slide-body"><div class="donut-wrap"><svg class="donut" viewBox="0 0 160 160" aria-label="نمودار توزیع هزینه‌های صندوق مالکانه"><circle cx="80" cy="80" r="56" fill="none" stroke="#33415c" stroke-width="24"/><g id="ownerExpenseDonut" transform="rotate(-90 80 80)"></g></svg></div><div class="legend" id="ownerExpenseLegend"></div></div>
+    <div class="tap-note">هر عنوان، مجموع هزینه‌های قطعی ثبت‌شده با همان عنوان را نشان می‌دهد</div>
+   </article>   <article class="slide board" aria-label="تابلوی ساختمان">
     <header class="slide-head"><div class="slide-title">تابلوی ساختمان</div><button class="board-all" id="boardAll">مشاهده همه ←</button></header>
     <div class="slide-body"><div class="board-card"><div class="board-photo" aria-hidden="true"><svg class="building" viewBox="0 0 120 150"><defs><linearGradient id="bld" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#d6e2f2"/><stop offset="1" stop-color="#819bb9"/></linearGradient></defs><path d="M15 140V38L73 10V140Z" fill="url(#bld)"/><path d="M73 140V25L108 43V140Z" fill="#9eb2cc"/><path d="M22 47L66 27M22 67L66 47M22 87L66 67M22 107L66 87M22 127L66 107" stroke="#536d8d" stroke-width="3"/><path d="M80 45L101 56M80 66L101 77M80 87L101 98M80 108L101 119" stroke="#526c8c" stroke-width="3"/><g fill="#31516f"><path d="M29 52h11v12H29zM48 43h11v12H48zM29 73h11v12H29zM48 64h11v12H48zM29 94h11v12H29zM48 85h11v12H48zM29 115h11v12H29zM48 106h11v12H48zM84 52h10v12H84zM84 73h10v12H84zM84 94h10v12H84zM84 115h10v12H84z"/></g><path d="M8 140h105" stroke="#d6e2f2" stroke-width="4"/></svg></div><div class="board-content"><div class="board-meta"><span id="boardDate"></span><span class="source">مدیریت</span></div><div class="board-title" id="boardTitle">—</div><div class="board-text" id="boardText"></div></div></div><div class="board-bottom"><span>مطالب تأییدشده مدیریت و ساکنان</span><span>● ● ●</span></div></div>
     <div class="tap-note">مطالب ارسالی ساکنان پس از تأیید مدیریت منتشر می‌شوند</div>
    </article>
   </div>
  </section>
- <div class="slide-controls"><button class="slide-arrow" id="prev" aria-label="اسلاید قبلی"><span data-icon="chevron-left"></span></button><div class="slide-dots"><button class="slide-dot active" data-index="0" aria-label="اسلاید اول"></button><button class="slide-dot" data-index="1" aria-label="اسلاید دوم"></button><button class="slide-dot" data-index="2" aria-label="اسلاید سوم"></button></div><button class="slide-arrow" id="next" aria-label="اسلاید بعدی"><span data-icon="chevron-right"></span></button></div>
+ <div class="slide-controls"><button class="slide-arrow" id="prev" aria-label="اسلاید قبلی"><span data-icon="chevron-left"></span></button><div class="slide-dots"><button class="slide-dot active" data-index="0" aria-label="اسلاید اول"></button><button class="slide-dot" data-index="1" aria-label="اسلاید دوم"></button><button class="slide-dot" data-index="2" aria-label="اسلاید سوم"></button><button class="slide-dot" data-index="3" aria-label="اسلاید چهارم"></button></div><button class="slide-arrow" id="next" aria-label="اسلاید بعدی"><span data-icon="chevron-right"></span></button></div>
 
  <section class="categories" aria-label="میانبرها">
   <button class="category" data-menu="rules"><span class="cat-icon" data-icon="file-text"></span><span>مقررات</span></button>
