@@ -60,7 +60,7 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
     c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,secondary_phone,gender,password_hash,password_salt,must_change_password,contract_start_date,contract_end_date) VALUES(?,?,?,?,?,?,?,?,?,1,?,?)').bind(uid, unitId, storedType, name, phone, secondaryPhone, gender, ph, salt, contractStartDate, contractEndDate),
     ...roles.map(r => c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, r))
   ]);
-  await audit(c.db, c.user.id, 'user.create', 'user', uid, { accountType, unit: x.unit || null, roles });
+  await audit(c.db, c.user.id, 'user.create', 'user', uid, { accountType, unit: x.unit || null, roles }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, id: uid, initialPasswordIsPhone: true }, 201);
 });
 
@@ -124,7 +124,7 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
   }
   if (sets.length) stmts.unshift(c.db.prepare(`UPDATE users SET ${sets.join(',')},updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(...vals, t.id));
   if (stmts.length) await c.db.batch(stmts);
-  await audit(c.db, c.user.id, 'user.update', 'user', t.id, { fields: Object.keys(x) });
+  await audit(c.db, c.user.id, 'user.update', 'user', t.id, { fields: Object.keys(x) }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true });
 });
 
@@ -148,7 +148,7 @@ R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async
     c.db.prepare('UPDATE users SET password_hash=?,password_salt=?,must_change_password=1,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(ph, salt, t.id),
     c.db.prepare('DELETE FROM sessions WHERE user_id=?').bind(t.id)
   ]);
-  await audit(c.db, c.user.id, 'user.reset_password', 'user', t.id);
+  await audit(c.db, c.user.id, 'user.reset_password', 'user', t.id, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true });
 });
 
@@ -199,7 +199,7 @@ R('POST', '/api/admin/reset-test-data', { perm: 'users.manage' }, async c => {
     c.db.prepare('UPDATE funds SET cash_balance=0'),
     c.db.prepare('UPDATE expense_request_sequences SET next_value=1')
   ]);
-  await audit(c.db, c.user.id, 'system.test_data_reset', 'system', null);
+  await audit(c.db, c.user.id, 'system.test_data_reset', 'system', null, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   const unitCount = await c.db.prepare('SELECT COUNT(*) n FROM units').first();
   return reply({ ok: true, preservedUser: c.user.id, preservedChair: chair.id, preservedUnits: Number(unitCount?.n || 0) });
 });
@@ -215,14 +215,14 @@ R('POST', '/api/admin/units', { perm: 'units.manage' }, async c => {
   const x = await readJson(c.request), number = unitOrFail(x.unitNumber), f = unitFields(x);
   if (await c.db.prepare('SELECT id FROM units WHERE unit_number=?').bind(number).first()) throw err(409, 'UNIT_EXISTS', 'این واحد قبلاً ثبت شده است');
   const q = await c.db.prepare('INSERT INTO units(unit_number,block,floor,parking,notes) VALUES(?,?,?,?,?)').bind(number, f.block, f.floor, f.parking, f.notes).run();
-  await audit(c.db, c.user.id, 'unit.create', 'unit', String(q.meta.last_row_id), { number });
+  await audit(c.db, c.user.id, 'unit.create', 'unit', String(q.meta.last_row_id), { number }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, id: q.meta.last_row_id }, 201);
 });
 R('PATCH', '/api/admin/units/:id', { perm: 'units.manage' }, async c => {
   const x = await readJson(c.request), f = unitFields(x);
   const q = await c.db.prepare('UPDATE units SET block=?,floor=?,parking=?,notes=? WHERE id=?').bind(f.block, f.floor, f.parking, f.notes, c.params.id).run();
   if (!q.meta.changes) throw err(404, 'NOT_FOUND', 'واحد پیدا نشد');
-  await audit(c.db, c.user.id, 'unit.update', 'unit', c.params.id);
+  await audit(c.db, c.user.id, 'unit.update', 'unit', c.params.id, {}, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true });
 });
 
