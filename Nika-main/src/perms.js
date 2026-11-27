@@ -52,7 +52,7 @@ export function delegatedPerms(roles) {
 
 // مسئول اصلی هر عملیات برای الزام ثبت دلیل در زمان اقدام خارج از مسئولیت
 export const PERMISSION_OWNER = {
-  'users.manage': ['executive', 'system_admin'],
+  'users.manage': ['chair', 'executive', 'system_admin'],
   'users.delete': ['executive', 'system_admin'],
   'finance.approve': 'finance',
   'expenses.approve': 'finance',
