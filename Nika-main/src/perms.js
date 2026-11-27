@@ -7,15 +7,15 @@ export const ROLE_PERMS = {
   owner: ['finance.owner.read', 'finance.owner.pay'],
   resident: ['finance.monthly.read', 'finance.monthly.pay'],
 
-  // مدیر اجرایی: مدیریت حساب کاربران، مشاهده امور مالی و واحدها،
-  // ثبت/پیگیری امور هزینه و مدیریت رویدادهای تقویم.
-  executive: ['finance.settings.read', 'users.read', 'users.manage', 'users.delete', 'units.read', 'finance.reports', 'expenses.create', 'requests.manage', 'events.manage', 'audit.read'],
+  // مدیر اجرایی: مدیریت کاربران عادی، مشاهده و ثبت امور مالی، تأیید پرداخت‌ها و مدیریت پیام‌ها و تابلو.
+  // تعیین نقش‌های مدیریتی و مدیریت حساب مدیران همچنان فقط در اختیار رئیس هیئت‌مدیره است.
+  executive: ['users.read', 'users.manage', 'users.delete', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.reports', 'finance.approve', 'expenses.create', 'messages.manage', 'notices.manage'],
 
-  // مدیر مالی: مشاهده کاربران و واحدها، رسیدگی به پرداخت‌ها و گزارش‌گیری؛ بدون تغییر تنظیمات شارژ.
-  finance: ['finance.settings.read', 'users.read', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.approve', 'expenses.approve', 'finance.reports', 'audit.read'],
+  // مدیر مالی: مشاهده و ثبت امور مالی و رسیدگی به تأییدهای مالی؛ بدون دسترسی به تنظیمات ساختمان یا مدیریت کاربران.
+  finance: ['users.read', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'],
 
-  // عضو هیئت‌مدیره فقط مشاهده‌گر است.
-  board: ['finance.settings.read', 'units.read', 'finance.reports', 'reports.read', 'audit.read'],
+  // عضو هیئت‌مدیره فقط امکان مشاهده امور مالی را دارد.
+  board: ['finance.owner.read', 'finance.monthly.read', 'finance.reports'],
 
   // مدیر سامانه فقط اختیارات فنی و مدیریت حساب‌ها را دارد؛ نه عملیات ساختمان و نه تعیین نقش.
   system_admin: ['users.read', 'system.settings', 'system.data.manage', 'backup.manage'],
@@ -52,16 +52,17 @@ export function delegatedPerms(roles) {
 
 // مسئول اصلی هر عملیات برای الزام ثبت دلیل در زمان اقدام خارج از مسئولیت
 export const PERMISSION_OWNER = {
-  'users.manage': 'chair',
-  'users.delete': 'chair',
-  'finance.approve': 'finance',
-  'expenses.approve': 'finance',
+  'users.manage': ['chair', 'executive'],
+  'users.delete': ['chair', 'executive'],
+  'finance.approve': ['chair', 'finance', 'executive'],
+  'expenses.approve': ['chair', 'finance'],
+  'expenses.create': ['chair', 'finance', 'executive'],
   'expenses.finalize': 'chair',
   'expenses.create': 'executive',
   'events.manage': 'executive',
   'requests.manage': 'executive',
-  'messages.manage': 'chair',
-  'notices.manage': 'chair',
+  'messages.manage': ['chair', 'executive'],
+  'notices.manage': ['chair', 'executive'],
   'units.manage': 'chair',
   'finance.charge': 'chair',
   'finance.settings': 'chair',
