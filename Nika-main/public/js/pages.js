@@ -26,11 +26,11 @@ export function fillHeader() {
   $('#hdrAvatar').innerHTML = avatarMarkup(u);
 }
 
-function renderExpenseChart(data, donutId, legendId, totalId) {
-  const total = Number(data?.total || 0), expenses = Array.isArray(data?.expenses) ? data.expenses : [];
-  const donut = $(donutId), legend = $(legendId), totalNode = $(totalId);
-  if (!donut || !legend || !totalNode) return;
-  donut.innerHTML = ''; legend.innerHTML = ''; totalNode.textContent = toman(total);
+function renderExpenseChart(data, donutId, legendId, totalId, balanceId) {
+  const total = Number(data?.total || 0), balance = Number(data?.balance || 0), expenses = Array.isArray(data?.expenses) ? data.expenses : [];
+  const donut = $(donutId), legend = $(legendId), totalNode = $(totalId), balanceNode = $(balanceId);
+  if (!donut || !legend || !totalNode || !balanceNode) return;
+  donut.innerHTML = ''; legend.innerHTML = ''; totalNode.textContent = toman(total); balanceNode.textContent = toman(balance);
   if (!expenses.length || !total) { legend.innerHTML = '<div class="legend-row"><span class="legend-name">هزینه قطعی ثبت نشده است</span></div>'; return; }
   let offset = 0;
   expenses.forEach((expense, index) => {
@@ -101,8 +101,8 @@ export async function loadDashboard(which, period) {
   const periods = [...new Set([...(distribution.monthlyPeriods || []),monthlyStatus.period])].filter(Boolean);
   const monthSelect = $('#finMonth');
   if (monthSelect) { monthSelect.innerHTML = join(periods.map(value => html`<option value="${value}">${periodLabel(value)}</option>`)); monthSelect.value = monthlyStatus.period; }
-  renderExpenseChart(distribution.monthly,'#expenseDonut','#expenseLegend','#expenseTotal');
-  renderExpenseChart(distribution.owner,'#ownerExpenseDonut','#ownerExpenseLegend','#ownerExpenseTotal');
+  renderExpenseChart(distribution.monthly,'#expenseDonut','#expenseLegend','#expenseTotal','#monthlyFundBalance');
+  renderExpenseChart(distribution.owner,'#ownerExpenseDonut','#ownerExpenseLegend','#ownerExpenseTotal','#ownerFundBalance');
   $('#expTitle').textContent = 'توزیع هزینه‌های صندوق جاری';
   $('#ownerExpTitle').textContent = 'توزیع هزینه‌های صندوق مالکانه';
 }
