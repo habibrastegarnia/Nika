@@ -130,8 +130,6 @@ R('GET', '/api/private/user-submissions', { public: true }, async c => {
   const result = await c.db.prepare(
     "SELECT unit_number,user_type,full_name,gender,phone,secondary_phone,contract_start_date,contract_end_date,strftime('%Y-%m-%d %H:%M', created_at, '+3 hours', '+30 minutes') AS submitted_at FROM public_user_submissions ORDER BY CAST(unit_number AS INTEGER), CASE user_type WHEN 'owner' THEN 0 ELSE 1 END, rowid"
   ).all();
-  return reply({ total: (result.results || []).length, rows: result.results || [] }, 200, {
-    'Cache-Control': 'no-store'
-  });
+  return reply({ total: (result.results || []).length, rows: result.results || [] });
 });
 
