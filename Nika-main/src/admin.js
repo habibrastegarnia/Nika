@@ -18,7 +18,7 @@ const extrasOnly = roles => roles.filter(r => EXTRA_ROLES.includes(r));
 R('GET', '/api/admin/users', { perm: 'users.read' }, async c => {
   const q = (c.url.searchParams.get('q') || '').trim().slice(0, 50), like = `%${q}%`;
   const r = await c.db.prepare(
-    `SELECT u.id,u.name,u.phone,u.secondary_phone,u.account_type,u.active,u.must_change_password,u.contract_start_date,u.contract_end_date,u.created_at,n.unit_number unit,
+    `SELECT u.id,u.name,u.phone,u.secondary_phone,u.gender,u.account_type,u.active,u.must_change_password,u.contract_start_date,u.contract_end_date,u.created_at,n.unit_number unit,
             (SELECT GROUP_CONCAT(role) FROM user_roles WHERE user_id=u.id) roles
      FROM users u LEFT JOIN units n ON n.id=u.unit_id
      WHERE (?='' OR u.name LIKE ? OR u.phone LIKE ? OR n.unit_number LIKE ?)
@@ -153,17 +153,10 @@ R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async
 });
 
 // غیرفعال‌سازی حساب؛ سوابق مالی و مدیریتی کاربر حفظ می‌شوند.
+// مسیر قدیمی غیرفعال‌سازی بسته است؛ حذف سه‌روزه فقط پس از آماده‌شدن گردش‌کار امن فعال می‌شود.
 R('DELETE', '/api/admin/users/:id', { perm: 'users.delete' }, async c => {
-  const t = await targetOrFail(c);
-  if (t.id === c.user.id) throw err(400, 'SELF_DELETE', 'حسابی که با آن وارد شده‌اید قابل غیرفعال‌سازی نیست');
-  if (t.roles.includes('chair') && !can(c.user, 'roles.assign')) throw err(403, 'FORBIDDEN', 'فقط رئیس هیئت‌مدیره می‌تواند حساب رئیس را مدیریت کند');
-  if (t.roles.includes('chair') && !await otherActiveChairs(c.db, t.id)) throw err(400, 'LAST_CHAIR', 'آخرین رئیس هیئت‌مدیره را نمی‌توان غیرفعال کرد');
-  await c.db.batch([
-    c.db.prepare("UPDATE users SET active=0,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(t.id),
-    c.db.prepare('DELETE FROM sessions WHERE user_id=?').bind(t.id)
-  ]);
-  await audit(c.db, c.user.id, 'user.deactivate', 'user', t.id);
-  return reply({ ok: true });
+  if (!can(c.user, 'roles.assign')) throw err(403, 'FORBIDDEN', 'حذف کاربران فقط در اختیار رئیس هیئت‌مدیره است');
+  throw err(410, 'DELETE_WORKFLOW_NOT_READY', 'قابلیت حذف سه‌روزه و بازیابی هنوز فعال نشده است');
 });
 
 // بازنشانی کامل داده‌های دوره آزمایشی؛ فقط مدیر سامانه مستقل مجاز است.
