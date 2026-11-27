@@ -1,6 +1,6 @@
 // مدیریت کاربران، واحدها و گزارش ممیزی
 import { R } from './router.js';
-import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, tempPassword, hashPassword, newSalt, safeEqual, audit, jdate, initialPasswordMode, verifyUserPassword } from './lib.js';
+import { err, reply, readJson, str, optStr, phoneOrFail, unitOrFail, hashPassword, newSalt, safeEqual, audit, jdate, passwordProblem, verifyUserPassword } from './lib.js';
 import { can, EXTRA_ROLES, assignableExtraRoles, canManageTarget } from './perms.js';
 
 const rolesOf = async (db, id) => (await db.prepare('SELECT role FROM user_roles WHERE user_id=?').bind(id).all()).results.map(r => r.role);
@@ -46,26 +46,22 @@ R('POST', '/api/admin/users', { perm: 'users.manage' }, async c => {
   const baseRoles = accountType === 'both' ? ['owner', 'resident'] : (accountType === 'staff' ? [] : [accountType]);
   const roles = [...baseRoles, ...extras];
   let unitId = null;
-  if (accountType === 'staff') {
-    if (await c.db.prepare("SELECT id FROM users WHERE unit_id IS NULL AND account_type='staff' AND phone=?").bind(phone).first()) throw err(409, 'USER_EXISTS', 'این شماره قبلاً ثبت شده است');
-  } else {
-    const unitNumber = unitOrFail(x.unit);
-    let unit = await c.db.prepare('SELECT id FROM units WHERE unit_number=?').bind(unitNumber).first();
-    if (!unit) { const q = await c.db.prepare('INSERT INTO units(unit_number) VALUES(?)').bind(unitNumber).run(); unit = { id: q.meta.last_row_id }; }
-    unitId = unit.id;
-    if (accountType === 'both') {
-      if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident')").bind(unitId).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد قبلاً حساب مالک یا ساکن ساخته شده است؛ برای یک شخص مشترک، نقش دوم را به همان حساب اضافه کنید');
-    } else if (await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=?').bind(unitId, accountType).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد، حسابی با همین نوع (مالک یا ساکن) از قبل ثبت شده است');
-    if (initialPasswordMode(c.env) === 'phone' && await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND phone=?").bind(unitId, phone).first()) throw err(409, 'SHARED_INITIAL_PASSWORD', 'شماره موبایل مالک و ساکن یک واحد باید متفاوت باشد');
-  }
-  const needsTemp = accountType === 'staff' || initialPasswordMode(c.env) === 'random';
-  const uid = crypto.randomUUID(), initialPassword = needsTemp ? tempPassword() : phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
+  if (accountType === 'staff') throw err(403, 'STANDALONE_ACCOUNT_REQUIRED', 'حساب مستقل مدیر سامانه از مسیر جداگانه راه‌اندازی می‌شود و در مدیریت کاربران ساختمان ساخته نمی‌شود');
+  const unitNumber = unitOrFail(x.unit);
+  let unit = await c.db.prepare('SELECT id FROM units WHERE unit_number=?').bind(unitNumber).first();
+  if (!unit) { const q = await c.db.prepare('INSERT INTO units(unit_number) VALUES(?)').bind(unitNumber).run(); unit = { id: q.meta.last_row_id }; }
+  unitId = unit.id;
+  if (accountType === 'both') {
+    if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident')").bind(unitId).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد قبلاً حساب مالک یا ساکن ساخته شده است؛ برای یک شخص مشترک، نقش دوم را به همان حساب اضافه کنید');
+  } else if (await c.db.prepare('SELECT id FROM users WHERE unit_id=? AND account_type=?').bind(unitId, accountType).first()) throw err(409, 'ACCOUNT_EXISTS', 'برای این واحد، حسابی با همین نوع (مالک یا ساکن) از قبل ثبت شده است');
+  if (await c.db.prepare("SELECT id FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND phone=?").bind(unitId, phone).first()) throw err(409, 'SHARED_INITIAL_PASSWORD', 'شماره موبایل مالک و ساکن یک واحد باید متفاوت باشد');
+  const uid = crypto.randomUUID(), initialPassword = phone, salt = newSalt(), ph = await hashPassword(initialPassword, salt);
   await c.db.batch([
     c.db.prepare('INSERT INTO users(id,unit_id,account_type,name,phone,secondary_phone,gender,password_hash,password_salt,must_change_password,contract_start_date,contract_end_date) VALUES(?,?,?,?,?,?,?,?,?,1,?,?)').bind(uid, unitId, storedType, name, phone, secondaryPhone, gender, ph, salt, contractStartDate, contractEndDate),
     ...roles.map(r => c.db.prepare('INSERT INTO user_roles(user_id,role) VALUES(?,?)').bind(uid, r))
   ]);
   await audit(c.db, c.user.id, 'user.create', 'user', uid, { accountType, unit: x.unit || null, roles });
-  return reply({ ok: true, id: uid, ...(needsTemp ? { tempPassword: initialPassword } : { initialPasswordIsPhone: true }) }, 201);
+  return reply({ ok: true, id: uid, initialPasswordIsPhone: true }, 201);
 });
 
 async function targetOrFail(c) {
@@ -135,20 +131,25 @@ R('PATCH', '/api/admin/users/:id', { perm: 'users.manage' }, async c => {
 R('POST', '/api/admin/users/:id/reset-password', { perm: 'users.manage' }, async c => {
   const t = await targetOrFail(c);
   if (t.id === c.user.id) throw err(400, 'SELF_CHANGE', 'رمز خودتان را از بخش تنظیمات تغییر دهید');
-  const row = await c.db.prepare('SELECT phone,account_type FROM users WHERE id=?').bind(t.id).first();
-  const needsTemp = row.account_type === 'staff' || initialPasswordMode(c.env) === 'random';
-  const initialPassword = needsTemp ? tempPassword() : row.phone;
-  if (!needsTemp) {
-    const other = await c.db.prepare("SELECT password_hash,password_salt FROM users WHERE unit_id=(SELECT unit_id FROM users WHERE id=?) AND account_type IN ('owner','resident') AND id!=? AND active=1 LIMIT 1").bind(t.id, t.id).first();
-    if (other && safeEqual(await hashPassword(initialPassword, other.password_salt), other.password_hash)) throw err(409, 'SHARED_UNIT_PASSWORD', 'رمز فعلی مالک یا ساکن دیگر با این شماره موبایل یکسان است؛ ابتدا رمز آن حساب را تغییر دهید');
+  if (t.account_type === 'staff' || t.roles.includes('system_admin')) throw err(403, 'PROTECTED_ACCOUNT', 'حساب مستقل مدیر سامانه از بازنشانی رمز کاربران ساختمان مستثنا است');
+  const x = await readJson(c.request);
+  if (typeof x.newPassword !== 'string' || typeof x.confirmPassword !== 'string' || x.newPassword !== x.confirmPassword) {
+    throw err(400, 'PASSWORD_CONFIRMATION', 'رمز جدید و تکرار آن یکسان نیستند');
   }
-  const salt = newSalt(), ph = await hashPassword(initialPassword, salt);
+  const row = await c.db.prepare('SELECT phone,unit_id FROM users WHERE id=?').bind(t.id).first();
+  const problem = passwordProblem(x.newPassword, row.phone);
+  if (problem) throw err(400, 'WEAK_PASSWORD', problem);
+  const other = await c.db.prepare("SELECT password_hash,password_salt FROM users WHERE unit_id=? AND account_type IN ('owner','resident') AND id!=? AND active=1 LIMIT 1").bind(row.unit_id, t.id).first();
+  if (other && safeEqual(await hashPassword(x.newPassword, other.password_salt), other.password_hash)) {
+    throw err(409, 'SHARED_UNIT_PASSWORD', 'رمز جدید نباید با رمز حساب مالک یا ساکن دیگر همین واحد یکسان باشد');
+  }
+  const salt = newSalt(), ph = await hashPassword(x.newPassword, salt);
   await c.db.batch([
     c.db.prepare('UPDATE users SET password_hash=?,password_salt=?,must_change_password=1,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(ph, salt, t.id),
     c.db.prepare('DELETE FROM sessions WHERE user_id=?').bind(t.id)
   ]);
   await audit(c.db, c.user.id, 'user.reset_password', 'user', t.id);
-  return reply({ ok: true, ...(needsTemp ? { tempPassword: initialPassword } : { initialPasswordIsPhone: true }) });
+  return reply({ ok: true });
 });
 
 // غیرفعال‌سازی حساب؛ سوابق مالی و مدیریتی کاربر حفظ می‌شوند.
