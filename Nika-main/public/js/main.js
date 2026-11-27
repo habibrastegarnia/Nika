@@ -193,7 +193,8 @@ function initCarousel() {
     const dx = event.clientX - pointerStart.x;
     const dy = event.clientY - pointerStart.y;
     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-      go(dx < 0 ? 1 : -1);
+      // حرکت بصری اسلاید باید هم‌جهت با کشیدن انگشت باشد.
+      go(dx < 0 ? -1 : 1);
       movedBySwipe = true;
     }
     pointerStart = null;
