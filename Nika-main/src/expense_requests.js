@@ -115,8 +115,7 @@ R('POST', '/api/expense-requests', { perm: 'expenses.create' }, async c => {
   } catch (e) {
     throw e;
   }
-  await audit(c.db, c.user.id, 'expense_request.create', 'expense_request', id,
-    { referenceNo, fund, amount }, c.overrideReason ? actorMeta(c.user, 'executive', c.overrideReason) : { actorRole: c.user.roles.includes('chair') ? 'chair' : 'executive' });
+  await audit(c.db, c.user.id, 'expense_request.create', 'expense_request', id, { referenceNo, fund, amount }, { ...(c.overrideReason ? actorMeta(c.user, 'executive', c.overrideReason) : { actorRole: c.user.roles.includes('chair') ? 'chair' : 'executive' }), ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, id, referenceNo, status: 'pending_finance' }, 201);
 });
 
@@ -221,7 +220,7 @@ R('PATCH', '/api/expense-requests/:id', { perm: 'expenses.create' }, async c => 
   } catch (e) {
     throw e;
   }
-  await audit(c.db, c.user.id, 'expense_request.resubmit', 'expense_request', row.id, { referenceNo: row.reference_no, version: versionNo.version_no });
+  await audit(c.db, c.user.id, 'expense_request.resubmit', 'expense_request', row.id, { referenceNo: row.reference_no, version: versionNo.version_no }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, status: 'pending_finance' });
 });
 
@@ -238,7 +237,7 @@ R('POST', '/api/expense-requests/:id/cancel', { perm: 'expenses.create' }, async
       .bind(crypto.randomUUID(), row.id, c.user.id, 'executive', 'cancelled', reason)
   ]);
   if (!results[0]?.meta?.changes) throw err(409, 'NOT_CANCELLABLE', 'وضعیت درخواست تغییر کرده است');
-  await audit(c.db, c.user.id, 'expense_request.cancel', 'expense_request', row.id, { referenceNo: row.reference_no, reason }, { actorRole: c.user.activeRole });
+  await audit(c.db, c.user.id, 'expense_request.cancel', 'expense_request', row.id, { referenceNo: row.reference_no, reason }, { ...({ actorRole: c.user.activeRole }), ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, status: 'cancelled' });
 });
 
@@ -258,8 +257,7 @@ R('POST', '/api/expense-requests/:id/finance-decision', { perm: 'expenses.approv
       .bind(crypto.randomUUID(), row.id, c.user.id, 'finance', x.status === 'approved' ? 'approved' : 'revision', reason)
   ]);
   if (!results[0]?.meta?.changes) throw err(409, 'NOT_PENDING', 'وضعیت درخواست تغییر کرده است');
-  await audit(c.db, c.user.id, 'expense_request.finance_decision', 'expense_request', row.id,
-    { referenceNo: row.reference_no, status: next }, c.overrideReason ? actorMeta(c.user, 'finance', c.overrideReason) : { actorRole: c.user.roles.includes('chair') ? 'chair' : 'finance', reason });
+  await audit(c.db, c.user.id, 'expense_request.finance_decision', 'expense_request', row.id, { referenceNo: row.reference_no, status: next }, { ...(c.overrideReason ? actorMeta(c.user, 'finance', c.overrideReason) : { actorRole: c.user.roles.includes('chair') ? 'chair' : 'finance', reason }), ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, status: next });
 });
 
@@ -280,8 +278,7 @@ R('POST', '/api/expense-requests/:id/chair-decision', { perm: 'expenses.finalize
         .bind(crypto.randomUUID(), row.id, c.user.id, 'chair', 'revision', reason)
     ]);
     if (!results[0]?.meta?.changes) throw err(409, 'NOT_PENDING', 'وضعیت درخواست تغییر کرده است');
-    await audit(c.db, c.user.id, 'expense_request.chair_revision', 'expense_request', row.id,
-      { referenceNo: row.reference_no }, c.overrideReason ? actorMeta(c.user, 'chair', c.overrideReason) : { actorRole: 'chair', reason });
+    await audit(c.db, c.user.id, 'expense_request.chair_revision', 'expense_request', row.id, { referenceNo: row.reference_no }, { ...(c.overrideReason ? actorMeta(c.user, 'chair', c.overrideReason) : { actorRole: 'chair', reason }), ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
     return reply({ ok: true, status: 'revision_chair' });
   }
 
@@ -309,8 +306,6 @@ R('POST', '/api/expense-requests/:id/chair-decision', { perm: 'expenses.finalize
     }
     throw err(409, 'NOT_PENDING', 'وضعیت درخواست تغییر کرده است');
   }
-  await audit(c.db, c.user.id, 'expense_request.finalized', 'expense_request', row.id,
-    { referenceNo: row.reference_no, fund: row.fund_id, amount: row.amount },
-    c.overrideReason ? actorMeta(c.user, 'chair', c.overrideReason) : { actorRole: 'chair' });
+  await audit(c.db, c.user.id, 'expense_request.finalized', 'expense_request', row.id, { referenceNo: row.reference_no, fund: row.fund_id, amount: row.amount }, { ...(c.overrideReason ? actorMeta(c.user, 'chair', c.overrideReason) : { actorRole: 'chair' }), ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, status: 'finalized' });
 });
