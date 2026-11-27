@@ -76,60 +76,10 @@ R('POST', '/api/public/user-submissions', { public: true }, async c => {
   return reply({ ok: true });
 });
 
-// صفحهٔ مستقل مشاهدهٔ ثبت‌نام‌ها؛ دسترسی فقط با JWT معتبر Cloudflare Access.
-let accessKeysCache = null;
-let accessKeysExpiry = 0;
-
-function decodeAccessPart(value) {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const binary = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
-  return Uint8Array.from(binary, ch => ch.charCodeAt(0));
-}
-
-async function verifyAccessIdentity(request, env) {
-  const teamDomain = String(env.CF_ACCESS_TEAM_DOMAIN || '').replace(/\/$/, '');
-  const audience = String(env.CF_ACCESS_AUD || '');
-  const token = request.headers.get('Cf-Access-Jwt-Assertion');
-  if (!teamDomain || !audience || !token) return false;
-
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return false;
-    const header = JSON.parse(new TextDecoder().decode(decodeAccessPart(parts[0])));
-    const claims = JSON.parse(new TextDecoder().decode(decodeAccessPart(parts[1])));
-    const now = Math.floor(Date.now() / 1000);
-    if (header.alg !== 'RS256' || claims.iss !== teamDomain ||
-        !Array.isArray(claims.aud) || !claims.aud.includes(audience) ||
-        !Number.isFinite(claims.exp) || claims.exp <= now ||
-        (claims.nbf && claims.nbf > now)) return false;
-
-    if (!accessKeysCache || accessKeysExpiry <= now) {
-      const response = await fetch(teamDomain + '/cdn-cgi/access/certs', { cf: { cacheTtl: 300 } });
-      if (!response.ok) return false;
-      accessKeysCache = await response.json();
-      accessKeysExpiry = now + 300;
-    }
-    const jwk = (accessKeysCache.keys || []).find(key => key.kid === header.kid && key.kty === 'RSA');
-    if (!jwk) return false;
-    const publicKey = await crypto.subtle.importKey(
-      'jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']
-    );
-    return await crypto.subtle.verify(
-      'RSASSA-PKCS1-v1_5', publicKey, decodeAccessPart(parts[2]),
-      new TextEncoder().encode(parts[0] + '.' + parts[1])
-    );
-  } catch {
-    return false;
-  }
-}
-
+// صفحهٔ مستقل مشاهدهٔ ثبت‌نام‌ها؛ بدون ورود و رمز، طبق درخواست کاربر.
 R('GET', '/api/private/user-submissions', { public: true }, async c => {
-  if (!await verifyAccessIdentity(c.request, c.env)) {
-    return reply({ error: 'ACCESS_REQUIRED', message: 'برای مشاهدهٔ این صفحه باید از طریق دسترسی ایمیلی وارد شوید.' }, 401);
-  }
   const result = await c.db.prepare(
     "SELECT unit_number,user_type,full_name,gender,phone,secondary_phone,contract_start_date,contract_end_date,strftime('%Y-%m-%d %H:%M', created_at, '+3 hours', '+30 minutes') AS submitted_at FROM public_user_submissions ORDER BY CAST(unit_number AS INTEGER), CASE user_type WHEN 'owner' THEN 0 ELSE 1 END, rowid"
   ).all();
   return reply({ total: (result.results || []).length, rows: result.results || [] });
 });
-
