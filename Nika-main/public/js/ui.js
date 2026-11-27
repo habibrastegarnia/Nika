@@ -105,9 +105,10 @@ export function showHome() {
 // نمایش یک صفحه داخلی. content باید خروجی html`` باشد
 export function route(nav, title, sub, content) {
   const v = $('#pageView');
-  v.innerHTML = String(html`<div class="page-top"><button class="page-back" id="pgBack" aria-label="بازگشت">${BACK}</button><div class="page-heading"><h2>${title}</h2>${sub ? html`<p>${sub}</p>` : ''}</div></div>${content}`);
+  v.innerHTML = String(html`<div class="page-top"><div class="page-heading"><h2>${title}</h2>${sub ? html`<p>${sub}</p>` : ''}</div><button class="page-close" type="button" data-page-close aria-label="بستن پنجره">${raw(iconMarkup('x'))}</button></div>${content}`);
+  v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', title);
   v.classList.add('active'); setNav(nav); window.scrollTo(0, 0);
-  $('#pgBack').onclick = back;
+  v.querySelector('[data-page-close]').onclick = back;
   return v;
 }
 async function run(fn) {
@@ -136,6 +137,14 @@ export function back() {
 export function initRouter() {
   window.addEventListener('popstate', () => {
     if (hist.length > 1) { hist.pop(); run(hist[hist.length - 1]); } else showHome();
+  });
+  document.addEventListener('click', e => {
+    const view = $('#pageView');
+    if (!view?.classList.contains('active') || view.contains(e.target)) return;
+    back();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('#pageView')?.classList.contains('active')) back();
   });
 }
 export const resetRouter = () => { hist = []; };
