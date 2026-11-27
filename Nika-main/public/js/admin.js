@@ -574,7 +574,7 @@ async function expenseRequestsTab() {
     if (filePreparationError) throw filePreparationError;
     const files = preparedFiles;
     const body = { ...d, files };
-    if (!S.user.roles.includes('executive')) { const reason = await promptText('دلیل انجام خارج از مسئولیت', 'چرا این درخواست را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+    if (!S.user.roles.includes('executive') && !S.user.roles.includes('chair')) { const reason = await promptText('دلیل انجام خارج از مسئولیت', 'چرا این درخواست را به‌جای مدیر اجرایی ثبت می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
     const result = await api('/expense-requests', { method: 'POST', body });
     toast(`درخواست ${result.referenceNo} ثبت و برای مدیر مالی ارسال شد`); reload();
    });
@@ -584,7 +584,7 @@ async function expenseRequestsTab() {
     const q = requests.find(x => x.id === b.dataset.requestCancel);
     if (!await ask('منتفی‌کردن درخواست', `درخواست ${q.reference_no} منتفی شود؟ سوابق آن حفظ خواهد شد.`, 'منتفی‌کردن', true)) return;
     const body = {};
-    if (!S.user.roles.includes('executive')) { const reason = await promptText('دلیل منتفی‌کردن', 'چرا این درخواست را به‌جای مدیر اجرایی منتفی می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
+    if (!S.user.roles.includes('executive') && !S.user.roles.includes('chair')) { const reason = await promptText('دلیل منتفی‌کردن', 'چرا این درخواست را به‌جای مدیر اجرایی منتفی می‌کنید؟', 'ثبت دلیل'); if (!reason) return; body.reason = reason; }
     await api(`/expense-requests/${q.id}/cancel`, { method: 'POST', body }); toast('درخواست منتفی شد'); reload();
    });
   }
@@ -632,7 +632,7 @@ async function editExpenseRequest(q) {
   await editPreparation;
   if (editPreparationError) throw editPreparationError;
   const body={...d,files:editPreparedFiles};
-  if(!S.user.roles.includes('executive')) { const reason=await promptText('دلیل اصلاح خارج از مسئولیت','چرا این درخواست را به‌جای مدیر اجرایی اصلاح می‌کنید؟','ثبت دلیل'); if(!reason)return; body.reason=reason; }
+  if(!S.user.roles.includes('executive') && !S.user.roles.includes('chair')) { const reason=await promptText('دلیل اصلاح خارج از مسئولیت','چرا این درخواست را به‌جای مدیر اجرایی اصلاح می‌کنید؟','ثبت دلیل'); if(!reason)return; body.reason=reason; }
   await api(`/expense-requests/${q.id}`,{method:'PATCH',body}); closeModal(); toast('درخواست اصلاح و دوباره برای مدیر مالی ارسال شد'); reload();
  });
 }
@@ -648,7 +648,7 @@ async function expenseReviewTab() {
    act(box,'[data-exp-open]',async b=>showExpenseRequestDetails(b.dataset.expOpen));
    act(box,'[data-exp-finance-ok]',async b=>{
     const body={status:'approved'};
-    if(!S.user.roles.includes('finance')){const reason=await promptText('دلیل انجام خارج از مسئولیت','چرا این درخواست را به‌جای مدیر مالی تأیید می‌کنید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
+    if(!S.user.roles.includes('finance') && !S.user.roles.includes('chair')){const reason=await promptText('دلیل انجام خارج از مسئولیت','چرا این درخواست را به‌جای مدیر مالی تأیید می‌کنید؟','ثبت دلیل');if(!reason)return;body.reason=reason;}
     await api(`/expense-requests/${b.dataset.expFinanceOk}/finance-decision`,{method:'POST',body});toast('درخواست برای تأیید نهایی به رئیس هیئت‌مدیره ارجاع شد');reload();
    });
    act(box,'[data-exp-finance-revision]',async b=>{
