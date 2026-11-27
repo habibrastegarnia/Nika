@@ -186,7 +186,26 @@ R('GET', '/api/finance/balances', { any: ['finance.reports', 'finance.approve', 
   return reply({ balances: r.results.map(x => ({ ...x, balance: x.charged - x.settled })) });
 });
 
-// داشبورد: هزینه‌های تأییدشده به تفکیک دسته + وضعیت وصول شارژ در یک دوره
+// توزیع عمومی هزینه‌های قطعی هر دو صندوق؛ فقط داده‌های تجمیعی برای همه کاربران واردشده.
+R('GET', '/api/finance/expense-distribution', async c => {
+  const monthlyCategories = ['قبوض و خدمات','حقوق و دستمزد','نظافت و نگهداری','تعمیرات و تأسیسات','سایر هزینه‌ها'];
+  const monthly = (await c.db.prepare(
+    `SELECT CASE WHEN category IN (?,?,?,?,?) THEN category ELSE 'دسته‌بندی قدیمی/ثبت‌نشده' END category,
+            SUM(amount) total FROM transactions
+     WHERE fund_id='monthly' AND kind='expense' AND status='approved'
+     GROUP BY 1 ORDER BY total DESC`).bind(...monthlyCategories).all()).results;
+  const owner = (await c.db.prepare(
+    `SELECT COALESCE(NULLIF(TRIM(title),''),'بدون عنوان') category,SUM(amount) total FROM transactions
+     WHERE fund_id='owner' AND kind='expense' AND status='approved'
+     GROUP BY 1 ORDER BY total DESC`).all()).results;
+  const monthlyPeriods = (await c.db.prepare(
+    `SELECT DISTINCT period FROM transactions WHERE fund_id='monthly' AND kind='payment'
+     AND status IN ('approved','pending') AND period IS NOT NULL ORDER BY period DESC LIMIT 12`).all()).results.map(x => x.period);
+  return reply({ monthly:{expenses:monthly,total:monthly.reduce((sum,x)=>sum+Number(x.total||0),0)},
+    owner:{expenses:owner,total:owner.reduce((sum,x)=>sum+Number(x.total||0),0)}, monthlyPeriods });
+});
+
+// داشبورد: وضعیت مالی دوره‌ای برای گزارش‌های مدیریتی
 R('GET', '/api/dashboard', async c => {
   const fund = fundOf(c.url.searchParams.get('fund') || 'monthly');
   if (!canSeeAggregates(c.user, fund)) throw err(403, 'FORBIDDEN', 'اطلاعات مالی برای نقش شما در دسترس نیست');
