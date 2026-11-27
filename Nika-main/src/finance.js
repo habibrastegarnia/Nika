@@ -56,8 +56,8 @@ R('POST', '/api/transactions', async c => {
       const unitNumber = str(x.unitNumber, { max: 20, field: 'شماره واحد' });
       const unit = await c.db.prepare('SELECT id FROM units WHERE unit_number=?').bind(unitNumber).first();
       if (!unit) throw err(404, 'UNIT_NOT_FOUND', 'واحد انتخاب‌شده پیدا نشد');
-      const financeRole = u.roles.includes('finance') || (u.delegatedRoles || []).includes('finance');
-      const reason = financeRole ? null : str(x.reason, { max: 500, field: 'دلیل ثبت خارج از مسئولیت', multiline: true });
+      // داشتن finance.approve به معنی اختیار مستقیم ثبت پرداخت برای واحدهاست؛ دلیل اضافی لازم نیست.
+      const reason = null;
       const payerRole = fund === 'owner' ? 'owner' : 'resident';
       const payer = await c.db.prepare('SELECT u.id FROM users u JOIN user_roles r ON r.user_id=u.id AND r.role=? WHERE u.unit_id=? AND u.active=1 ORDER BY u.created_at DESC LIMIT 1').bind(payerRole, unit.id).first();
       const per = fund === 'owner' ? ownerYear(x.period) : period(x.period, false);
@@ -100,7 +100,8 @@ R('POST', '/api/transactions/:id/decision', async c => {
   if (t.kind === 'expense') throw err(410, 'USE_EXPENSE_REQUESTS', 'هزینه‌ها باید از مسیر درخواست پرداخت و تأیید نهایی رئیس ثبت شوند');
   if (t.status !== 'pending' || t.kind !== 'payment') throw err(409, 'NOT_PENDING', 'این مورد در انتظار تأیید نیست');
   if (!can(c.user, t.kind === 'payment' ? 'finance.approve' : 'expenses.approve')) throw err(403, 'FORBIDDEN', 'اجازه‌ی تأیید این مورد را ندارید');
-  const overrideReason = c.user.roles.includes('finance') ? null : str(x.reason, { max: 500, field: 'دلیل انجام خارج از مسئولیت', multiline: true });
+  // مجوز finance.approve قبلاً بررسی شده است؛ تأییدکننده مجاز نیازی به دلیل خارج از مسئولیت ندارد.
+  const overrideReason = null;
   if (t.created_by === c.user.id && c.env.ALLOW_SELF_APPROVAL !== 'true') throw err(403, 'SELF_APPROVAL', 'ثبت‌کننده نمی‌تواند مورد ثبت‌شده‌ی خودش را تأیید یا رد کند');
   if (!['approved', 'rejected'].includes(x.status)) throw err(400, 'INVALID_STATUS', 'وضعیت نامعتبر است');
   const note = x.status === 'rejected' ? str(x.note, { max: 300, field: 'دلیل رد', multiline: true }) : optStr(x.note, { max: 300, field: 'توضیحات', multiline: true });
