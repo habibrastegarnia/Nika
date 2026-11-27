@@ -12,7 +12,7 @@ export const ROLE_PERMS = {
   executive: ['users.read', 'users.manage', 'users.delete', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.reports', 'finance.approve', 'expenses.create', 'messages.manage', 'notices.manage'],
 
   // مدیر مالی: مشاهده و ثبت امور مالی و رسیدگی به تأییدهای مالی؛ بدون دسترسی به تنظیمات ساختمان یا مدیریت کاربران.
-  finance: ['users.read', 'units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'],
+  finance: ['units.read', 'finance.owner.read', 'finance.monthly.read', 'finance.approve', 'expenses.approve', 'expenses.create', 'finance.reports'],
 
   // عضو هیئت‌مدیره فقط امکان مشاهده امور مالی را دارد.
   board: ['finance.owner.read', 'finance.monthly.read', 'finance.reports'],
