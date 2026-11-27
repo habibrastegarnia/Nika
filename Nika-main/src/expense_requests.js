@@ -39,7 +39,7 @@ async function canManageRequest(db, user, row) {
 
 function actorMeta(user, ownerRole, reason) {
   const delegated = user.delegatedRoles?.includes(ownerRole);
-  const actorRole = delegated ? `جانشین ${ownerRole}` : (user.roles[0] || 'manager');
+  const actorRole = user.activeRole === 'chair' ? 'chair' : (delegated ? `جانشین ${ownerRole}` : (user.activeRole || user.roles[0] || 'manager'));
   return { actorRole, isDelegate: !!reason && !user.roles.includes(ownerRole), reason: reason || null };
 }
 
@@ -238,7 +238,7 @@ R('POST', '/api/expense-requests/:id/cancel', { perm: 'expenses.create' }, async
       .bind(crypto.randomUUID(), row.id, c.user.id, 'executive', 'cancelled', reason)
   ]);
   if (!results[0]?.meta?.changes) throw err(409, 'NOT_CANCELLABLE', 'وضعیت درخواست تغییر کرده است');
-  await audit(c.db, c.user.id, 'expense_request.cancel', 'expense_request', row.id, { referenceNo: row.reference_no, reason });
+  await audit(c.db, c.user.id, 'expense_request.cancel', 'expense_request', row.id, { referenceNo: row.reference_no, reason }, { actorRole: c.user.activeRole });
   return reply({ ok: true, status: 'cancelled' });
 });
 
