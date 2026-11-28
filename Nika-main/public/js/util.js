@@ -67,4 +67,9 @@ export const baseRoleLabel = (user, includeUnit = true) => {
   const label = key === 'both' ? 'مالک/ساکن' : key === 'owner' ? 'مالک' : 'ساکن';
   return includeUnit && user?.unit_number ? `${label} واحد ${user.unit_number}` : label;
 };
+export const userRoleLabels = user => {
+  const base = baseRoleLabel(user, false);
+  const extra = (Array.isArray(user?.roles) ? user.roles : []).filter(role => !['owner','resident'].includes(role)).map(role => ROLE_FA[role] || role);
+  return [...(base ? [base] : []), ...extra];
+};
 export const chip = ([label, color]) => html`<span class="page-chip ${color}">${label}</span>`;
