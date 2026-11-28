@@ -231,9 +231,10 @@ async function unitsTab() {
     const o = ownerByNumber[number] || { charged: 0, settled: 0, balance: 0 };
     return { number, unit: byNumber[number] || null, monthly: m, owner: o, balance: Number(m.balance || 0) + Number(o.balance || 0) };
   });
+  let selectedFund = 'monthly';
   const statusOf = b => b > 0 ? 'debt' : b < 0 ? 'credit' : 'settled';
   const statusLabel = { debt: 'بدهکار', credit: 'بستانکار', settled: 'تسویه' };
-  const unitTile = x => html`<button type="button" class="nika-building-unit ${statusOf(x.balance)}" data-unit-detail="${x.number}" aria-label="نمایش اطلاعات واحد ${x.number}"><span>${fa(x.number)}</span></button>`;
+  const unitTile = x => { const balance = Number(x[selectedFund].balance || 0); return html`<button type="button" class="nika-building-unit ${statusOf(balance)}" data-unit-detail="${x.number}" aria-label="نمایش وضعیت ${selectedFund === 'monthly' ? 'شارژ ماهیانه' : 'شارژ مالکانه'} واحد ${x.number}"><span>${fa(x.number)}</span></button>`; };
   const floors = Array.from({ length: 8 }, (_, i) => 8 - i).map(floor => {
     const row = allUnits.filter(x => x.number.startsWith(String(floor)));
     const left = row.filter(x => ['3','4'].includes(x.number.slice(-1)));
@@ -243,20 +244,27 @@ async function unitsTab() {
   return {
     html: html`<div class="nika-units-page" dir="rtl">
       <section class="nika-building-panel">
-        <div class="nika-building-heading"><strong>نمای ساختمان نیکا</strong><span>برای مشاهده جزئیات مالی، واحد را انتخاب کنید</span></div>
+        <div class="nika-building-heading"><strong>نمای ساختمان نیکا</strong><span>برای مشاهده وضعیت هر صندوق، حالت موردنظر را انتخاب کنید</span></div>
+        <div class="nika-building-fund-switch" role="group" aria-label="انتخاب صندوق مالی"><button type="button" class="is-active" data-fund-select="monthly" aria-pressed="true">شارژ ماهیانه</button><button type="button" data-fund-select="owner" aria-pressed="false">شارژ مالکانه</button></div>
         <div class="nika-building-legend"><span><i class="debt"></i>بدهکار</span><span><i class="settled"></i>تسویه</span><span><i class="credit"></i>بستانکار</span></div>
         <div class="nika-building-roof"></div><div class="nika-building-floors">${floors}</div>
         <div class="nika-building-ground"><span>ورودی ساختمان نیکا</span></div>
       </section>
     </div>`,
     bind(box) {
+      act(box, '[data-fund-select]', b => {
+        selectedFund = b.dataset.fundSelect;
+        $('[data-fund-select]', box).forEach(button => { const active = button.dataset.fundSelect === selectedFund; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); });
+        const tiles = $('[data-unit-detail]', box);
+        tiles.forEach(tile => { const item = allUnits.find(unit => unit.number === tile.dataset.unitDetail); const balance = Number(item?.[selectedFund]?.balance || 0); tile.classList.remove('debt','credit','settled'); tile.classList.add(statusOf(balance)); tile.setAttribute('aria-label', `نمایش وضعیت ${selectedFund === 'monthly' ? 'شارژ ماهیانه' : 'شارژ مالکانه'} واحد ${item.number}`); });
+      });
       act(box, '[data-unit-detail]', async b => {
-        const x = allUnits.find(item => item.number === b.dataset.unitDetail), overall = x.balance, state = statusOf(overall);
+        const x = allUnits.find(item => item.number === b.dataset.unitDetail), selectedBalance = Number(x[selectedFund].balance || 0), state = statusOf(selectedBalance);
         const amountLine = (label, value) => html`<div class="nika-unit-fin-row"><span>${label}</span><strong class="${value > 0 ? 'debt-text' : value < 0 ? 'credit-text' : 'settled-text'}">${value > 0 ? 'بدهی ' + toman(value) : value < 0 ? 'بستانکاری ' + toman(-value) : 'تسویه · ۰ تومان'}</strong></div>`;
         const content = html`<div class="nika-unit-detail" dir="rtl">
           <div class="nika-unit-detail-status ${state}"><span>وضعیت مالی واحد</span><strong>${statusLabel[state]}</strong></div>
-          <div class="nika-unit-total ${state}"><small>مانده کل</small><strong>${overall > 0 ? 'بدهی ' + toman(overall) : overall < 0 ? 'بستانکاری ' + toman(-overall) : '۰ تومان · تسویه'}</strong></div>
-          <div class="nika-unit-fin-section"><h4>جزئیات صندوق‌ها</h4>${amountLine('شارژ ماهیانه', Number(x.monthly.balance || 0))}${amountLine('شارژ مالکانه', Number(x.owner.balance || 0))}</div>
+          <div class="nika-unit-total ${state}"><small>مانده ${selectedFund === 'monthly' ? 'شارژ ماهیانه' : 'شارژ مالکانه'}</small><strong>${selectedBalance > 0 ? 'بدهی ' + toman(selectedBalance) : selectedBalance < 0 ? 'بستانکاری ' + toman(-selectedBalance) : '۰ تومان · تسویه'}</strong></div>
+          <div class="nika-unit-fin-section"><h4>وضعیت مستقل صندوق‌ها</h4>${amountLine('شارژ ماهیانه', Number(x.monthly.balance || 0))}${amountLine('شارژ مالکانه', Number(x.owner.balance || 0))}</div>
           <div class="nika-footnote">مبالغ بر اساس تراکنش‌های تأییدشده محاسبه شده‌اند.</div>
           <div class="row-actions"><button type="button" class="nika-secondary sm" id="showUnitTransactions">ریز سوابق مالی واحد</button></div>
         </div>`;
