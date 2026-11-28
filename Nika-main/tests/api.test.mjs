@@ -142,6 +142,37 @@ test('عنوان مالک/ساکن از تیک‌های نقش پایه و نق�
   assert.equal(managerPost.status, 201);
   discussion = await bothUser.get(`/api/public-messages/${managerPost.data.id}/discussion`);
   assert.equal(discussion.data.message.author_label, 'رئیس هیأت‌مدیره');
+
+  // گیرنده‌های پیام خصوصی و پاسخ در همان گفت‌وگو
+  const privateSender = new Client('privateSender'), privateExec = new Client('privateExec'), privateFinance = new Client('privateFinance'), privateBoard = new Client('privateBoard');
+  await create('16', '09124444446', []);
+  await create('17', '09124444447', ['executive']);
+  await create('18', '09124444448', ['finance']);
+  await create('19', '09124444449', ['board']);
+  const activatePrivate = async (client, unit, phone, password) => {
+    assert.equal((await client.login('resident', phone, phone, unit)).status, 200);
+    assert.equal((await client.post('/api/password', { newPassword: password })).status, 200);
+  };
+  await activatePrivate(privateSender, '16', '09124444446', 'Private-Sender-Pass-16');
+  await activatePrivate(privateExec, '17', '09124444447', 'Private-Exec-Pass-17');
+  await activatePrivate(privateFinance, '18', '09124444448', 'Private-Finance-Pass-18');
+  await activatePrivate(privateBoard, '19', '09124444449', 'Private-Board-Pass-19');
+  const privateToChair = await privateSender.post('/api/messages', { title: 'فقط رئیس', body: 'محرمانه', recipientRole: 'chair' });
+  assert.equal(privateToChair.status, 201);
+  const privateId = privateToChair.data.id;
+  assert.ok((await chair.get('/api/messages')).data.messages.some(m => m.id === privateId));
+  assert.ok(!(await privateExec.get('/api/messages')).data.messages.some(m => m.id === privateId));
+  assert.equal((await chair.get(`/api/messages/${privateId}/thread`)).data.messages[0].sender_label, 'مالک/ساکن واحد 16');
+  assert.equal((await chair.post(`/api/messages/${privateId}/replies`, { body: 'پاسخ رئیس' })).status, 201);
+  assert.equal((await privateSender.get('/api/messages')).data.messages.find(m => m.id === privateId).unread_count, 1);
+  const privateThread = await privateSender.get(`/api/messages/${privateId}/thread`);
+  assert.equal(privateThread.data.messages[1].sender_label, 'رئیس هیأت‌مدیره');
+  assert.equal((await privateSender.post(`/api/messages/${privateId}/read`)).status, 200);
+  assert.equal((await privateSender.get('/api/messages')).data.messages.find(m => m.id === privateId).unread_count, 0);
+  const privateToBoard = await privateSender.post('/api/messages', { title: 'برای هیأت‌مدیره', body: 'لطفاً بررسی شود', recipientRole: 'board' });
+  assert.equal(privateToBoard.status, 201);
+  for (const client of [chair, privateFinance, privateBoard]) assert.ok((await client.get('/api/messages')).data.messages.some(m => m.id === privateToBoard.data.id));
+  assert.ok(!(await privateExec.get('/api/messages')).data.messages.some(m => m.id === privateToBoard.data.id));
 });
 
 test('ارتقای دسترسی: مدیر ساختمان رئیس/مالی نمی‌سازد و همه‌کاره نیست', async () => {
