@@ -172,34 +172,84 @@ R('PATCH', '/api/requests/:id', { perm: 'requests.manage' }, async c => {
   await audit(c.db, c.user.id, 'request.update', 'request', r.id, { status }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true });
 });
-// ---------- پیام‌ها (بدون گیرنده = پیام به مدیریت) ----------
+// ---------- پیام‌های خصوصی و گفت‌وگوهای هدفمند ----------
+const MESSAGE_RECIPIENT_ROLES = {
+  executive: ['executive'],
+  chair: ['chair'],
+  board: ['chair','finance','board']
+};
+const MESSAGE_RECIPIENT_LABELS = { executive: 'مدیر اجرایی', chair: 'رئیس هیأت‌مدیره', board: 'هیأت‌مدیره' };
+const canReceiveMessageRole = (user, target) => !!MESSAGE_RECIPIENT_ROLES[target]?.some(role => user.roles?.includes(role));
+const canAccessMessageRoot = (user, root) => root.sender_id === user.id || root.recipient_id === user.id ||
+  (!!root.recipient_role && canReceiveMessageRole(user, root.recipient_role)) ||
+  (!root.recipient_id && !root.recipient_role && can(user, 'messages.manage'));
 R('GET', '/api/messages', { perm: 'messages.use' }, async c => {
   const box = c.url.searchParams.get('box') === 'sent' ? 'sent' : 'inbox', mgr = can(c.user, 'messages.manage') ? 1 : 0;
-  const cols = 'm.*,su.name sender_name,sn.unit_number sender_unit,ru.name recipient_name';
+  const cols = `m.*,su.name sender_name,sn.unit_number sender_unit,ru.name recipient_name,
+    CASE m.recipient_role WHEN 'executive' THEN 'مدیر اجرایی' WHEN 'chair' THEN 'رئیس هیأت‌مدیره' WHEN 'board' THEN 'هیأت‌مدیره' ELSE NULL END recipient_label`;
   const from = 'FROM messages m JOIN users su ON su.id=m.sender_id LEFT JOIN units sn ON sn.id=su.unit_id LEFT JOIN users ru ON ru.id=m.recipient_id';
-  const r = box === 'sent'
-    ? await c.db.prepare(`SELECT ${cols} ${from} WHERE m.sender_id=? ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`).bind(c.user.id).all()
-    : await c.db.prepare(`SELECT ${cols} ${from} WHERE (m.recipient_id=? OR (m.recipient_id IS NULL AND ?=1)) ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`).bind(c.user.id, mgr).all();
+  const groupRoles = Object.keys(MESSAGE_RECIPIENT_ROLES).filter(role => canReceiveMessageRole(c.user, role));
+  let query, args;
+  if (box === 'sent') {
+    query = `SELECT ${cols} ${from} WHERE COALESCE(m.thread_id,m.id)=m.id AND m.sender_id=? ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`;
+    args = [c.user.id];
+  } else {
+    const groupClause = groupRoles.length ? ` OR m.recipient_role IN (${groupRoles.map(() => '?').join(',')})` : '';
+    query = `SELECT ${cols} ${from} WHERE COALESCE(m.thread_id,m.id)=m.id AND (m.recipient_id=? OR (m.recipient_id IS NULL AND m.recipient_role IS NULL AND ?=1)${groupClause}) ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`;
+    args = [c.user.id, mgr, ...groupRoles];
+  }
+  const r = await c.db.prepare(query).bind(...args).all();
   return reply({ box, messages: r.results });
 });
 R('POST', '/api/messages', { perm: 'messages.use' }, async c => {
   const x = await readJson(c.request), id = crypto.randomUUID();
-  let recipient = null;
+  let recipient = null, recipientRole = null;
+  if (x.recipientRole != null && x.recipientRole !== '') {
+    recipientRole = String(x.recipientRole);
+    if (!Object.prototype.hasOwnProperty.call(MESSAGE_RECIPIENT_ROLES, recipientRole)) throw err(400, 'INVALID_RECIPIENT', 'مخاطب پیام خصوصی معتبر نیست');
+  }
   if (x.recipientId) {
-    if (!can(c.user, 'messages.manage')) throw err(403, 'FORBIDDEN', 'فقط مدیریت می‌تواند به کاربر مشخصی پیام بدهد');
+    if (!can(c.user, 'messages.manage') || recipientRole) throw err(403, 'FORBIDDEN', 'ارسال مستقیم فقط برای مدیریت و بدون انتخاب گروه مخاطب مجاز است');
     if (!await c.db.prepare('SELECT id FROM users WHERE id=? AND active=1').bind(String(x.recipientId)).first()) throw err(404, 'NOT_FOUND', 'گیرنده پیدا نشد');
     recipient = String(x.recipientId);
   }
-  await c.db.prepare('INSERT INTO messages(id,sender_id,recipient_id,title,body) VALUES(?,?,?,?,?)')
-    .bind(id, c.user.id, recipient, str(x.title, { max: 120, field: 'عنوان' }), str(x.body, { max: 2000, multiline: true, field: 'متن پیام' })).run();
-  return reply({ ok: true, id }, 201);
+  const snap = roleSnapshot(c.user);
+  await c.db.prepare('INSERT INTO messages(id,thread_id,sender_id,recipient_id,recipient_role,sender_role,sender_label,title,body) VALUES(?,?,?,?,?,?,?,?,?)')
+    .bind(id,id,c.user.id,recipient,recipientRole,snap.role,snap.label,str(x.title,{max:120,field:'عنوان'}),str(x.body,{max:2000,multiline:true,field:'متن پیام'})).run();
+  await audit(c.db,c.user.id,'message.create','message',id,{recipientRole:recipientRole || null},{actorRole:snap.role});
+  return reply({ ok:true,id },201);
+});
+R('GET', '/api/messages/:id/thread', { perm: 'messages.use' }, async c => {
+  let root = await c.db.prepare('SELECT * FROM messages WHERE id=?').bind(c.params.id).first();
+  if (!root) throw err(404,'NOT_FOUND','گفت‌وگو پیدا نشد');
+  if (root.thread_id && root.thread_id !== root.id) root = await c.db.prepare('SELECT * FROM messages WHERE id=?').bind(root.thread_id).first() || root;
+  if (!canAccessMessageRoot(c.user,root)) throw err(404,'NOT_FOUND','گفت‌وگو پیدا نشد');
+  const messages = await c.db.prepare(`SELECT m.*,u.name sender_name,n.unit_number sender_unit
+    FROM messages m JOIN users u ON u.id=m.sender_id LEFT JOIN units n ON n.id=u.unit_id
+    WHERE COALESCE(m.thread_id,m.id)=? ORDER BY m.created_at ASC,m.rowid ASC LIMIT 300`).bind(root.id).all();
+  return reply({ threadId:root.id, messages:messages.results });
+});
+R('POST', '/api/messages/:id/replies', { perm: 'messages.use' }, async c => {
+  const rootRow = await c.db.prepare('SELECT * FROM messages WHERE id=?').bind(c.params.id).first();
+  if (!rootRow) throw err(404,'NOT_FOUND','گفت‌وگو پیدا نشد');
+  const root = rootRow.thread_id && rootRow.thread_id !== rootRow.id
+    ? (await c.db.prepare('SELECT * FROM messages WHERE id=?').bind(rootRow.thread_id).first() || rootRow) : rootRow;
+  if (!canAccessMessageRoot(c.user,root)) throw err(404,'NOT_FOUND','گفت‌وگو پیدا نشد');
+  const x = await readJson(c.request), body = str(x.body,{max:2000,multiline:true,field:'متن پاسخ'}), snap = roleSnapshot(c.user), id = crypto.randomUUID();
+  const replyingAsSender = root.sender_id === c.user.id;
+  const recipientId = replyingAsSender ? root.recipient_id : root.sender_id;
+  const recipientRole = replyingAsSender ? root.recipient_role : null;
+  await c.db.prepare('INSERT INTO messages(id,thread_id,sender_id,recipient_id,recipient_role,sender_role,sender_label,title,body) VALUES(?,?,?,?,?,?,?,?,?)')
+    .bind(id,root.id,c.user.id,recipientId,recipientRole,snap.role,snap.label,root.title,body).run();
+  await audit(c.db,c.user.id,'message.reply','message',root.id,{}, {actorRole:snap.role});
+  return reply({ok:true,id,threadId:root.id},201);
 });
 R('POST', '/api/messages/:id/read', { perm: 'messages.use' }, async c => {
-  await c.db.prepare('UPDATE messages SET read_at=COALESCE(read_at,CURRENT_TIMESTAMP) WHERE id=? AND (recipient_id=? OR (recipient_id IS NULL AND ?=1))')
-    .bind(c.params.id, c.user.id, can(c.user, 'messages.manage') ? 1 : 0).run();
+  const root = await c.db.prepare('SELECT * FROM messages WHERE id=?').bind(c.params.id).first();
+  if (!root || !canAccessMessageRoot(c.user,root) || root.sender_id === c.user.id) throw err(404,'NOT_FOUND','پیام پیدا نشد');
+  await c.db.prepare('UPDATE messages SET read_at=COALESCE(read_at,CURRENT_TIMESTAMP) WHERE id=?').bind(root.id).run();
   return reply({ ok: true });
 });
-
 // ---------- محتوای ساختمان: CRUD عمومی ----------
 const shortTime = v => { const s = String(v ?? '').trim(); if (!s) return null; const t = s.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw err(400, 'INVALID_TIME', 'ساعت باید به شکل ۱۸:۳۰ باشد'); return t; };
 const httpsUrl = v => { const s = String(v ?? '').trim(); try { const u = new URL(s); if (u.protocol !== 'https:' || s.length > 500) throw 0; return u.href; } catch { throw err(400, 'INVALID_URL', 'نشانی باید با https شروع شود'); } };
