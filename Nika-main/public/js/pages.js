@@ -351,6 +351,7 @@ export async function loadWeeklyCalendar() {
     const responses = await Promise.all(months.map(month => api(`/events?month=${month}`)));
     const allItems = responses.flatMap(response => Array.isArray(response?.items) ? response.items : []);
     const buildingItems = allItems.filter(event => !event.isHoliday);
+    const holidayDates = new Set(allItems.filter(event => event.isHoliday).map(event => event.event_date));
     const byDate = new Map();
     buildingItems.forEach(event => {
       if (!byDate.has(event.event_date)) byDate.set(event.event_date, []);
@@ -366,7 +367,8 @@ export async function loadWeeklyCalendar() {
     host.innerHTML = join(dates.map((day, i) => {
       const dayEvents = byDate.get(day.key) || [];
       const pulse = day.key === nextWeeklyEventDate;
-      return html`<span class="dow">${weekdays[i]}</span><span class="day-cell ${dayEvents.length ? 'event' : ''} ${day.key === todayKey ? 'today' : ''}"><b class="day-number">${faN(day.d)}</b>${dayEvents.length ? raw(`<i class="event-dot ${pulse ? 'pulse' : ''}" aria-hidden="true"></i>`) : ''}</span>`;
+      const holiday = holidayDates.has(day.key);
+      return html`<span class="dow">${weekdays[i]}</span><span class="day-cell ${dayEvents.length ? 'event' : ''} ${holiday ? 'holiday' : ''} ${day.key === todayKey ? 'today' : ''} ${pulse ? 'next-event' : ''}"><b class="day-number">${faN(day.d)}</b></span>`;
     }));
     const first = dates[0], last = dates[6];
     rangeHost.textContent = first.m === last.m
@@ -414,8 +416,9 @@ export async function calendarPage(y, m) {
   const items = Array.isArray(response?.items) ? response.items : [];
   const canEdit = canManageCalendarEvents();
   const buildingItems = items.filter(event => !event.isHoliday);
-  // فقط رویدادهای ساختمان در خانه‌های تقویم علامت‌گذاری شوند؛ مناسبت‌ها و تعطیلات رسمی برجسته نشوند.
+  // رویدادهای ساختمان و تعطیلات جداگانه برای نشانه‌گذاری روزها نگهداری می‌شوند.
   const byDay = {}; buildingItems.forEach(e => (byDay[+e.event_date.slice(8, 10)] ||= []).push(e));
+  const holidayDays = new Set(items.filter(event => event.isHoliday).map(event => +event.event_date.slice(8, 10)));
   const todayKey = `${t.y}-${String(t.m).padStart(2, '0')}-${String(t.d).padStart(2, '0')}`;
   const clock = new Date(), nowTime = `${String(clock.getHours()).padStart(2, '0')}:${String(clock.getMinutes()).padStart(2, '0')}`;
   const nextBuildingEvent = buildingItems
@@ -428,8 +431,9 @@ export async function calendarPage(y, m) {
   for (let d = 1; d <= len; d++) {
     const dateKey = `${y}-${mm}-${String(d).padStart(2, '0')}`;
     const hasEvent = !!byDay[d], isToday = y === t.y && m === t.m && d === t.d;
+    const isHoliday = holidayDays.has(d);
     const isNextEvent = dateKey === nextEventDate;
-    cells.push(html`<span class="day-cell ${hasEvent ? 'event' : ''} ${isToday ? 'today' : ''} ${isNextEvent ? 'next-event' : ''}" ${hasEvent ? raw(`data-day="${d}"`) : ''}><b class="day-number">${faN(d)}</b>${hasEvent ? html`<i class="event-dot ${isNextEvent ? 'pulse' : ''}" aria-hidden="true"></i>` : ''}</span>`);
+    cells.push(html`<span class="day-cell ${hasEvent ? 'event' : ''} ${isHoliday ? 'holiday' : ''} ${isToday ? 'today' : ''} ${isNextEvent ? 'next-event' : ''}" ${hasEvent ? raw(`data-day="${d}"`) : ''}><b class="day-number">${faN(d)}</b></span>`);
   }
   const prev = m === 1 ? [y - 1, 12] : [y, m - 1], next = m === 12 ? [y + 1, 1] : [y, m + 1];
   const eventFields = [
