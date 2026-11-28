@@ -25,7 +25,7 @@ async function publicNotice(db, id) {
   return db.prepare("SELECT id,title,body,created_at,author_name,author_label,author_role FROM notices WHERE id=? AND audience='all' AND source_request_id IS NOT NULL").bind(id).first();
 }
 R('GET', '/api/public-messages', async c => {
-  const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 5, 1), 100);
+  const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 5, 1), 500);
   const r = await c.db.prepare(
     `SELECT n.id,n.title,n.body,n.created_at,
       COALESCE(n.author_name,'کاربر ساختمان') author_name,
