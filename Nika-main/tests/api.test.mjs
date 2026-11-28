@@ -401,6 +401,29 @@ test('اطلاعیه، درخواست، پیام و اتصال بین آن‌ه�
   assert.equal((await chair.post('/api/messages', { title: 'پاسخ', body: 'تا ۵ام', recipientId: sender })).status, 201);
   assert.equal((await res1.get('/api/messages')).data.messages[0].title, 'پاسخ');
   assert.equal((await res1.get('/api/messages?box=sent')).data.messages[0].title, 'سؤال');
+
+  // پیام خصوصی هدفمند، نقش فرستنده در لحظه ارسال و پاسخ در همان گفت‌وگو
+  const directed = await res1.post('/api/messages', { title: 'پیام محرمانه به رئیس', body: 'لطفاً بررسی کنید', recipientRole: 'chair' });
+  assert.equal(directed.status, 201);
+  const directedId = directed.data.id;
+  assert.ok((await chair.get('/api/messages')).data.messages.some(m => m.id === directedId));
+  assert.ok(!(await exec.get('/api/messages')).data.messages.some(m => m.id === directedId), 'پیام خطاب به رئیس نباید در صندوق مدیر اجرایی دیده شود');
+  const chairThread = await chair.get(`/api/messages/${directedId}/thread`);
+  assert.equal(chairThread.status, 200);
+  assert.equal(chairThread.data.messages[0].sender_label, 'ساکن واحد 12');
+  assert.equal((await chair.post(`/api/messages/${directedId}/replies`, { body: 'پیام دریافت شد' })).status, 201);
+  const residentThreadList = (await res1.get('/api/messages')).data.messages;
+  const directedThreadRow = residentThreadList.find(m => m.id === directedId);
+  assert.ok(directedThreadRow && directedThreadRow.unread_count === 1, 'پاسخ رئیس باید در صندوق دریافتی فرستنده دیده شود');
+  assert.equal((await res1.get(`/api/messages/${directedId}/thread`)).data.messages.length, 2);
+  assert.equal((await res1.post(`/api/messages/${directedId}/read`)).status, 200);
+  assert.equal((await res1.get('/api/messages')).data.messages.find(m => m.id === directedId).unread_count, 0);
+
+  const boardMessage = await res1.post('/api/messages', { title: 'پیام به هیأت‌مدیره', body: 'درخواست بررسی', recipientRole: 'board' });
+  assert.equal(boardMessage.status, 201);
+  assert.ok((await chair.get('/api/messages')).data.messages.some(m => m.id === boardMessage.data.id));
+  assert.ok((await fin.get('/api/messages')).data.messages.some(m => m.id === boardMessage.data.id));
+  assert.ok(!(await exec.get('/api/messages')).data.messages.some(m => m.id === boardMessage.data.id));
   assert.equal((await chair.del(`/api/notices/${(await chair.get('/api/notices')).data.notices[0].id}`)).status, 200);
 });
 
