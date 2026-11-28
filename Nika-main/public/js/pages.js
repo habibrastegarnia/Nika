@@ -172,13 +172,13 @@ export async function loadPublicMessages() {
     }
     publicMessageIndex = Math.min(publicMessageIndex, messages.length - 1);
     track.className = 'public-message-track';
-    track.innerHTML = join(messages.map((m, index) => html\`<article class="public-message-item" data-gallery-index="\${index}">
-      <button type="button" class="public-message-open" data-public-message="\${m.id}" aria-label="مشاهده پیام \${m.title}">
-        <span class="public-message-meta"><span>\${m.author_label} · \${m.author_name}</span><span>\${fdt(m.created_at)}</span></span>
-        <strong>\${m.title}</strong><span class="public-message-excerpt">\${String(m.body || '').slice(0, 132)}\${String(m.body || '').length > 132 ? '…' : ''}</span>
+    track.innerHTML = join(messages.map((m, index) => html`<article class="public-message-item" data-gallery-index="${index}">
+      <button type="button" class="public-message-open" data-public-message="${m.id}" aria-label="مشاهده پیام ${m.title}">
+        <span class="public-message-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></span>
+        <strong>${m.title}</strong><span class="public-message-excerpt">${String(m.body || '').slice(0, 132)}${String(m.body || '').length > 132 ? '…' : ''}</span>
       </button>
-      \${canDeletePublicMessage() ? html\`<button type="button" class="public-message-delete" data-delete-message="\${m.id}" aria-label="حذف پیام">\${iconMarkup('trash-2')}</button>\` : ''}
-    </article>\`));
+      ${canDeletePublicMessage() ? html`<button type="button" class="public-message-delete" data-delete-message="${m.id}" aria-label="حذف پیام">${iconMarkup('trash-2')}</button>` : ''}
+    </article>`));
     const paintGallery = (animate = true) => {
       const count = messages.length;
       publicMessageIndex = (publicMessageIndex + count) % count;
@@ -194,7 +194,7 @@ export async function loadPublicMessages() {
       if (!animate) requestAnimationFrame(() => track.classList.remove('no-motion'));
     };
     paintGallery(false);
-    status.textContent = \`\${fa(messages.length)} پیام در گالری · جدیدترین پیام در مرکز\`;
+    status.textContent = `${fa(messages.length)} پیام در گالری · جدیدترین پیام در مرکز`;
     track.onclick = event => {
       const remove = event.target.closest('[data-delete-message]');
       if (remove) { deletePublicMessage(remove.dataset.deleteMessage, false); return; }
