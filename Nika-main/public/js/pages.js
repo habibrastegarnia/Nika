@@ -125,10 +125,106 @@ export async function loadLatestNotice() {
   $('#boardDate').textContent = n ? fdt(n.created_at) : '';
   $('#boardTitle').textContent = n ? n.title : 'اطلاعیه‌ای ثبت نشده است';
   $('#boardText').textContent = n ? n.body.slice(0, 140) : '';
-  $('#ntDate').textContent = n ? fdt(n.created_at) : '';
-  $('#ntTitle').textContent = n ? n.title : 'اطلاعیه‌ای ثبت نشده است';
-  $('#ntText').textContent = n ? n.body.slice(0, 160) : 'هر زمان مدیریت اطلاعیه‌ای منتشر کند اینجا نمایش داده می‌شود.';
   $('#ntNew').style.display = n && isRecent(n.created_at) ? '' : 'none';
+}
+
+let publicMessageTimer = null;
+let publicMessageIndex = 0;
+const PUBLIC_MESSAGE_HEIGHT = 96;
+const PUBLIC_REACTIONS = [
+  { key: 'like', emoji: '👍', label: 'پسندیدم' },
+  { key: 'heart', emoji: '❤️', label: 'دوست داشتم' },
+  { key: 'support', emoji: '🤝', label: 'حمایت می‌کنم' },
+  { key: 'celebrate', emoji: '🎉', label: 'تبریک' }
+];
+export async function loadPublicMessages() {
+  const track = $('#publicMessageTrack'), status = $('#publicMessageStatus');
+  if (!track || !status) return;
+  if (publicMessageTimer) clearInterval(publicMessageTimer);
+  publicMessageTimer = null;
+  publicMessageIndex = 0;
+  try {
+    const { messages = [] } = await api('/public-messages?limit=5');
+    if (!messages.length) {
+      track.innerHTML = '<div class="public-message-empty">هنوز پیام عمومیِ تأییدشده‌ای ثبت نشده است.</div>';
+      status.textContent = 'پیام‌های منتشرشده کاربران';
+      return;
+    }
+    track.innerHTML = join(messages.map((m, i) => html`<button type="button" class="public-message-item" data-public-message="${m.id}" aria-label="مشاهده پیام ${m.title}">
+      <span class="public-message-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></span>
+      <strong>${m.title}</strong><span class="public-message-excerpt">${String(m.body || '').slice(0, 132)}${String(m.body || '').length > 132 ? '…' : ''}</span>
+    </button>`));
+    status.textContent = `${fa(messages.length)} پیام اخیر · هر ۴ ثانیه`;
+    track.style.transform = 'translateY(0)';
+    track.onclick = event => {
+      const item = event.target.closest('[data-public-message]');
+      if (item) openPublicMessageModal(item.dataset.publicMessage);
+    };
+    if (messages.length > 1) publicMessageTimer = setInterval(() => {
+      if (document.hidden) return;
+      publicMessageIndex = (publicMessageIndex + 1) % messages.length;
+      track.style.transform = `translateY(-${publicMessageIndex * PUBLIC_MESSAGE_HEIGHT}px)`;
+    }, 4000);
+  } catch (error) {
+    track.innerHTML = '<div class="public-message-empty">دریافت پیام‌ها در حال حاضر ممکن نیست.</div>';
+    status.textContent = 'پیام کاربران';
+    console.warn('Nika public messages:', error);
+  }
+}
+function renderPublicMessageDiscussion(data) {
+  const counts = Object.fromEntries((data.reactions || []).map(x => [x.reaction, Number(x.count || 0)]));
+  return html`<article class="public-message-detail">
+    <div class="public-message-detail-meta"><span>${data.message.author_label} · ${data.message.author_name}</span><span>${fdt(data.message.created_at)}</span></div>
+    <h3>${data.message.title}</h3><p class="public-message-fulltext">${data.message.body}</p>
+    <div class="public-message-reactions">${PUBLIC_REACTIONS.map(r => html`<button type="button" class="public-reaction ${data.myReaction === r.key ? 'selected' : ''}" data-reaction="${r.key}" aria-pressed="${data.myReaction === r.key}"><span>${r.emoji}</span><small>${r.label}</small><b>${fa(counts[r.key] || 0)}</b></button>`)}</div>
+    <div class="page-divider"></div><h4 class="public-comments-title">دیدگاه‌ها · ${fa((data.comments || []).length)}</h4>
+    <div class="public-comments-list">${data.comments?.length ? data.comments.map(c => html`<div class="public-comment"><div><strong>${c.author_name}</strong><span>${c.author_label}</span><small>${fdt(c.created_at)}</small></div><p>${c.body}</p></div>`) : html`<div class="page-empty">هنوز دیدگاهی ثبت نشده است.</div>`}</div>
+    ${can('messages.use') ? html`<form id="publicMessageCommentForm" class="public-comment-form"><textarea name="body" maxlength="1000" required placeholder="دیدگاه خود را بنویسید…"></textarea><button class="page-btn full" type="submit">ثبت دیدگاه</button></form>` : ''}
+  </article>`;
+}
+export async function openPublicMessageModal(id) {
+  let data;
+  try { data = await api(`/public-messages/${encodeURIComponent(id)}/discussion`); }
+  catch (error) { toast(error.message); return; }
+  const modal = openModal('پیام کاربران', renderPublicMessageDiscussion(data));
+  const refresh = async () => {
+    data = await api(`/public-messages/${encodeURIComponent(id)}/discussion`);
+    modal.innerHTML = renderPublicMessageDiscussion(data);
+  };
+  modal.onclick = async event => {
+    const button = event.target.closest('[data-reaction]');
+    if (!button) return;
+    button.disabled = true;
+    try {
+      await api(`/public-messages/${encodeURIComponent(id)}/reactions`, { method: 'POST', body: { reaction: button.dataset.reaction } });
+      await refresh();
+    } catch (error) { toast(error.message); }
+  };
+  modal.onsubmit = async event => {
+    if (event.target.id !== 'publicMessageCommentForm') return;
+    event.preventDefault();
+    const form = event.target, input = form.elements.body, body = input.value.trim();
+    if (!body) return;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await api(`/public-messages/${encodeURIComponent(id)}/comments`, { method: 'POST', body: { body } });
+      await refresh();
+      toast('دیدگاه ثبت شد');
+    } catch (error) { toast(error.message); button.disabled = false; }
+  };
+}
+export async function publicMessagesPage() {
+  const { messages = [] } = await api('/public-messages?limit=100');
+  const v = route('خانه', 'پیام کاربران', 'پیام‌های عمومی منتشرشده پس از تأیید مدیریت', html`<div class="page-list public-messages-page">${messages.length ? messages.map(m => html`<button type="button" class="page-card public-message-row" data-public-message="${m.id}">
+    <div class="public-message-detail-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></div>
+    <h3>${m.title}</h3><p>${String(m.body || '').slice(0, 190)}${String(m.body || '').length > 190 ? '…' : ''}</p>
+    <small>${fa(m.comment_count || 0)} دیدگاه · ${fa(m.reaction_count || 0)} واکنش · مشاهده و گفتگو ←</small>
+  </button>`) : html`<div class="page-card"><div class="page-empty">هنوز پیام عمومیِ تأییدشده‌ای منتشر نشده است.</div></div>`}</div>`);
+  v.onclick = event => {
+    const item = event.target.closest('[data-public-message]');
+    if (item) openPublicMessageModal(item.dataset.publicMessage);
+  };
 }
 export async function loadWeeklyCalendar() {
   const host = $('#weeklyCalendarDays'), eventsHost = $('#weeklyCalendarEvents'), rangeHost = $('#weeklyRange');
@@ -182,7 +278,7 @@ export async function loadWeeklyCalendar() {
 }
 export async function loadHome() {
   fillHeader();
-  await Promise.allSettled([loadDashboard(), loadLatestNotice(), loadWeeklyCalendar()]);
+  await Promise.allSettled([loadDashboard(), loadLatestNotice(), loadPublicMessages(), loadWeeklyCalendar()]);
 }
 
 // ====================== مقررات و مصوبات ======================
@@ -315,7 +411,7 @@ export function composePage(kind = 'request', category = 'عمومی', subject =
     { name: 'category', label: 'دسته‌بندی', type: 'select', value: category, options: REQ_CATEGORIES.map(c => [c, c]) },
     { name: 'title', label: 'موضوع', value: subject ? `مشکل ${subject}` : '', required: true, placeholder: 'عنوان کوتاه' },
     { name: 'body', label: 'شرح', type: 'textarea', required: true, placeholder: 'توضیح کامل را بنویسید' },
-    { name: 'boardRequested', label: 'نمایش در تابلوی ساختمان (پس از تأیید مدیریت)', type: 'checkbox' }])}<button class="page-btn full" type="submit">ارسال</button></form>`);
+    { name: 'boardRequested', label: 'انتشار عمومی در پیام کاربران و تابلوی ساختمان (پس از تأیید مدیریت)', type: 'checkbox' }])}<button class="page-btn full" type="submit">ارسال</button></form>`);
   onSubmit($('form', v), async d => {
     await api('/requests', { method: 'POST', body: { ...d, kind: 'request' } });
     toast('ثبت شد'); open(requestsPage, { replace: true }); refreshSummary();
