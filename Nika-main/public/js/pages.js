@@ -568,11 +568,11 @@ export async function messagesPage(box = 'inbox') {
     <div class="seg"><button class="${box === 'inbox' ? 'on' : ''}" data-box="inbox">دریافتی</button><button class="${box === 'sent' ? 'on' : ''}" data-box="sent">ارسالی</button></div>
     <button class="page-btn full" id="msgNew" style="margin:0 0 12px">+ پیام خصوصی جدید</button>
     <div class="page-list">${messages.length ? messages.map((m, i) => html`<button type="button" dir="rtl" class="page-row clickable nika-message-row private-message-row tone-${m.tone || 'info'} ${box === 'inbox' && Number(m.unread_count || 0) > 0 ? 'unread' : ''}" data-i="${i}">
-      <span class="page-row-icon private-message-icon">${lineIcon('lock-keyhole')}</span><span class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? 'به: ' + (m.recipient_label || m.recipient_name || 'مدیریت ساختمان') : 'از: ' + (m.sender_label || 'کاربر ساختمان') + ' · ' + m.sender_name}${m.sender_unit && box === 'inbox' ? ' · واحد ' + m.sender_unit : ''} · ${fdt(m.created_at)}</small></span>
+      <span class="page-row-icon private-message-icon">${lineIcon('lock-keyhole')}</span><span class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? (m.sender_id === S.user.id ? 'به: ' + (m.recipient_label || m.recipient_name || 'مدیریت ساختمان') : 'پاسخ به فرستنده گفت‌وگو') : (m.sender_id === S.user.id ? 'پاسخ جدید در گفت‌وگو' : 'از: ' + (m.sender_label || 'کاربر ساختمان') + ' · ' + m.sender_name)}${m.sender_unit && box === 'inbox' && m.sender_id !== S.user.id ? ' · واحد ' + m.sender_unit : ''} · ${fdt(m.created_at)}</small></span>
     </button>`) : html`<div class="page-card"><div class="page-empty">پیام خصوصی‌ای وجود ندارد.</div></div>`}</div>`);
   $$('[data-box]', v).forEach(b => b.onclick = () => open(() => messagesPage(b.dataset.box), { replace: true }));
   $('#msgNew', v).onclick = () => open(() => messageComposePage());
-  $$('[data-i]', v).forEach(row => row.onclick = () => { const m = messages[Number(row.dataset.i)]; openPrivateMessageThread(m.id, box === 'inbox' && m.sender_id !== S.user.id); });
+  $$('[data-i]', v).forEach(row => row.onclick = () => { const m = messages[Number(row.dataset.i)]; openPrivateMessageThread(m.id, box === 'inbox' && Number(m.unread_count || 0) > 0); });
 }
 export function messageComposePage(title = '') {
   const v = route('پیام‌ها', 'پیام خصوصی جدید', 'انتخاب مخاطب و ارسال گفت‌وگوی محرمانه', html`<form class="page-card page-form" id="privateMessageComposeForm" novalidate>
