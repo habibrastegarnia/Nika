@@ -533,6 +533,8 @@ test('پیام عمومی بدون تأیید، نقش فعال دیدگاه و 
   const removed = await author.call('DELETE', `/api/public-messages/${message.id}`, { reason: 'پیام حاوی اطلاعات نادرست بود' }, { 'X-Nika-Workspace': 'manager' });
   assert.equal(removed.status, 200, JSON.stringify(removed.data));
   assert.equal((await author.get(`/api/public-messages/${message.id}/discussion`)).status, 404);
+  const noticeFeed = await author.get('/api/notices?limit=100');
+  assert.equal(noticeFeed.data.notices.some(n => n.title === 'پیام فوری بدون تأیید'), false, 'حذف باید در همه‌ی تابلوها اعمال شود');
   const audit = await env.DB.prepare("SELECT details,actor_role FROM audit_logs WHERE action='public_message.delete' AND entity_id=?").bind(message.id).first();
   assert.equal(audit.actor_role, 'chair');
   assert.match(audit.details, /اطلاعات نادرست/);
