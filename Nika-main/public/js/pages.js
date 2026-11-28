@@ -163,14 +163,19 @@ export async function loadPublicMessages() {
       status.textContent = 'پیام‌های منتشرشده کاربران';
       return;
     }
-    track.innerHTML = join(messages.map(m => html`<button type="button" class="public-message-item" data-public-message="${m.id}" aria-label="مشاهده پیام ${m.title}">
-      <span class="public-message-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></span>
-      <strong>${m.title}</strong><span class="public-message-excerpt">${String(m.body || '').slice(0, 132)}${String(m.body || '').length > 132 ? '…' : ''}</span>
-    </button>`));
+    track.innerHTML = join(messages.map(m => html`<div class="public-message-item">
+      <button type="button" class="public-message-open" data-public-message="${m.id}" aria-label="مشاهده پیام ${m.title}">
+        <span class="public-message-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></span>
+        <strong>${m.title}</strong><span class="public-message-excerpt">${String(m.body || '').slice(0, 132)}${String(m.body || '').length > 132 ? '…' : ''}</span>
+      </button>
+      ${canDeletePublicMessage() ? html`<button type="button" class="public-message-delete" data-delete-message="${m.id}" aria-label="حذف پیام">${iconMarkup('trash-2')}</button>` : ''}
+    </div>`));
     if (messages.length > 1) track.appendChild(track.firstElementChild.cloneNode(true));
     status.textContent = `${fa(messages.length)} پیام اخیر · هر ۸ ثانیه`;
     track.style.transform = 'translateY(0)';
     track.onclick = event => {
+      const remove = event.target.closest('[data-delete-message]');
+      if (remove) { deletePublicMessage(remove.dataset.deleteMessage, false); return; }
       const item = event.target.closest('[data-public-message]');
       if (item) openPublicMessageModal(item.dataset.publicMessage);
     };
