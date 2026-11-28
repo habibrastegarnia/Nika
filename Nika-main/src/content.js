@@ -292,7 +292,7 @@ R('GET','/api/events',async c=>{
     if(out.some(x=>x.id===o.id&&x.recurrence_date===o.occurrence_date))continue;
     out.push({...o,series_event_date:o.event_date,series_event_time:o.event_time,series_title:o.title,series_body:o.body,series_recurrence_until:o.recurrence_until,event_date:o.occurrence_display_date,event_time:o.occurrence_time??o.event_time,title:o.occurrence_title||o.title,body:o.occurrence_body??o.body,recurrence_date:o.occurrence_date});
   }
-  const holidays=OFFICIAL_CALENDAR.filter(h=>h.date>=first&&h.date<end).map(h=>({id:'holiday:'+h.date,title:h.title,event_date:h.date,event_time:null,body:h.official?'تعطیل رسمی':'مناسبت تقویم رسمی',recurrence:'none',recurrence_date:h.date,isHoliday:true,isOfficialHoliday:h.official}));
+  const holidays=OFFICIAL_CALENDAR.filter(h=>h.date>=first&&h.date<end).map(h=>({id:'holiday:'+h.date,title:h.title,event_date:h.date,event_time:null,body:h.official?'تعطیل رسمی':'مناسبت تقویم رسمی',recurrence:'none',recurrence_date:h.date,isHoliday:h.official,isOfficialHoliday:h.official,isOccasion:!h.official}));
   return reply({items:[...out,...holidays].sort((a,b)=>a.event_date.localeCompare(b.event_date)||String(a.event_time||'').localeCompare(String(b.event_time||'')))});
 });
 R('PATCH','/api/events/:id/occurrences/:date',{perm:'events.manage'},async c=>{
