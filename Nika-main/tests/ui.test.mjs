@@ -80,3 +80,20 @@ test('تمام آیکون‌های پنجره پیام و انتخاب مخاط�
   assert.match(pages, /function openMessageRecipientPicker\(/);
   assert.match(pages, /iconMarkup\('user-round-check'\)/);
 });
+
+
+test('تمام صفحات داخلی از همان پنجره شناور مشترک صندوق پیام استفاده می‌کنند', async () => {
+  const source = await readFile(new URL('../public/js/ui.js', import.meta.url), 'utf8');
+  const start = source.indexOf('export function route(');
+  const end = source.indexOf('\nasync function run(', start);
+  assert.ok(start >= 0 && end > start, 'تابع route باید وجود داشته باشد');
+  const body = source.slice(start, end);
+  assert.match(body, /replaceRouteModal\(title, body\)/);
+  assert.doesNotMatch(body, /#pageView|page-close/);
+  assert.match(source, /const modalStack = \[\]/);
+  assert.match(source, /modalStack\.push\(/);
+  assert.match(source, /modalStack\.pop\(/);
+  assert.match(source, /handlers\[name\] = host\[name\]/);
+  assert.match(source, /host\[name\] = previous\.handlers\[name\]/);
+  assert.match(source, /page-modal-sub/);
+});
