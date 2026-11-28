@@ -224,7 +224,7 @@ export async function openPublicMessageModal(id) {
   };
 }
 export async function publicMessagesPage() {
-  const { messages = [] } = await api('/public-messages?limit=100');
+  const { messages = [] } = await api('/public-messages?limit=500');
   const v = route('خانه', 'پیام کاربران', 'پیام‌های عمومی منتشرشده پس از تأیید مدیریت', html`<div class="page-list public-messages-page">${messages.length ? messages.map(m => html`<button type="button" class="page-card public-message-row" data-public-message="${m.id}">
     <div class="public-message-detail-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></div>
     <h3>${m.title}</h3><p>${String(m.body || '').slice(0, 190)}${String(m.body || '').length > 190 ? '…' : ''}</p>
