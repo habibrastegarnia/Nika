@@ -876,3 +876,9 @@ html[data-theme="light"] .public-comment-form textarea{background:#fff;color:#29
 .public-message-delete svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
 .public-message-detail>.public-message-delete{margin:0 0 8px}
 @media(max-width:380px){.notice-actions{gap:6px}.notice-actions button{font-size:9px}.notice-foot{flex-wrap:wrap}.notice-foot button{font-size:9px}}
+
+.public-message-item{display:flex;flex-direction:row;align-items:center;justify-content:stretch;gap:7px}
+.public-message-open{display:flex;flex:1;min-width:0;height:100%;min-height:0;flex-direction:column;justify-content:center;gap:4px;padding:2px 1px;border:0;background:transparent;color:inherit;text-align:right;font:inherit;cursor:pointer;overflow:hidden}
+.public-message-open:focus-visible{outline:2px solid #91a5f1;outline-offset:-2px;border-radius:8px}
+.public-message-item>.public-message-delete{flex:0 0 28px;width:28px;height:30px;padding:5px;margin:0}
+.public-message-item>.public-message-delete svg{width:16px;height:16px}
