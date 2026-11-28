@@ -480,7 +480,7 @@ export function composePage(kind = 'request', category = 'عمومی', subject =
     { name: 'category', label: 'دسته‌بندی', type: 'select', value: category, options: REQ_CATEGORIES.map(c => [c, c]) },
     { name: 'title', label: 'موضوع', value: subject ? `مشکل ${subject}` : '', required: true, placeholder: 'عنوان کوتاه' },
     { name: 'body', label: 'شرح', type: 'textarea', required: true, placeholder: 'توضیح کامل را بنویسید' },
-    { name: 'boardRequested', label: 'انتشار عمومی در پیام کاربران و تابلوی ساختمان (پس از تأیید مدیریت)', type: 'checkbox' }])}<button class="page-btn full" type="submit">ارسال</button></form>`);
+  ])}<button class="page-btn full" type="submit">ارسال</button></form>`);
   onSubmit($('form', v), async d => {
     await api('/requests', { method: 'POST', body: { ...d, kind: 'request' } });
     toast('ثبت شد'); open(requestsPage, { replace: true }); refreshSummary();
