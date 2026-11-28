@@ -863,3 +863,16 @@ html[data-theme="light"] .public-comment-form textarea{background:#fff;color:#29
 
 /* Public message discussion must overlay the dashboard's page window */
 .modal-backdrop{z-index:60}
+
+/* Public user message controls and chair-only deletion */
+.notice-actions{display:flex;align-items:center;gap:10px}
+.notice-actions button,.notice-foot button{border:0;background:none;color:#91bfff;font:inherit;font-size:10px;cursor:pointer;white-space:nowrap}
+.notice-foot{gap:8px}
+.notice-foot button{padding:4px 7px;border:1px solid #ffffff20;border-radius:9px}
+.public-messages-toolbar{display:flex;justify-content:flex-start;margin:0 0 12px}
+.public-message-row{display:block;padding:13px}
+.public-message-row-open{display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:right;font:inherit;cursor:pointer}
+.public-message-delete{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #d77d9b55;background:#6b344422;color:#f0a4b7;border-radius:10px;padding:6px 9px;margin-top:9px;font:inherit;font-size:10px;cursor:pointer}
+.public-message-delete svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.public-message-detail>.public-message-delete{margin:0 0 8px}
+@media(max-width:380px){.notice-actions{gap:6px}.notice-actions button{font-size:9px}.notice-foot{flex-wrap:wrap}.notice-foot button{font-size:9px}}
