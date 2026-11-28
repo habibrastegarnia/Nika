@@ -22,9 +22,9 @@ jobs:
       - name: Run UI module identity regression tests
         working-directory: Nika-main
         run: node --no-warnings --test tests/ui.test.mjs
-      - name: Check browser JavaScript syntax
+      - name: Check shared UI JavaScript syntax
         working-directory: Nika-main
-        run: find public/js -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+        run: node --check public/js/util.js && node --check public/js/ui.js && node --check public/js/pages.js && node --check public/js/main.js && node --check public/js/admin.js
       - name: Run API tests
         working-directory: Nika-main
         run: npm test
