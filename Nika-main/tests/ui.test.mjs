@@ -127,6 +127,9 @@ test('تقویم ماهانه و هفتگی تعطیلات قرمز و روید�
   assert.doesNotMatch(weekly + monthly, /class="event-dot/, 'نقطه رویداد باید با حلقه دور شماره روز جایگزین شده باشد');
   const css = await readFile(new URL('../public/app.css', import.meta.url), 'utf8');
   assert.match(css, /\.page-calendar span\.day-cell\.holiday \.day-number/);
-  assert.match(css, /\.page-calendar span\.day-cell\.next-event \.day-number/);\n  assert.match(css, /\.page-calendar span\.day-cell\.today \.day-number\\{border-color:transparent/);\n  assert.match(css, /\.weekly \.weekly-calendar span\.day-cell\.today \.day-number\\{border-color:transparent/);\n  assert.match(source, /isOfficialHoliday/);
+  assert.match(css, /\.page-calendar span\.day-cell\.next-event \.day-number/);
+  assert.match(css, /\.page-calendar span\.day-cell\.today \.day-number\\{border-color:transparent/);
+  assert.match(css, /\.weekly \.weekly-calendar span\.day-cell\.today \.day-number\\{border-color:transparent/);
+  assert.match(source, /isOfficialHoliday/);
   assert.match(css, /@keyframes calendarEventRing/);
 });
