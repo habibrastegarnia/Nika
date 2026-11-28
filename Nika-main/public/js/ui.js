@@ -8,13 +8,50 @@ export function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
-export function openModal(title, content) {
+const modalStack = [];
+let routeModalActive = false;
+function renderModalContent(title, content) {
   $('#modalTitle').textContent = title;
   $('#modalContent').innerHTML = String(content);
   $('#modalBackdrop').classList.add('open');
   return $('#modalContent');
 }
-export const closeModal = () => { const backdrop=$('#modalBackdrop'); backdrop.classList.remove('open','jalali-calendar-open'); };
+export function openModal(title, content, { replace = false } = {}) {
+  const backdrop = $('#modalBackdrop');
+  if (backdrop.classList.contains('open') && !replace) {
+    const previousContent = document.createDocumentFragment();
+    const host = $('#modalContent');
+    while (host.firstChild) previousContent.appendChild(host.firstChild);
+    const handlers = {};
+    for (const name of ['onclick', 'onsubmit', 'onchange', 'oninput', 'onkeydown', 'onkeyup']) handlers[name] = host[name];
+    modalStack.push({ title: $('#modalTitle').textContent, content: previousContent, handlers });
+  }
+  return renderModalContent(title, content);
+}
+function replaceRouteModal(title, content) {
+  modalStack.length = 0;
+  routeModalActive = true;
+  return renderModalContent(title, content);
+}
+export const closeModal = () => {
+  const backdrop = $('#modalBackdrop');
+  if (modalStack.length) {
+    const previous = modalStack.pop();
+    $('#modalTitle').textContent = previous.title;
+    const host = $('#modalContent');
+    host.replaceChildren(previous.content);
+    for (const name of ['onclick', 'onsubmit', 'onchange', 'oninput', 'onkeydown', 'onkeyup']) host[name] = previous.handlers[name] || null;
+    backdrop.classList.add('open');
+    return;
+  }
+  if (routeModalActive && hist.length > 1) { back(); return; }
+  backdrop.classList.remove('open', 'jalali-calendar-open');
+  if (routeModalActive) {
+    routeModalActive = false;
+    hist = [];
+    history.replaceState({ nika: 0 }, '');
+  }
+};
 function jalaliParts(value) {
   const s = normDigits(value || '');
   const m = s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
@@ -96,19 +133,21 @@ const homeParts = () => $$('.phone > header, .phone > .carousel, .phone > .slide
 export function setNav(name) { $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name)); }
 export function showHome() {
   hist = [];
+  modalStack.length = 0;
+  routeModalActive = false;
+  $('#modalBackdrop').classList.remove('open', 'jalali-calendar-open');
   const view = $('#pageView');
   view.classList.remove('active', 'nika-dashboard-hidden');
   view.innerHTML = '';
   homeParts().forEach(x => { x.style.display = ''; x.classList.remove('nika-dashboard-hidden'); });
   setNav('خانه'); window.scrollTo(0, 0);
 }
-// نمایش یک صفحه داخلی. content باید خروجی html`` باشد
+// همه مقصدهای اصلی در همان پنجره شناور مشترک صندوق پیام باز می‌شوند.
 export function route(nav, title, sub, content) {
-  const v = $('#pageView');
-  v.innerHTML = String(html`<div class="page-top"><div class="page-heading"><h2>${title}</h2>${sub ? html`<p>${sub}</p>` : ''}</div><button class="page-close" type="button" data-page-close aria-label="بستن پنجره">${raw(iconMarkup('x'))}</button></div>${content}`);
-  v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', title);
-  v.classList.add('active'); setNav(nav); window.scrollTo(0, 0);
-  v.querySelector('[data-page-close]').onclick = back;
+  const body = html`${sub ? html`<p class="page-modal-sub">${sub}</p>` : ''}${content}`;
+  const v = replaceRouteModal(title, body);
+  v.setAttribute('aria-label', title);
+  setNav(nav); window.scrollTo(0, 0);
   return v;
 }
 async function run(fn) {
@@ -131,22 +170,15 @@ export function open(fn, { replace = false, root = false } = {}) {
   return run(fn);
 }
 export function back() {
+  if (modalStack.length) { closeModal(); return; }
   if (hist.length) history.back();
   else showHome();
 }
 export function initRouter() {
   window.addEventListener('popstate', () => {
-    if (hist.length > 1) { hist.pop(); run(hist[hist.length - 1]); } else showHome();
-  });
-  document.addEventListener('pointerdown', e => {
-    const view = $('#pageView');
-    if (!view?.classList.contains('active')) return;
-    const r = view.getBoundingClientRect();
-    const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-    if (!inside) { e.preventDefault(); e.stopPropagation(); back(); }
-  }, true);
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && $('#pageView')?.classList.contains('active')) back();
+    if (modalStack.length) { closeModal(); return; }
+    if (hist.length > 1) { hist.pop(); run(hist[hist.length - 1]); }
+    else showHome();
   });
 }
 export const resetRouter = () => { hist = []; };
