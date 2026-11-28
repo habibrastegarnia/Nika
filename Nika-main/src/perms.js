@@ -28,7 +28,7 @@ export const ROLE_PERMS = {
     'units.read', 'units.manage',
     'finance.settings.read', 'finance.settings', 'finance.charge', 'finance.approve', 'expenses.create', 'expenses.approve', 'expenses.finalize',
     'finance.owner.read', 'finance.monthly.read', 'finance.reports',
-    'requests.manage', 'messages.manage', 'notices.manage',
+    'requests.manage', 'messages.manage', 'notices.manage', 'public.messages.delete',
     'rules.manage', 'resolutions.manage', 'events.manage', 'documents.manage',
     'reports.read', 'audit.read', 'backup.manage'
   ]
@@ -62,6 +62,7 @@ export const PERMISSION_OWNER = {
   'requests.manage': 'chair',
   'messages.manage': ['chair', 'executive'],
   'notices.manage': ['chair', 'executive'],
+  'public.messages.delete': 'chair',
   'units.manage': 'chair',
   'finance.charge': 'chair',
   'finance.settings': 'chair',
