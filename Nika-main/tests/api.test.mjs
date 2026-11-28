@@ -493,13 +493,15 @@ test('مسیرهای ناموجود/متد نامعتبر', async () => {
 
 
 test('پیام عمومی، تأیید انتشار، واکنش و ثبت نقش فعال در دیدگاه', async () => {
-  const created = await chair.post('/api/admin/users', {
+  const chairForPublic = new Client('chair-public-messages');
+  assert.equal((await chairForPublic.login('staff', 'Admin', CHAIR_PW)).status, 200);
+  const created = await chairForPublic.post('/api/admin/users', {
     name: 'کاربر آزمایشی واحد ۱۴', accountType: 'resident', unit: '14',
     phone: '09124444414', roles: ['chair'], reason: 'آزمون ثبت نقش فعال در دیدگاه'
   });
   assert.equal(created.status, 201, JSON.stringify(created.data));
   const author = new Client('public-message-author');
-  await activate(author, 'resident', '09124444414', created.data.tempPassword, 'Unit14-Strong-Pass-1', '14');
+  await activate(author, 'resident', '09124444414', '09124444414', 'Unit14-Strong-Pass-1', '14');
 
   const submission = await author.post('/api/requests', {
     title: 'پیام عمومی آزمایشی', body: 'متن پیام عمومی برای آزمون',
@@ -511,7 +513,7 @@ test('پیام عمومی، تأیید انتشار، واکنش و ثبت نق�
   assert.equal(beforeApproval.data.messages.some(m => m.title === 'پیام عمومی آزمایشی'), false,
     'پیام تا پیش از تأیید نباید عمومی شود');
 
-  const published = await chair.call('POST', `/api/requests/${submission.data.id}/publish`, {}, { 'X-Nika-Workspace': 'manager' });
+  const published = await chairForPublic.call('POST', `/api/requests/${submission.data.id}/publish`, {}, { 'X-Nika-Workspace': 'manager' });
   assert.equal(published.status, 201, JSON.stringify(published.data));
   const visible = await author.get('/api/public-messages?limit=5');
   const message = visible.data.messages.find(m => m.id === published.data.id);
