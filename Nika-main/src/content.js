@@ -22,7 +22,7 @@ function roleSnapshot(user) {
   return { role, label, name: user.name || 'کاربر ساختمان' };
 }
 async function publicNotice(db, id) {
-  return db.prepare("SELECT id,title,body,created_at,author_name,author_label,author_role FROM notices WHERE id=? AND audience='all' AND author_user_id IS NOT NULL AND deleted_at IS NULL").bind(id).first();
+  return db.prepare("SELECT id,title,body,created_at,author_name,author_label,author_role FROM notices WHERE id=? AND audience='all' AND author_role IS NOT NULL AND deleted_at IS NULL").bind(id).first();
 }
 R('GET', '/api/public-messages', async c => {
   const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 5, 1), 500);
@@ -33,7 +33,7 @@ R('GET', '/api/public-messages', async c => {
       (SELECT COUNT(*) FROM notice_comments cm WHERE cm.notice_id=n.id) comment_count,
       (SELECT COUNT(*) FROM notice_reactions nr WHERE nr.notice_id=n.id) reaction_count
      FROM notices n
-     WHERE n.audience='all' AND n.author_user_id IS NOT NULL AND n.deleted_at IS NULL
+     WHERE n.audience='all' AND n.author_role IS NOT NULL AND n.deleted_at IS NULL
      ORDER BY n.created_at DESC,n.rowid DESC LIMIT ?`).bind(limit).all();
   return reply({ messages: r.results });
 });
@@ -168,25 +168,6 @@ R('PATCH', '/api/requests/:id', { perm: 'requests.manage' }, async c => {
   await audit(c.db, c.user.id, 'request.update', 'request', r.id, { status }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true });
 });
-R('POST', '/api/requests/:id/publish', { perm: 'notices.manage' }, async c => {
-  const r = await c.db.prepare(`SELECT r.id,r.user_id,r.title,r.body,r.board_requested,r.author_name,r.author_role,r.author_label,
-    u.name current_author_name,u.account_type,n.unit_number
-    FROM requests r JOIN users u ON u.id=r.user_id LEFT JOIN units n ON n.id=u.unit_id WHERE r.id=?`).bind(c.params.id).first();
-  if (!r) throw err(404, 'NOT_FOUND', 'درخواست پیدا نشد');
-  if (r.board_requested !== 1) throw err(409, 'NOT_REQUESTED', 'این مورد برای نمایش در تابلو درخواست نشده یا قبلاً منتشر شده است');
-  const nid = crypto.randomUUID();
-  const authorName = r.author_name || r.current_author_name;
-  const authorRole = r.author_role || r.account_type;
-  const authorLabel = r.author_label || (r.unit_number ? `${r.account_type === 'owner' ? 'مالک' : 'ساکن'} واحد ${r.unit_number}` : (ROLE_LABELS[authorRole] || 'کاربر ساختمان'));
-  await c.db.batch([
-    c.db.prepare("INSERT INTO notices(id,title,body,audience,kind,created_by,source_request_id,author_user_id,author_name,author_role,author_label) VALUES(?,?,?,'all','عمومی',?,?,?,?,?,?)")
-      .bind(nid, r.title, r.body, c.user.id, r.id, r.user_id, authorName, authorRole, authorLabel),
-    c.db.prepare('UPDATE requests SET board_requested=2 WHERE id=?').bind(r.id)
-  ]);
-  await audit(c.db, c.user.id, 'request.publish', 'request', r.id, { notice: nid }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
-  return reply({ ok: true, id: nid }, 201);
-});
-
 // ---------- پیام‌ها (بدون گیرنده = پیام به مدیریت) ----------
 R('GET', '/api/messages', { perm: 'messages.use' }, async c => {
   const box = c.url.searchParams.get('box') === 'sent' ? 'sent' : 'inbox', mgr = can(c.user, 'messages.manage') ? 1 : 0;
