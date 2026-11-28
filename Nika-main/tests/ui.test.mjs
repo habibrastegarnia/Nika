@@ -111,9 +111,11 @@ test('تقویم ماهانه و هفتگی تعطیلات قرمز و روید�
   const monthly = source.slice(monthStart, monthEnd);
   assert.match(weekly, /const holidayDates = new Set\(allItems\.filter\(event => event\.isHoliday\)/);
   assert.match(weekly, /\$\{holiday \? 'holiday' : ''\}/);
+  assert.match(weekly, /holidayDates\.has\(day\.key\) \|\| i === 6/, 'جمعه در نمای هفتگی تعطیل است');
   assert.match(weekly, /\$\{pulse \? 'next-event' : ''\}/);
   assert.match(monthly, /const holidayDays = new Set\(items\.filter\(event => event\.isHoliday\)/);
   assert.match(monthly, /\$\{isHoliday \? 'holiday' : ''\}/);
+  assert.match(monthly, /holidayDays\.has\(d\) \|\| new Date\(start\.getTime\(\) \+ \(d - 1\) \* 864e5\)\.getUTCDay\(\) === 5/, 'جمعه در نمای ماهانه تعطیل است');
   assert.match(monthly, /\$\{isNextEvent \? 'next-event' : ''\}/);
   assert.match(monthly, /for \(let d = 1; d <= len; d\+\+\)/, 'نمای ماهانه فقط روزهای همان ماه را تولید کند');
   assert.doesNotMatch(weekly + monthly, /class="event-dot/, 'نقطه رویداد باید با حلقه دور شماره روز جایگزین شده باشد');
