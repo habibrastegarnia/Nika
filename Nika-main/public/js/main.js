@@ -133,6 +133,21 @@ function initCarousel() {
   const count = originalSlides.length;
   if (count < 2) return;
 
+  // نقاط ناوبری همیشه از تعداد واقعی اسلایدها ساخته می‌شوند.
+  const dotsHost = document.querySelector('.slide-dots');
+  if (dotsHost) {
+    dotsHost.replaceChildren();
+    for (let i = 0; i < count; i++) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'slide-dot';
+      dot.dataset.index = String(i);
+      dot.setAttribute('aria-label', `رفتن به اسلاید ${fa(i + 1)}`);
+      dotsHost.appendChild(dot);
+    }
+  }
+  const dots = Array.from(document.querySelectorAll('.slide-dot'));
+
   // دو نسخهٔ کمکی در ابتدا و انتها، برای حلقهٔ پیوسته بدون پرش
   const makeClone = slide => {
     const clone = slide.cloneNode(true);
@@ -149,11 +164,14 @@ function initCarousel() {
   let movedBySwipe = false;
   const setPosition = (animate = true) => {
     track.style.transition = animate ? '' : 'none';
-    // درصد translate نسبت به عرض کل track محاسبه می‌شود، نه عرض هر اسلاید؛
-    // بنابراین جابه‌جایی را بر اساس عرض واقعی viewport انجام می‌دهیم.
     track.style.width = '100%';
-    track.style.transform = `translate3d(${index * carousel.clientWidth}px,0,0)`;
-    dots.forEach((dot, j) => dot.classList.toggle('active', j === ((index - 1 + count) % count)));
+    track.style.transform = `translate3d(${-index * carousel.clientWidth}px,0,0)`;
+    const activeIndex = (index - 1 + count) % count;
+    dots.forEach((dot, j) => {
+      const active = j === activeIndex;
+      dot.classList.toggle('active', active);
+      dot.setAttribute('aria-current', active ? 'true' : 'false');
+    });
   };
   const go = direction => {
     index += direction;
@@ -193,7 +211,7 @@ function initCarousel() {
     const dy = event.clientY - pointerStart.y;
     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
       // حرکت بصری اسلاید باید هم‌جهت با کشیدن انگشت باشد.
-      go(dx < 0 ? -1 : 1);
+      go(dx < 0 ? 1 : -1);
       movedBySwipe = true;
     }
     pointerStart = null;
