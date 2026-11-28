@@ -145,10 +145,14 @@ test('عنوان مالک/ساکن از تیک‌های نقش پایه و نق�
 
   // گیرنده‌های پیام خصوصی و پاسخ در همان گفت‌وگو
   const privateSender = new Client('privateSender'), privateExec = new Client('privateExec'), privateFinance = new Client('privateFinance'), privateBoard = new Client('privateBoard');
-  await create('16', '09124444446', []);
-  await create('17', '09124444447', ['executive']);
-  await create('18', '09124444448', ['finance']);
-  await create('19', '09124444449', ['board']);
+  const createPrivate = async (unit, phone, roles) => {
+    const result = await chair.post('/api/admin/users', { name: 'کاربر خصوصی ' + unit, accountType: 'both', unit, phone, roles, reason: 'آزمون پیام خصوصی' });
+    assert.equal(result.status, 201, JSON.stringify(result.data));
+  };
+  await createPrivate('16', '09124444446', []);
+  await createPrivate('17', '09124444447', ['executive']);
+  await createPrivate('18', '09124444448', ['finance']);
+  await createPrivate('19', '09124444449', ['board']);
   const activatePrivate = async (client, unit, phone, password) => {
     assert.equal((await client.login('resident', phone, phone, unit)).status, 200);
     assert.equal((await client.post('/api/password', { newPassword: password })).status, 200);
