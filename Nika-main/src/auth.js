@@ -231,7 +231,7 @@ R('GET', '/api/avatar', async c => {
 R('GET', '/api/summary', async c => {
   const u = c.user, out = { unreadMessages: 0, pendingApprovals: 0, newRequests: 0 };
   const mgr = can(u, 'messages.manage') ? 1 : 0;
-  out.unreadMessages = (await c.db.prepare(`SELECT COUNT(*) n FROM messages m WHERE m.read_at IS NULL AND m.sender_id<>? AND (m.recipient_id=? OR (m.recipient_id IS NULL AND m.recipient_role IS NULL AND ?=1) OR (m.recipient_role='executive' AND EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id=? AND r.role='executive')) OR (m.recipient_role='chair' AND EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id=? AND r.role='chair')) OR (m.recipient_role='board' AND EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id=? AND r.role IN ('chair','finance','board'))))`).bind(u.id,u.id,mgr,u.id,u.id,u.id).first()).n;
+  out.unreadMessages = (await c.db.prepare(`SELECT COUNT(*) n FROM messages m WHERE m.read_at IS NULL AND m.sender_id<>? AND NOT EXISTS (SELECT 1 FROM message_reads mr WHERE mr.message_id=m.id AND mr.user_id=?) AND (m.recipient_id=? OR (m.recipient_id IS NULL AND m.recipient_role IS NULL AND ?=1) OR (m.recipient_role='executive' AND EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id=? AND r.role='executive')) OR (m.recipient_role='chair' AND EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id=? AND r.role='chair')) OR (m.recipient_role='board' AND EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id=? AND r.role IN ('chair','finance','board'))))`).bind(u.id,u.id,u.id,mgr,u.id,u.id,u.id).first()).n;
   const kinds = [];
   if (can(u, 'finance.approve')) kinds.push('payment');
   if (can(u, 'expenses.approve')) kinds.push('expense');
