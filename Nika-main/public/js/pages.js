@@ -146,8 +146,6 @@ export async function loadPublicMessages() {
   const track = $('#publicMessageTrack'), viewport = $('.public-message-viewport');
   const status = $('#publicMessageStatus'), pauseButton = $('#publicMessagePause');
   if (!track || !status || !viewport) return;
-  const composeButton = $('#publicMessageCompose');
-  if (composeButton) composeButton.onclick = () => openPublicMessageComposer(false);
   if (publicMessageTimer) clearInterval(publicMessageTimer);
   publicMessageTimer = null;
   const updatePauseButton = () => {
@@ -260,29 +258,6 @@ export async function loadPublicMessages() {
     console.warn('Nika public messages:', error);
   }
 }
-function openPublicMessageComposer(refreshPage = false) {
-  const modal = openModal('ثبت پیام عمومی', html`<form id="publicMessageComposeForm" class="page-form">
-    <label>عنوان پیام</label><input class="page-input" name="title" maxlength="120" required placeholder="موضوع پیام را بنویسید">
-    <label>متن پیام</label><textarea class="page-textarea" name="body" maxlength="2000" required placeholder="پیام خود را برای همه کاربران ساختمان بنویسید…"></textarea>
-    <p class="page-kicker">پیام پس از ثبت، بدون نیاز به تأیید مدیر در تابلو نمایش داده می‌شود.</p>
-    <button class="page-btn full" type="submit">ثبت و انتشار پیام</button>
-  </form>`);
-  modal.onsubmit = async event => {
-    if (event.target.id !== 'publicMessageComposeForm') return;
-    event.preventDefault();
-    const form = event.target, title = form.elements.title.value.trim(), body = form.elements.body.value.trim();
-    if (!title || !body) return;
-    const button = form.querySelector('button[type="submit"]');
-    button.disabled = true;
-    try {
-      await api('/public-messages', { method: 'POST', body: { title, body } });
-      closeModal();
-      toast('پیام شما در تابلو منتشر شد');
-      if (refreshPage) await publicMessagesPage();
-      else await loadPublicMessages();
-    } catch (error) { toast(error.message); button.disabled = false; }
-  };
-}
 async function deletePublicMessage(id, refreshPage = false) {
   if (!canDeletePublicMessage()) return;
   const reason = await promptText('حذف پیام عمومی', 'لطفاً دلیل حذف این پیام را بنویسید (ثبت دلیل الزامی است)');
@@ -343,8 +318,7 @@ export async function openPublicMessageModal(id) {
 }
 export async function publicMessagesPage() {
   const { messages = [] } = await api('/public-messages?limit=500');
-  const v = route('خانه', 'پیام کاربران', 'پیام‌های عمومی کاربران ساختمان', html`<div class="public-messages-toolbar"><button type="button" class="page-btn" id="publicMessageComposePage">ثبت پیام جدید</button></div>
-  <div class="page-list public-messages-page">${messages.length ? messages.map(m => html`<article class="page-card public-message-row">
+  const v = route('خانه', 'پیام کاربران', 'پیام‌های عمومی کاربران ساختمان', html`<div class="page-list public-messages-page">${messages.length ? messages.map(m => html`<article class="page-card public-message-row">
     <button type="button" class="public-message-row-open" data-public-message="${m.id}">
       <div class="public-message-detail-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></div>
       <h3>${m.title}</h3><p>${String(m.body || '').slice(0, 190)}${String(m.body || '').length > 190 ? '…' : ''}</p>
@@ -352,8 +326,6 @@ export async function publicMessagesPage() {
     </button>
     ${canDeletePublicMessage() ? html`<button type="button" class="public-message-delete" data-delete-message="${m.id}">${iconMarkup('trash-2')} حذف پیام</button>` : ''}
   </article>`) : html`<div class="page-card"><div class="page-empty">هنوز پیام عمومی ثبت نشده است.</div></div>`}</div>`);
-  const compose = v.querySelector('#publicMessageComposePage');
-  if (compose) compose.onclick = () => openPublicMessageComposer(true);
   v.onclick = event => {
     const remove = event.target.closest('[data-delete-message]');
     if (remove) { deletePublicMessage(remove.dataset.deleteMessage, true); return; }
@@ -619,27 +591,79 @@ async function openPrivateMessageThread(id, markRead = false) {
     };
   } catch (error) { toast(error.message); }
 }
-export async function messagesPage(box = 'inbox') {
-  const { messages = [] } = await api(`/messages?box=${box}`);
-  const mgr = can('messages.manage');
-  const v = route('پیام‌ها', 'پیام‌های خصوصی', mgr ? 'گفت‌وگوهای خصوصی با کاربران و مدیریت' : 'ارتباط خصوصی با مدیریت ساختمان', html`
-    <div class="seg"><button class="${box === 'inbox' ? 'on' : ''}" data-box="inbox">دریافتی</button><button class="${box === 'sent' ? 'on' : ''}" data-box="sent">ارسالی</button></div>
-    <button class="page-btn full" id="msgNew" style="margin:0 0 12px">+ پیام خصوصی جدید</button>
-    <div class="page-list">${messages.length ? messages.map((m, i) => html`<button type="button" dir="rtl" class="page-row clickable nika-message-row private-message-row tone-${m.tone || 'info'} ${box === 'inbox' && Number(m.unread_count || 0) > 0 ? 'unread' : ''}" data-i="${i}">
-      <span class="page-row-icon private-message-icon">${lineIcon('lock-keyhole')}</span><span class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? (m.sender_id === S.user.id ? 'به: ' + (m.recipient_label || m.recipient_name || 'مدیریت ساختمان') : 'پاسخ به فرستنده گفت‌وگو') : (m.sender_id === S.user.id ? 'پاسخ جدید در گفت‌وگو' : 'از: ' + privateSenderLabel(m) + ' · ' + m.sender_name)}${m.sender_unit && box === 'inbox' && m.sender_id !== S.user.id ? ' · واحد ' + m.sender_unit : ''} · ${fdt(m.created_at)}</small></span>
-    </button>`) : html`<div class="page-card"><div class="page-empty">پیام خصوصی‌ای وجود ندارد.</div></div>`}</div>`);
-  $$('[data-box]', v).forEach(b => b.onclick = () => open(() => messagesPage(b.dataset.box), { replace: true }));
-  $('#msgNew', v).onclick = () => open(() => messageComposePage());
-  $$('[data-i]', v).forEach(row => row.onclick = () => { const m = messages[Number(row.dataset.i)]; openPrivateMessageThread(m.id, box === 'inbox' && Number(m.unread_count || 0) > 0); });
+function messageHubButton(icon, title, description, action) {
+  return html`<button type="button" class="message-hub-action" data-message-action="${action}">
+    <span class="message-hub-icon">${raw(iconMarkup(icon))}</span>
+    <strong>${title}</strong><small>${description}</small>
+  </button>`;
 }
-export function messageComposePage(title = '') {
-  const v = route('پیام‌ها', 'پیام خصوصی جدید', 'انتخاب مخاطب و ارسال گفت‌وگوی محرمانه', html`<form class="page-card page-form" id="privateMessageComposeForm" novalidate>
-    ${fields([{ name: 'recipientRole', label: 'ارسال به', type: 'select', value: 'executive', required: true, options: [['executive','مدیر اجرایی'],['chair','رئیس هیأت‌مدیره'],['board','هیأت‌مدیره']] }, { name: 'title', label: 'عنوان پیام', value: title, required: true }, { name: 'body', label: 'متن پیام', type: 'textarea', required: true }])}
-    <p class="page-kicker">این پیام فقط برای شما و مخاطب انتخاب‌شده قابل مشاهده است.</p><button class="page-btn full" type="submit">ارسال پیام خصوصی</button>
+async function openMessageBox(box = 'inbox') {
+  try {
+    const { messages = [] } = await api(`/messages?box=${box}`);
+    const title = box === 'sent' ? 'پیام‌های ارسالی' : 'پیام‌های دریافتی';
+    const modal = openModal(title, html`<div class="message-modal-list">
+      ${messages.length ? messages.map((m, i) => html`<button type="button" class="message-modal-row ${box === 'inbox' && Number(m.unread_count || 0) > 0 ? 'unread' : ''}" data-message-index="${i}">
+        <span class="message-modal-row-main"><strong>${m.title}</strong>
+          <small>${box === 'sent' ? (m.sender_id === S.user.id ? 'به: ' + (m.recipient_label || m.recipient_name || 'مدیریت ساختمان') : 'پاسخ به فرستنده گفت‌وگو') : (m.sender_id === S.user.id ? 'پاسخ جدید در گفت‌وگو' : 'از: ' + privateSenderLabel(m) + ' · ' + m.sender_name)}${m.sender_unit && box === 'inbox' && m.sender_id !== S.user.id ? ' · واحد ' + m.sender_unit : ''} · ${fdt(m.created_at)}</small>
+        </span>${box === 'inbox' && Number(m.unread_count || 0) > 0 ? html`<i class="message-unread-dot" aria-label="خوانده‌نشده"></i>` : ''}
+      </button>`) : html`<div class="page-empty">در این صندوق هنوز پیامی وجود ندارد.</div>`}
+    </div>`);
+    modal.onclick = event => {
+      const row = event.target.closest('[data-message-index]');
+      if (!row) return;
+      const m = messages[Number(row.dataset.messageIndex)];
+      if (m) openPrivateMessageThread(m.id, box === 'inbox' && Number(m.unread_count || 0) > 0);
+    };
+  } catch (error) { toast(error.message); }
+}
+function openMessageRecipientPicker() {
+  const modal = openModal('ارسال پیام جدید', html`<div class="message-recipient-grid">
+    <button type="button" class="message-recipient-action" data-recipient="public"><span>${raw(iconMarkup('megaphone'))}</span><strong>عمومی</strong><small>انتشار در گالری پیام کاربران</small></button>
+    <button type="button" class="message-recipient-action" data-recipient="board"><span>${raw(iconMarkup('nika-board'))}</span><strong>هیأت‌مدیره</strong><small>ارسال محرمانه به اعضای هیأت‌مدیره</small></button>
+    <button type="button" class="message-recipient-action" data-recipient="executive"><span>${raw(iconMarkup('user-round-check'))}</span><strong>مدیر اجرایی</strong><small>ارسال محرمانه به مدیر اجرایی</small></button>
+  </div>`);
+  modal.onclick = event => {
+    const choice = event.target.closest('[data-recipient]');
+    if (choice) openMessageComposer(choice.dataset.recipient);
+  };
+}
+function openMessageComposer(recipient) {
+  const isPublic = recipient === 'public';
+  const title = isPublic ? 'پیام عمومی جدید' : recipient === 'board' ? 'پیام به هیأت‌مدیره' : 'پیام به مدیر اجرایی';
+  const modal = openModal(title, html`<form id="messageCenterComposeForm" class="page-form">
+    <label>عنوان پیام</label><input class="page-input" name="title" maxlength="120" required placeholder="موضوع پیام را بنویسید">
+    <label>متن پیام</label><textarea class="page-textarea" name="body" maxlength="2000" required placeholder="${isPublic ? 'پیام خود را برای کاربران ساختمان بنویسید…' : 'متن پیام محرمانه را بنویسید…'}"></textarea>
+    <p class="page-kicker">${isPublic ? 'این پیام پس از ثبت، بلافاصله در گالری «پیام کاربران» نمایش داده می‌شود.' : 'این پیام به‌صورت محرمانه برای مخاطب انتخاب‌شده ارسال می‌شود.'}</p>
+    <button class="page-btn full" type="submit">${isPublic ? 'ثبت و انتشار پیام' : 'ارسال پیام محرمانه'}</button>
   </form>`);
-  onSubmit($('form', v), async d => {
-    await api('/messages', { method: 'POST', body: d });
-    toast('پیام خصوصی ارسال شد'); open(() => messagesPage('sent'), { replace: true });
+  modal.onsubmit = async event => {
+    if (event.target.id !== 'messageCenterComposeForm') return;
+    event.preventDefault();
+    const form = event.target, subject = form.elements.title.value.trim(), body = form.elements.body.value.trim();
+    if (!subject || !body) return;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      if (isPublic) await api('/public-messages', { method: 'POST', body: { title: subject, body } });
+      else await api('/messages', { method: 'POST', body: { recipientRole: recipient, title: subject, body } });
+      closeModal();
+      toast(isPublic ? 'پیام شما در تابلو منتشر شد' : 'پیام محرمانه ارسال شد');
+      if (isPublic) await loadPublicMessages();
+      refreshSummary();
+    } catch (error) { toast(error.message); button.disabled = false; }
+  };
+}
+export function messagesPage() {
+  const v = route('پیام‌ها', 'پیام‌ها', 'دریافت، ارسال و ارتباط با مدیریت ساختمان', html`
+    <div class="message-hub-actions">
+      ${messageHubButton('inbox', 'پیام‌های دریافتی', 'مشاهده پیام‌های دریافت‌شده', 'inbox')}
+      ${messageHubButton('send', 'پیام‌های ارسالی', 'پیگیری پیام‌های ارسال‌شده', 'sent')}
+      ${messageHubButton('pencil', 'ارسال پیام جدید', 'انتخاب مخاطب و نوشتن پیام', 'compose')}
+    </div>`);
+  $$('[data-message-action]', v).forEach(button => button.onclick = () => {
+    const action = button.dataset.messageAction;
+    if (action === 'inbox' || action === 'sent') openMessageBox(action);
+    else openMessageRecipientPicker();
   });
 }
 // ====================== حساب من ======================
