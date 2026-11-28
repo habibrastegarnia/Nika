@@ -731,3 +731,9 @@ html[data-theme="light"] .page-view.active .page-close{
 .summary-button:focus-visible{outline:2px solid rgba(131,184,255,.75);outline-offset:4px;border-radius:8px}
 .summary-button:disabled{opacity:.55;cursor:default}
 html[data-theme="light"] .summary-button{background:transparent;color:inherit}
+
+/* انتخاب مستقل نمای شارژ ماهیانه و مالکانه */
+.nika-building-fund-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:4px;margin:0 0 12px;border:1px solid #ffffff20;border-radius:13px;background:#1d293b}
+.nika-building-fund-switch button{min-height:38px;padding:7px 9px;border:1px solid transparent;border-radius:10px;background:transparent;color:#cbd6e8;font:700 11px IRANYekanWeb,Tahoma,sans-serif;cursor:pointer;transition:background .15s ease,color .15s ease,box-shadow .15s ease}
+.nika-building-fund-switch button.is-active{background:linear-gradient(135deg,#16845b,#20a875);color:#fff;box-shadow:0 3px 10px #071b163d}
+.nika-building-fund-switch button:focus-visible{outline:2px solid #a8dfc5;outline-offset:2px}
