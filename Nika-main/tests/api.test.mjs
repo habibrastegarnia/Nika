@@ -177,6 +177,12 @@ test('عنوان مالک/ساکن از تیک‌های نقش پایه و نق�
   assert.equal(privateToBoard.status, 201);
   for (const client of [chair, privateFinance, privateBoard]) assert.ok((await client.get('/api/messages')).data.messages.some(m => m.id === privateToBoard.data.id));
   assert.ok(!(await privateExec.get('/api/messages')).data.messages.some(m => m.id === privateToBoard.data.id));
+  assert.equal((await chair.get('/api/messages')).data.messages.find(m => m.id === privateToBoard.data.id).unread_count, 1);
+  assert.equal((await privateFinance.get('/api/messages')).data.messages.find(m => m.id === privateToBoard.data.id).unread_count, 1);
+  assert.equal((await chair.post(`/api/messages/${privateToBoard.data.id}/read`)).status, 200);
+  assert.equal((await chair.get('/api/messages')).data.messages.find(m => m.id === privateToBoard.data.id).unread_count, 0);
+  assert.equal((await privateFinance.get('/api/messages')).data.messages.find(m => m.id === privateToBoard.data.id).unread_count, 1, 'خواندن پیام توسط رئیس نباید پیام را برای مدیر مالی خوانده‌شده کند');
+  assert.equal((await privateBoard.get('/api/messages')).data.messages.find(m => m.id === privateToBoard.data.id).unread_count, 1);
 });
 
 test('ارتقای دسترسی: مدیر ساختمان رئیس/مالی نمی‌سازد و همه‌کاره نیست', async () => {
