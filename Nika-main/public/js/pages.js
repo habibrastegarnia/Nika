@@ -170,7 +170,7 @@ export async function loadPublicMessages() {
       status.textContent = 'پیام‌های منتشرشده کاربران';
       return;
     }
-    publicMessageIndex = Math.min(publicMessageIndex, messages.length - 1);
+    publicMessageIndex = 0;
     track.className = 'public-message-track';
     track.innerHTML = join(messages.map((m, index) => html`<article class="public-message-item" data-gallery-index="${index}">
       <button type="button" class="public-message-open" data-public-message="${m.id}" aria-label="مشاهده پیام ${m.title}">
@@ -217,9 +217,13 @@ export async function loadPublicMessages() {
       paintGallery();
     };
     let pointerStartY = null;
+    viewport.tabIndex = 0;
+    viewport.setAttribute('role', 'group');
+    viewport.setAttribute('aria-label', 'گالری عمودی پیام‌های عمومی');
     viewport.onpointerdown = event => {
       if (event.pointerType === 'mouse' && event.button !== 0) return;
       pointerStartY = event.clientY;
+      try { viewport.setPointerCapture(event.pointerId); } catch {}
     };
     viewport.onpointerup = event => {
       if (pointerStartY === null) return;
