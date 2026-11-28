@@ -367,7 +367,7 @@ export async function loadWeeklyCalendar() {
     host.innerHTML = join(dates.map((day, i) => {
       const dayEvents = byDate.get(day.key) || [];
       const pulse = day.key === nextWeeklyEventDate;
-      const holiday = holidayDates.has(day.key);
+      const holiday = holidayDates.has(day.key) || i === 6;
       return html`<span class="dow">${weekdays[i]}</span><span class="day-cell ${dayEvents.length ? 'event' : ''} ${holiday ? 'holiday' : ''} ${day.key === todayKey ? 'today' : ''} ${pulse ? 'next-event' : ''}"><b class="day-number">${faN(day.d)}</b></span>`;
     }));
     const first = dates[0], last = dates[6];
@@ -431,7 +431,7 @@ export async function calendarPage(y, m) {
   for (let d = 1; d <= len; d++) {
     const dateKey = `${y}-${mm}-${String(d).padStart(2, '0')}`;
     const hasEvent = !!byDay[d], isToday = y === t.y && m === t.m && d === t.d;
-    const isHoliday = holidayDays.has(d);
+    const isHoliday = holidayDays.has(d) || new Date(start.getTime() + (d - 1) * 864e5).getUTCDay() === 5;
     const isNextEvent = dateKey === nextEventDate;
     cells.push(html`<span class="day-cell ${hasEvent ? 'event' : ''} ${isHoliday ? 'holiday' : ''} ${isToday ? 'today' : ''} ${isNextEvent ? 'next-event' : ''}" ${hasEvent ? raw(`data-day="${d}"`) : ''}><b class="day-number">${faN(d)}</b></span>`);
   }
