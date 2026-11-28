@@ -2,7 +2,7 @@
 import { api } from './api.js?v=2';
 import { S, can, canManageCalendarEvents, readableFunds, dashFunds, isManager } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
-  FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, baseRoleLabel, chip } from './util.js';
+  FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, baseRoleLabel, userRoleLabels, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, route, open, fields, onSubmit } from './ui.js';
 import { iconMarkup } from './icons.js?v=3';
 
@@ -601,7 +601,7 @@ export function profilePage() {
     ...(unit ? [['شماره واحد', unit.number]] : [])
   ];
   const v = route('حساب من', 'حساب من', '', html`<section class="profile-panel">
-      <div class="profile-cover">${raw(avatarMarkup(u, 'profile-avatar'))}<div><strong>${u.name}</strong><small>${u.roles.map(r => ROLE_FA[r]).join(' · ')}</small></div></div>
+      <div class="profile-cover">${raw(avatarMarkup(u, 'profile-avatar'))}<div><strong>${u.name}</strong><small>${userRoleLabels(u).join(' · ')}</small></div></div>
       <div class="profile-details">${details.map(([k, val]) => html`<div class="profile-detail"><small>${k}</small><strong>${val}</strong></div>`)}</div>
     </section>
     <div class="profile-actions">
