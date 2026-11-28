@@ -22,7 +22,7 @@ function roleSnapshot(user) {
   return { role, label, name: user.name || 'کاربر ساختمان' };
 }
 async function publicNotice(db, id) {
-  return db.prepare("SELECT id,title,body,created_at,author_name,author_label,author_role FROM notices WHERE id=? AND audience='all' AND source_request_id IS NOT NULL").bind(id).first();
+  return db.prepare("SELECT id,title,body,created_at,author_name,author_label,author_role FROM notices WHERE id=? AND audience='all' AND source_request_id IS NOT NULL AND deleted_at IS NULL").bind(id).first();
 }
 R('GET', '/api/public-messages', async c => {
   const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 5, 1), 500);
@@ -33,9 +33,19 @@ R('GET', '/api/public-messages', async c => {
       (SELECT COUNT(*) FROM notice_comments cm WHERE cm.notice_id=n.id) comment_count,
       (SELECT COUNT(*) FROM notice_reactions nr WHERE nr.notice_id=n.id) reaction_count
      FROM notices n
-     WHERE n.audience='all' AND n.source_request_id IS NOT NULL
+     WHERE n.audience='all' AND n.source_request_id IS NOT NULL AND n.deleted_at IS NULL
      ORDER BY n.created_at DESC,n.rowid DESC LIMIT ?`).bind(limit).all();
   return reply({ messages: r.results });
+});
+R('POST', '/api/public-messages', { perm: 'messages.use' }, async c => {
+  const x = await readJson(c.request), id = crypto.randomUUID();
+  const title = str(x.title, { max: 120, field: 'عنوان پیام' });
+  const body = str(x.body, { max: 2000, multiline: true, field: 'متن پیام' });
+  const snap = roleSnapshot(c.user);
+  await c.db.prepare("INSERT INTO notices(id,title,body,audience,kind,created_by,author_user_id,author_name,author_role,author_label) VALUES(?,?,?,'all','عمومی',?,?,?,?,?)")
+    .bind(id,title,body,c.user.id,c.user.id,snap.name,snap.role,snap.label).run();
+  await audit(c.db,c.user.id,'public_message.create','notice',id,{title},{actorRole:snap.role});
+  return reply({ok:true,id},201);
 });
 R('GET', '/api/public-messages/:id/discussion', async c => {
   const message = await publicNotice(c.db, c.params.id);
@@ -73,6 +83,19 @@ R('POST', '/api/public-messages/:id/reactions', { perm: 'messages.use' }, async 
   return reply({ ok: true, myReaction: x.reaction });
 });
 
+R('DELETE', '/api/public-messages/:id', { perm: 'public.messages.delete' }, async c => {
+  if (c.user.activeRole !== 'chair' || !c.user.roles.includes('chair')) {
+    throw err(403, 'FORBIDDEN', 'حذف پیام عمومی فقط در فضای کاری رئیس هیأت‌مدیره مجاز است');
+  }
+  const x = await readJson(c.request);
+  const reason = str(x.reason, { max: 500, field: 'دلیل حذف' });
+  const message = await publicNotice(c.db, c.params.id);
+  if (!message) throw err(404, 'NOT_FOUND', 'پیام عمومی پیدا نشد یا قبلاً حذف شده است');
+  await c.db.prepare('UPDATE notices SET deleted_at=CURRENT_TIMESTAMP,deleted_by=?,delete_reason=? WHERE id=? AND deleted_at IS NULL')
+    .bind(c.user.id,reason,message.id).run();
+  await audit(c.db,c.user.id,'public_message.delete','notice',message.id,{reason},{actorRole:'chair'});
+  return reply({ok:true});
+});
 R('GET', '/api/notices', async c => {
   const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 100, 1), 100);
   // مخاطب بر اساس «نقش‌ها» تعیین می‌شود نه نوع حساب: حساب «مالک و ساکن» اطلاعیه‌ی هر دو گروه را می‌بیند
