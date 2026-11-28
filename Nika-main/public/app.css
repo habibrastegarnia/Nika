@@ -860,3 +860,6 @@ html[data-theme="light"] .public-comment strong{color:#293850}
 html[data-theme="light"] .public-comment p{color:#52627e}
 html[data-theme="light"] .public-comment-form textarea{background:#fff;color:#293850;border-color:#dfe6f0}
 @media(max-width:380px){.notice{height:148px;min-height:148px;max-height:148px}.public-message-meta{font-size:8px}.public-message-item strong{font-size:12px}}
+
+/* Public message discussion must overlay the dashboard's page window */
+.modal-backdrop{z-index:60}
