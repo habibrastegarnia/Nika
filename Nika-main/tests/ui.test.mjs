@@ -111,6 +111,10 @@ test('تقویم ماهانه و هفتگی تعطیلات قرمز و روید�
   const monthly = source.slice(monthStart, monthEnd);
   assert.match(weekly, /const buildingItems = allItems\.filter\(event => !String\(event\.id\)\.startsWith\('holiday:'\)\)/, 'فقط رویدادهای ثبت‌شده ساختمان در فهرست هفتگی باشند');
   assert.match(monthly, /const buildingItems = items\.filter\(event => !String\(event\.id\)\.startsWith\('holiday:'\)\)/, 'مناسبت‌های تقویمی در فهرست رویدادهای ساختمان نمایش داده نشوند');
+  assert.match(weekly, /join\(\[\.\.\.dayLabels, \.\.\.dayCells\]\)/, 'نام روزها و شماره‌ها در دو ردیف جدا قرار گیرند');
+  assert.match(weekly, /host\.onclick = event =>/, 'رویداد فقط با کلیک روز انتخاب‌شده نمایش داده شود');
+  assert.match(weekly, /eventsHost\.innerHTML = ''/, 'فهرست رویدادها در شروع هفته خالی باشد');
+  assert.doesNotMatch(weekly, /weeklyItems\.slice\(0, 2\)/, 'رویدادها به‌صورت خودکار زیر تقویم نمایش داده نشوند');
   assert.match(weekly, /const holidayDates = new Set\(allItems\.filter\(event => event\.isOfficialHoliday\)/);
   assert.match(weekly, /\$\{holiday \? 'holiday' : ''\}/);
   assert.match(weekly, /holidayDates\.has\(day\.key\) \|\| i === 6/, 'جمعه در نمای هفتگی تعطیل است');
