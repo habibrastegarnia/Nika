@@ -2,7 +2,7 @@
 import { api } from './api.js?v=2';
 import { S, can, canAny } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, JM, monthStart, monthLen, jToday, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, baseRoleLabel, userRoleLabels, chip } from './util.js?v=3';
-import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js';
+import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js?v=3';
 import { refreshSummary, loadLatestNotice, loadPublicMessages, fillHeader } from './pages.js?v=32';
 import { applyIcons, iconMarkup } from './icons.js?v=4';
 
