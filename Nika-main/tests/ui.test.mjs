@@ -107,5 +107,5 @@ test('نقطه رویداد بعدی در تقویم هفتگی با انیمی�
   const body = source.slice(start, end);
   assert.match(body, /const nextWeeklyEvent = buildingItems/);
   assert.match(body, /pulse \? 'pulse' : ''/);
-  assert.match(body, /event-dot \\$\{pulse \? 'pulse' : ''\}/);
+  assert.ok(body.includes("event-dot ${pulse ? 'pulse' : ''}"), 'نقطه رویداد بعدی باید کلاس pulse داشته باشد');
 });
