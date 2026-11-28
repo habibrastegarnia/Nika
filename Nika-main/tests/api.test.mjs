@@ -490,3 +490,46 @@ test('مسیرهای ناموجود/متد نامعتبر', async () => {
   assert.equal((await fin.get('/api/nope')).status, 404);
   assert.equal((await fin.call('DELETE', '/api/me')).status, 405);
 });
+
+
+test('پیام عمومی، تأیید انتشار، واکنش و ثبت نقش فعال در دیدگاه', async () => {
+  const created = await chair.post('/api/admin/users', {
+    name: 'کاربر آزمایشی واحد ۱۴', accountType: 'resident', unit: '14',
+    phone: '09124444414', roles: ['chair'], reason: 'آزمون ثبت نقش فعال در دیدگاه'
+  });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  const author = new Client('public-message-author');
+  await activate(author, 'resident', '09124444414', created.data.tempPassword, 'Unit14-Strong-Pass-1', '14');
+
+  const submission = await author.post('/api/requests', {
+    title: 'پیام عمومی آزمایشی', body: 'متن پیام عمومی برای آزمون',
+    category: 'عمومی', kind: 'request', boardRequested: true
+  });
+  assert.equal(submission.status, 201, JSON.stringify(submission.data));
+
+  const beforeApproval = await author.get('/api/public-messages?limit=5');
+  assert.equal(beforeApproval.data.messages.some(m => m.title === 'پیام عمومی آزمایشی'), false,
+    'پیام تا پیش از تأیید نباید عمومی شود');
+
+  const published = await chair.call('POST', `/api/requests/${submission.data.id}/publish`, {}, { 'X-Nika-Workspace': 'manager' });
+  assert.equal(published.status, 201, JSON.stringify(published.data));
+  const visible = await author.get('/api/public-messages?limit=5');
+  const message = visible.data.messages.find(m => m.id === published.data.id);
+  assert.ok(message);
+  assert.equal(message.author_label, 'ساکن واحد 14');
+
+  const managerComment = await author.call('POST', `/api/public-messages/${message.id}/comments`,
+    { body: 'این دیدگاه در وضعیت رئیس ثبت شده است' }, { 'X-Nika-Workspace': 'manager' });
+  assert.equal(managerComment.status, 201, JSON.stringify(managerComment.data));
+  const residentComment = await author.call('POST', `/api/public-messages/${message.id}/comments`,
+    { body: 'این دیدگاه در وضعیت ساکن ثبت شده است' }, { 'X-Nika-Workspace': 'resident' });
+  assert.equal(residentComment.status, 201, JSON.stringify(residentComment.data));
+
+  const reacted = await author.post(`/api/public-messages/${message.id}/reactions`, { reaction: 'heart' });
+  assert.equal(reacted.status, 200);
+  const discussion = await author.get(`/api/public-messages/${message.id}/discussion`);
+  assert.equal(discussion.data.comments[0].author_label, 'رئیس هیأت‌مدیره');
+  assert.equal(discussion.data.comments[1].author_label, 'ساکن واحد 14');
+  assert.equal(discussion.data.comments[0].actor_role, 'chair');
+  assert.equal(discussion.data.myReaction, 'heart');
+});
