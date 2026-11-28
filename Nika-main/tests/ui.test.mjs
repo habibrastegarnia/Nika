@@ -109,11 +109,11 @@ test('تقویم ماهانه و هفتگی تعطیلات قرمز و روید�
   assert.ok(monthStart >= 0 && monthEnd > monthStart, 'تابع تقویم ماهانه باید وجود داشته باشد');
   const weekly = source.slice(weeklyStart, homeEnd);
   const monthly = source.slice(monthStart, monthEnd);
-  assert.match(weekly, /const holidayDates = new Set\(allItems\.filter\(event => event\.isHoliday\)/);
+  assert.match(weekly, /const holidayDates = new Set\(allItems\.filter\(event => event\.isOfficialHoliday\)/);
   assert.match(weekly, /\$\{holiday \? 'holiday' : ''\}/);
   assert.match(weekly, /holidayDates\.has\(day\.key\) \|\| i === 6/, 'جمعه در نمای هفتگی تعطیل است');
   assert.match(weekly, /\$\{pulse \? 'next-event' : ''\}/);
-  assert.match(monthly, /const holidayDays = new Set\(items\.filter\(event => event\.isHoliday\)/);
+  assert.match(monthly, /const holidayDays = new Set\(items\.filter\(event => event\.isOfficialHoliday\)/);
   assert.match(monthly, /\$\{isHoliday \? 'holiday' : ''\}/);
   assert.match(monthly, /holidayDays\.has\(d\) \|\| new Date\(start\.getTime\(\) \+ \(d - 1\) \* 864e5\)\.getUTCDay\(\) === 5/, 'جمعه در نمای ماهانه تعطیل است');
   assert.match(monthly, /\$\{isNextEvent \? 'next-event' : ''\}/);
@@ -121,6 +121,6 @@ test('تقویم ماهانه و هفتگی تعطیلات قرمز و روید�
   assert.doesNotMatch(weekly + monthly, /class="event-dot/, 'نقطه رویداد باید با حلقه دور شماره روز جایگزین شده باشد');
   const css = await readFile(new URL('../public/app.css', import.meta.url), 'utf8');
   assert.match(css, /\.page-calendar span\.day-cell\.holiday \.day-number/);
-  assert.match(css, /\.page-calendar span\.day-cell\.next-event \.day-number/);
+  assert.match(css, /\.page-calendar span\.day-cell\.next-event \.day-number/);\n  assert.match(css, /\.page-calendar span\.day-cell\.today \.day-number\\{border-color:transparent/);\n  assert.match(css, /\.weekly \.weekly-calendar span\.day-cell\.today \.day-number\\{border-color:transparent/);\n  assert.match(source, /isOfficialHoliday/);
   assert.match(css, /@keyframes calendarEventRing/);
 });
