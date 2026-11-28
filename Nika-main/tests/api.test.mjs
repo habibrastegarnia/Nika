@@ -540,11 +540,11 @@ test('پیام عمومی بدون تأیید، نقش فعال دیدگاه و 
   const second = await author.post('/api/public-messages', { title: 'پیام دوم', body: 'پیام آزمایشی دوم' });
   assert.equal(second.status, 201);
   const execAccount = await chairForPublic.post('/api/admin/users', {
-    name: 'مدیر اجرایی آزمون تابلو', accountType: 'staff', phone: '09125555555',
-    roles: ['executive'], reason: 'ساخت حساب مستقل برای آزمون محدودیت حذف پیام'
+    name: 'ساکن و مدیر اجرایی آزمون تابلو', accountType: 'resident', unit: '15',
+    phone: '09125555555', roles: ['executive'], reason: 'ساخت حساب ساکن دارای نقش اجرایی برای آزمون محدودیت حذف پیام'
   });
   assert.equal(execAccount.status, 201, JSON.stringify(execAccount.data));
   const execForPublic = new Client('executive-public-delete-check');
-  await activate(execForPublic, 'staff', '09125555555', execAccount.data.tempPassword, 'Exec-Public-Pass-33');
+  await activate(execForPublic, 'resident', '09125555555', '09125555555', 'Exec-Public-Pass-33', '15');
   assert.equal((await execForPublic.call('DELETE', `/api/public-messages/${second.data.id}`, { reason: 'مدیر اجرایی نباید بتواند حذف کند' }, { 'X-Nika-Workspace': 'manager' })).status, 403);
 });
