@@ -4,7 +4,7 @@ import { err, reply, readJson, audit } from './lib.js';
 
 const ARCHIVE_TABLES = [
   'units', 'users', 'user_roles', 'funds', 'transactions',
-  'notices', 'requests', 'messages', 'audit_logs', 'rules',
+  'notices', 'requests', 'messages', 'message_reads', 'audit_logs', 'rules',
   'resolutions', 'events', 'documents', 'finance_settings',
   'manager_delegations', 'expense_request_sequences',
   'expense_requests', 'expense_request_versions',
