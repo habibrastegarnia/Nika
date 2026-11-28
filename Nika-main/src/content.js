@@ -106,7 +106,7 @@ R('GET', '/api/notices', async c => {
   if (seeAll || c.user.roles.some(r => !['owner', 'resident'].includes(r))) aud.add('staff');
   const list = [...aud];
   const r = await c.db.prepare(
-    `SELECT id,title,body,audience,kind,created_at FROM notices WHERE (?=1 OR audience IN (${list.map(() => '?').join(',')})) ORDER BY created_at DESC,rowid DESC LIMIT ?`).bind(seeAll ? 1 : 0, ...list, limit).all();
+    `SELECT id,title,body,audience,kind,created_at FROM notices WHERE deleted_at IS NULL AND (?=1 OR audience IN (${list.map(() => '?').join(',')})) ORDER BY created_at DESC,rowid DESC LIMIT ?`).bind(seeAll ? 1 : 0, ...list, limit).all();
   return reply({ notices: r.results });
 });
 R('POST', '/api/notices', { perm: 'notices.manage' }, async c => {
