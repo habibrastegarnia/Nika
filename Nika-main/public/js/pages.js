@@ -133,7 +133,6 @@ export async function loadLatestNotice() {
 
 let publicMessageTimer = null;
 let publicMessageIndex = 0;
-const PUBLIC_MESSAGE_HEIGHT = 96;
 const PUBLIC_MESSAGE_INTERVAL = 8000;
 let publicMessagePaused = false;
 const canDeletePublicMessage = () => S.workspace === 'manager' && !!S.user?.roles?.includes('chair');
@@ -144,61 +143,115 @@ const PUBLIC_REACTIONS = [
   { key: 'celebrate', emoji: '🎉', label: 'تبریک' }
 ];
 export async function loadPublicMessages() {
-  const track = $('#publicMessageTrack'), status = $('#publicMessageStatus'), pauseButton = $('#publicMessagePause');
-  if (!track || !status) return;
+  const track = $('#publicMessageTrack'), viewport = $('.public-message-viewport');
+  const status = $('#publicMessageStatus'), pauseButton = $('#publicMessagePause');
+  if (!track || !status || !viewport) return;
   const composeButton = $('#publicMessageCompose');
   if (composeButton) composeButton.onclick = () => openPublicMessageComposer(false);
-  if (pauseButton) {
-    pauseButton.textContent = publicMessagePaused ? 'ادامه پخش' : 'توقف پخش';
-    pauseButton.setAttribute('aria-pressed', String(publicMessagePaused));
-    pauseButton.onclick = () => {
-      publicMessagePaused = !publicMessagePaused;
-      pauseButton.textContent = publicMessagePaused ? 'ادامه پخش' : 'توقف پخش';
-      pauseButton.setAttribute('aria-pressed', String(publicMessagePaused));
-    };
-  }
   if (publicMessageTimer) clearInterval(publicMessageTimer);
   publicMessageTimer = null;
-  publicMessageIndex = 0;
+  const updatePauseButton = () => {
+    if (!pauseButton) return;
+    pauseButton.textContent = publicMessagePaused ? 'ادامه پخش' : 'توقف پخش';
+    pauseButton.setAttribute('aria-pressed', String(publicMessagePaused));
+  };
+  if (pauseButton) {
+    updatePauseButton();
+    pauseButton.onclick = () => {
+      publicMessagePaused = !publicMessagePaused;
+      updatePauseButton();
+    };
+  }
   try {
     const { messages = [] } = await api('/public-messages?limit=5');
     if (!messages.length) {
       track.innerHTML = '<div class="public-message-empty">هنوز پیام عمومی ثبت نشده است.</div>';
+      track.className = 'public-message-track is-empty';
       status.textContent = 'پیام‌های منتشرشده کاربران';
       return;
     }
-    track.innerHTML = join(messages.map(m => html`<div class="public-message-item">
-      <button type="button" class="public-message-open" data-public-message="${m.id}" aria-label="مشاهده پیام ${m.title}">
-        <span class="public-message-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></span>
-        <strong>${m.title}</strong><span class="public-message-excerpt">${String(m.body || '').slice(0, 132)}${String(m.body || '').length > 132 ? '…' : ''}</span>
+    publicMessageIndex = Math.min(publicMessageIndex, messages.length - 1);
+    track.className = 'public-message-track';
+    track.innerHTML = join(messages.map((m, index) => html\`<article class="public-message-item" data-gallery-index="\${index}">
+      <button type="button" class="public-message-open" data-public-message="\${m.id}" aria-label="مشاهده پیام \${m.title}">
+        <span class="public-message-meta"><span>\${m.author_label} · \${m.author_name}</span><span>\${fdt(m.created_at)}</span></span>
+        <strong>\${m.title}</strong><span class="public-message-excerpt">\${String(m.body || '').slice(0, 132)}\${String(m.body || '').length > 132 ? '…' : ''}</span>
       </button>
-      ${canDeletePublicMessage() ? html`<button type="button" class="public-message-delete" data-delete-message="${m.id}" aria-label="حذف پیام">${iconMarkup('trash-2')}</button>` : ''}
-    </div>`));
-    if (messages.length > 1) track.appendChild(track.firstElementChild.cloneNode(true));
-    status.textContent = `${fa(messages.length)} پیام اخیر · هر ۸ ثانیه`;
-    track.style.transform = 'translateY(0)';
+      \${canDeletePublicMessage() ? html\`<button type="button" class="public-message-delete" data-delete-message="\${m.id}" aria-label="حذف پیام">\${iconMarkup('trash-2')}</button>\` : ''}
+    </article>\`));
+    const paintGallery = (animate = true) => {
+      const count = messages.length;
+      publicMessageIndex = (publicMessageIndex + count) % count;
+      if (!animate) track.classList.add('no-motion');
+      track.querySelectorAll('.public-message-item').forEach((item, index) => {
+        const delta = (index - publicMessageIndex + count) % count;
+        item.classList.toggle('is-active', delta === 0);
+        item.classList.toggle('is-previous', count > 1 && delta === count - 1);
+        item.classList.toggle('is-next', count > 1 && delta === 1);
+        item.classList.toggle('is-hidden', delta > 1 && delta !== count - 1);
+        item.setAttribute('aria-hidden', String(delta > 1 && delta !== count - 1));
+      });
+      if (!animate) requestAnimationFrame(() => track.classList.remove('no-motion'));
+    };
+    paintGallery(false);
+    status.textContent = \`\${fa(messages.length)} پیام در گالری · جدیدترین پیام در مرکز\`;
     track.onclick = event => {
       const remove = event.target.closest('[data-delete-message]');
       if (remove) { deletePublicMessage(remove.dataset.deleteMessage, false); return; }
-      const item = event.target.closest('[data-public-message]');
-      if (item) openPublicMessageModal(item.dataset.publicMessage);
+      const item = event.target.closest('[data-gallery-index]');
+      if (!item) return;
+      const selectedIndex = Number(item.dataset.galleryIndex);
+      if (selectedIndex !== publicMessageIndex) {
+        publicMessageIndex = selectedIndex;
+        publicMessagePaused = true;
+        updatePauseButton();
+        paintGallery();
+        return;
+      }
+      const openButton = event.target.closest('[data-public-message]');
+      if (openButton) openPublicMessageModal(openButton.dataset.publicMessage);
+    };
+    const moveGallery = direction => {
+      if (messages.length < 2) return;
+      publicMessageIndex = (publicMessageIndex + direction + messages.length) % messages.length;
+      paintGallery();
+    };
+    let pointerStartY = null;
+    viewport.onpointerdown = event => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      pointerStartY = event.clientY;
+    };
+    viewport.onpointerup = event => {
+      if (pointerStartY === null) return;
+      const delta = event.clientY - pointerStartY;
+      pointerStartY = null;
+      if (Math.abs(delta) < 24) return;
+      publicMessagePaused = true;
+      updatePauseButton();
+      moveGallery(delta < 0 ? 1 : -1);
+    };
+    viewport.onpointercancel = () => { pointerStartY = null; };
+    viewport.onwheel = event => {
+      if (Math.abs(event.deltaY) < 8) return;
+      event.preventDefault();
+      publicMessagePaused = true;
+      updatePauseButton();
+      moveGallery(event.deltaY > 0 ? 1 : -1);
+    };
+    viewport.onkeydown = event => {
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+      event.preventDefault();
+      publicMessagePaused = true;
+      updatePauseButton();
+      moveGallery(event.key === 'ArrowDown' ? 1 : -1);
     };
     if (messages.length > 1) publicMessageTimer = setInterval(() => {
       if (document.hidden || publicMessagePaused || $('#modalBackdrop')?.classList.contains('open') || !$('#noticeCard')?.getClientRects().length) return;
-      publicMessageIndex += 1;
-      track.style.transform = `translateY(-${publicMessageIndex * PUBLIC_MESSAGE_HEIGHT}px)`;
-      if (publicMessageIndex === messages.length) {
-        setTimeout(() => {
-          if (!track.isConnected) return;
-          track.style.transition = 'none';
-          publicMessageIndex = 0;
-          track.style.transform = 'translateY(0)';
-          requestAnimationFrame(() => { track.style.transition = ''; });
-        }, 600);
-      }
+      moveGallery(1);
     }, PUBLIC_MESSAGE_INTERVAL);
   } catch (error) {
     track.innerHTML = '<div class="public-message-empty">دریافت پیام‌ها در حال حاضر ممکن نیست.</div>';
+    track.className = 'public-message-track is-empty';
     status.textContent = 'پیام کاربران';
     console.warn('Nika public messages:', error);
   }
