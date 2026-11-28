@@ -130,9 +130,59 @@ export async function loadLatestNotice() {
   $('#ntText').textContent = n ? n.body.slice(0, 160) : 'هر زمان مدیریت اطلاعیه‌ای منتشر کند اینجا نمایش داده می‌شود.';
   $('#ntNew').style.display = n && isRecent(n.created_at) ? '' : 'none';
 }
+export async function loadWeeklyCalendar() {
+  const host = $('#weeklyCalendarDays'), eventsHost = $('#weeklyCalendarEvents'), rangeHost = $('#weeklyRange');
+  if (!host || !eventsHost || !rangeHost) return;
+  try {
+    const today = new Date();
+    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 1) % 7));
+    const dates = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + i);
+      const j = jOf(date);
+      const key = `${j.y}-${String(j.m).padStart(2, '0')}-${String(j.d).padStart(2, '0')}`;
+      return { date, ...j, key };
+    });
+    const months = [...new Set(dates.map(d => `${d.y}-${String(d.m).padStart(2, '0')}`))];
+    const responses = await Promise.all(months.map(month => api(`/events?month=${month}`)));
+    const allItems = responses.flatMap(response => Array.isArray(response?.items) ? response.items : []);
+    const buildingItems = allItems.filter(event => !event.isHoliday);
+    const byDate = new Map();
+    buildingItems.forEach(event => {
+      if (!byDate.has(event.event_date)) byDate.set(event.event_date, []);
+      byDate.get(event.event_date).push(event);
+    });
+    const weekdays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    const todayKey = dates.find(d => d.date.toDateString() === today.toDateString())?.key;
+    host.innerHTML = join(dates.map((day, i) => {
+      const dayEvents = byDate.get(day.key) || [];
+      return html`<span class="dow">${weekdays[i]}</span><span class="day-cell ${dayEvents.length ? 'event' : ''} ${day.key === todayKey ? 'today' : ''}"><b class="day-number">${faN(day.d)}</b>${dayEvents.length ? raw('<i class="event-dot" aria-hidden="true"></i>') : ''}</span>`;
+    }));
+    const first = dates[0], last = dates[6];
+    rangeHost.textContent = first.m === last.m
+      ? `${faN(first.d)} تا ${faN(last.d)} ${JM[first.m - 1]} ${faN(first.y)}`
+      : `${faN(first.d)} ${JM[first.m - 1]} تا ${faN(last.d)} ${JM[last.m - 1]}`;
+    const weeklyItems = buildingItems
+      .filter(event => event.event_date >= dates[0].key && event.event_date <= dates[6].key)
+      .sort((a, b) => a.event_date.localeCompare(b.event_date) || String(a.event_time || '').localeCompare(String(b.event_time || '')));
+    eventsHost.innerHTML = weeklyItems.length
+      ? join(weeklyItems.slice(0, 2).map(event => {
+          const day = dates.find(d => d.key === event.event_date);
+          return html`<div class="weekly-event"><span class="weekly-event-dot"></span><div><strong>${event.title}</strong><small>${day ? weekdays[dates.indexOf(day)] + ' ' + faN(day.d) + ' ' + JM[day.m - 1] : ''}${event.event_time ? ' · ' + normFa(event.event_time) : ''}</small></div></div>`;
+        }))
+      : '<div class="weekly-empty">برای این هفته رویدادی ثبت نشده است.</div>';
+    if (weeklyItems.length > 2) eventsHost.insertAdjacentHTML('beforeend', `<div class="weekly-more">و ${faN(weeklyItems.length - 2)} رویداد دیگر در تقویم</div>`);
+  } catch (error) {
+    rangeHost.textContent = 'هفته جاری';
+    host.innerHTML = '';
+    eventsHost.innerHTML = '<div class="weekly-empty">دریافت تقویم در حال حاضر ممکن نیست.</div>';
+    console.warn('Nika weekly calendar:', error);
+  }
+}
 export async function loadHome() {
   fillHeader();
-  await Promise.allSettled([loadDashboard(), loadLatestNotice()]);
+  await Promise.allSettled([loadDashboard(), loadLatestNotice(), loadWeeklyCalendar()]);
 }
 
 // ====================== مقررات و مصوبات ======================
