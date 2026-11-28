@@ -185,23 +185,26 @@ const canAccessMessageRoot = (user, root) => root.sender_id === user.id || root.
   (!root.recipient_id && !root.recipient_role && can(user, 'messages.manage'));
 R('GET', '/api/messages', { perm: 'messages.use' }, async c => {
   const box = c.url.searchParams.get('box') === 'sent' ? 'sent' : 'inbox', mgr = can(c.user, 'messages.manage') ? 1 : 0;
-  const cols = `m.*,su.name sender_name,sn.unit_number sender_unit,ru.name recipient_name,
-    CASE m.recipient_role WHEN 'executive' THEN 'مدیر اجرایی' WHEN 'chair' THEN 'رئیس هیأت‌مدیره' WHEN 'board' THEN 'هیأت‌مدیره' ELSE NULL END recipient_label`;
-  const from = 'FROM messages m JOIN users su ON su.id=m.sender_id LEFT JOIN units sn ON sn.id=su.unit_id LEFT JOIN users ru ON ru.id=m.recipient_id';
+  const unreadGroupClause = groupRoles.length ? ` OR x.recipient_role IN (${groupRoles.map(() => '?').join(',')})` : '';
   const groupRoles = Object.keys(MESSAGE_RECIPIENT_ROLES).filter(role => canReceiveMessageRole(c.user, role));
+  const cols = `m.*,su.name sender_name,sn.unit_number sender_unit,ru.name recipient_name,
+    CASE m.recipient_role WHEN 'executive' THEN 'مدیر اجرایی' WHEN 'chair' THEN 'رئیس هیأت‌مدیره' WHEN 'board' THEN 'هیأت‌مدیره' ELSE NULL END recipient_label,
+    (SELECT COUNT(*) FROM messages x WHERE COALESCE(x.thread_id,x.id)=m.id AND x.read_at IS NULL AND x.sender_id<>?
+      AND (x.recipient_id=? OR (x.recipient_id IS NULL AND x.recipient_role IS NULL AND ?=1)${unreadGroupClause})) unread_count`;
+  const from = 'FROM messages m JOIN users su ON su.id=m.sender_id LEFT JOIN units sn ON sn.id=su.unit_id LEFT JOIN users ru ON ru.id=m.recipient_id';
   let query, args;
   if (box === 'sent') {
     query = `SELECT ${cols} ${from} WHERE COALESCE(m.thread_id,m.id)=m.id
       AND EXISTS (SELECT 1 FROM messages x WHERE COALESCE(x.thread_id,x.id)=m.id AND x.sender_id=?)
       ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`;
-    args = [c.user.id];
+    args = [c.user.id,c.user.id,mgr,...groupRoles,c.user.id];
   } else {
     const groupClause = groupRoles.length ? ` OR x.recipient_role IN (${groupRoles.map(() => '?').join(',')})` : '';
     query = `SELECT ${cols} ${from} WHERE COALESCE(m.thread_id,m.id)=m.id
       AND EXISTS (SELECT 1 FROM messages x WHERE COALESCE(x.thread_id,x.id)=m.id AND x.sender_id<>?
         AND (x.recipient_id=? OR (x.recipient_id IS NULL AND x.recipient_role IS NULL AND ?=1)${groupClause}))
       ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`;
-    args = [c.user.id,c.user.id,mgr,...groupRoles];
+    args = [c.user.id,c.user.id,mgr,...groupRoles,c.user.id,c.user.id,mgr,...groupRoles];
   }
   const r = await c.db.prepare(query).bind(...args).all();
   return reply({ box, messages: r.results });
