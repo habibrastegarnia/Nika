@@ -75,7 +75,7 @@ test('تمام آیکون‌های پنجره پیام و انتخاب مخاط�
   ]);
   const required = ['inbox', 'send', 'pencil', 'megaphone', 'nika-board', 'user-round-check'];
   for (const name of required) {
-    assert.match(icons, new RegExp("['"]" + name + "['"]\\s*:"), 'آیکون ' + name + ' باید ثبت شده باشد');
+    assert.ok(icons.includes("'" + name + "':") || icons.includes(name + ":"), 'آیکون ' + name + ' باید ثبت شده باشد');
   }
   assert.match(pages, /function openMessageRecipientPicker\(/);
   assert.match(pages, /iconMarkup\('user-round-check'\)/);
