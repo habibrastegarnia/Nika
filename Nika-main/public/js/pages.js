@@ -531,11 +531,12 @@ function payPage(fund, balance) {
 
 // ====================== پیام‌های خصوصی ======================
 const PRIVATE_RECIPIENT_LABELS = { executive: 'مدیر اجرایی', chair: 'رئیس هیأت‌مدیره', board: 'هیأت‌مدیره' };
+const privateSenderLabel = m => m.sender_label || (m.sender_unit ? `واحد ${m.sender_unit}` : 'مدیریت ساختمان');
 function renderPrivateThread(data) {
   const messages = Array.isArray(data.messages) ? data.messages : [];
   return html`<div class="private-thread">
     <div class="private-thread-list">${messages.map(m => html`<article class="private-thread-message">
-      <div class="private-thread-meta"><strong>${m.sender_name || 'کاربر ساختمان'}</strong><span>${m.sender_label || (m.sender_unit ? `واحد ${m.sender_unit}` : 'کاربر ساختمان')}</span><small>${fdt(m.created_at)}</small></div>
+      <div class="private-thread-meta"><strong>${m.sender_name || 'کاربر ساختمان'}</strong><span>${privateSenderLabel(m)}</span><small>${fdt(m.created_at)}</small></div>
       <p>${m.body}</p>
     </article>`)}</div>
     <form id="privateMessageReplyForm" class="private-thread-reply"><label>پاسخ شما</label><textarea name="body" maxlength="2000" required placeholder="متن پاسخ را بنویسید…"></textarea><button class="page-btn full" type="submit">ارسال پاسخ</button></form>
@@ -568,7 +569,7 @@ export async function messagesPage(box = 'inbox') {
     <div class="seg"><button class="${box === 'inbox' ? 'on' : ''}" data-box="inbox">دریافتی</button><button class="${box === 'sent' ? 'on' : ''}" data-box="sent">ارسالی</button></div>
     <button class="page-btn full" id="msgNew" style="margin:0 0 12px">+ پیام خصوصی جدید</button>
     <div class="page-list">${messages.length ? messages.map((m, i) => html`<button type="button" dir="rtl" class="page-row clickable nika-message-row private-message-row tone-${m.tone || 'info'} ${box === 'inbox' && Number(m.unread_count || 0) > 0 ? 'unread' : ''}" data-i="${i}">
-      <span class="page-row-icon private-message-icon">${lineIcon('lock-keyhole')}</span><span class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? (m.sender_id === S.user.id ? 'به: ' + (m.recipient_label || m.recipient_name || 'مدیریت ساختمان') : 'پاسخ به فرستنده گفت‌وگو') : (m.sender_id === S.user.id ? 'پاسخ جدید در گفت‌وگو' : 'از: ' + (m.sender_label || 'کاربر ساختمان') + ' · ' + m.sender_name)}${m.sender_unit && box === 'inbox' && m.sender_id !== S.user.id ? ' · واحد ' + m.sender_unit : ''} · ${fdt(m.created_at)}</small></span>
+      <span class="page-row-icon private-message-icon">${lineIcon('lock-keyhole')}</span><span class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? (m.sender_id === S.user.id ? 'به: ' + (m.recipient_label || m.recipient_name || 'مدیریت ساختمان') : 'پاسخ به فرستنده گفت‌وگو') : (m.sender_id === S.user.id ? 'پاسخ جدید در گفت‌وگو' : 'از: ' + privateSenderLabel(m) + ' · ' + m.sender_name)}${m.sender_unit && box === 'inbox' && m.sender_id !== S.user.id ? ' · واحد ' + m.sender_unit : ''} · ${fdt(m.created_at)}</small></span>
     </button>`) : html`<div class="page-card"><div class="page-empty">پیام خصوصی‌ای وجود ندارد.</div></div>`}</div>`);
   $$('[data-box]', v).forEach(b => b.onclick = () => open(() => messagesPage(b.dataset.box), { replace: true }));
   $('#msgNew', v).onclick = () => open(() => messageComposePage());
