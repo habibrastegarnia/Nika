@@ -293,7 +293,7 @@ export async function openPublicMessageModal(id) {
   };
   modal.onclick = async event => {
     const deleteButton = event.target.closest('[data-delete-message]');
-    if (deleteButton) { await deletePublicMessage(deleteButton.dataset.deleteMessage, !!document.querySelector('#pageView .public-messages-page')); return; }
+    if (deleteButton) { await deletePublicMessage(deleteButton.dataset.deleteMessage, !!document.querySelector('.modal-content .public-messages-page')); return; }
     const button = event.target.closest('[data-reaction]');
     if (!button) return;
     button.disabled = true;
@@ -635,7 +635,7 @@ function openMessageComposer(recipient) {
     <label>متن پیام</label><textarea class="page-textarea" name="body" maxlength="2000" required placeholder="${isPublic ? 'پیام خود را برای کاربران ساختمان بنویسید…' : 'متن پیام محرمانه را بنویسید…'}"></textarea>
     <p class="page-kicker">${isPublic ? 'این پیام پس از ثبت، بلافاصله در گالری «پیام کاربران» نمایش داده می‌شود.' : 'این پیام به‌صورت محرمانه برای مخاطب انتخاب‌شده ارسال می‌شود.'}</p>
     <button class="page-btn full" type="submit">${isPublic ? 'ثبت و انتشار پیام' : 'ارسال پیام محرمانه'}</button>
-  </form>`);
+  </form>`, { replace: true });
   modal.onsubmit = async event => {
     if (event.target.id !== 'messageCenterComposeForm') return;
     event.preventDefault();
