@@ -4,7 +4,7 @@ import { S, can, canManageCalendarEvents, readableFunds, dashFunds, isManager } 
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
   FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, baseRoleLabel, userRoleLabels, chip } from './util.js?v=3';
 import { toast, openModal, closeModal, ask, promptText, route, open, fields, onSubmit } from './ui.js';
-import { iconMarkup } from './icons.js?v=3';
+import { iconMarkup } from './icons.js?v=4';
 
 // ====================== خانه ======================
 const COLORS = ['#7886d8', '#58c9a5', '#e8a65d', '#d77d9b', '#78baff', '#b79cf0', '#9ac96b'];
