@@ -4,7 +4,7 @@ import { S, can, canAny, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js';
 import { iconMarkup, applyIcons } from './icons.js?v=3';
 import { toast, initModal, initRouter, open, back, showHome, resetRouter, setNav } from './ui.js?v=3';
-import * as P from './pages.js?v=22';
+import * as P from './pages.js?v=23';
 import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=28';
 
 let managerMode = false;
@@ -113,8 +113,8 @@ function initNav() {
     const m = b.dataset.menu;
     open({ rules: P.rulesPage, requests: P.requestsPage, calendar: () => P.calendarPage(), resolutions: P.resolutionsPage }[m], { root: true });
   });
-  $('#boardAll').onclick = $('#noticeAll').onclick = $('#noticeCard').onclick = () => open(P.boardPage, { root: true });
-  $('#noticeCard').onkeydown = e => { if (e.key === 'Enter') open(P.boardPage, { root: true }); };
+  $('#boardAll').onclick = () => open(P.boardPage, { root: true });
+  $('#noticeAll').onclick = () => open(P.publicMessagesPage, { root: true });
   $('#finMonth').onchange = e => P.loadDashboard('fin', e.target.value).catch(x => toast(x.message));
   document.addEventListener('nika:logout', logout);
   document.addEventListener('nika:admin', e => open(() => showAdmin(e.detail), { root: true }));
