@@ -1,6 +1,6 @@
 // عناصر مشترک رابط: اعلان، پنجره، مسیریابی صفحه‌ها، ساخت فرم
-import { html, esc, raw, $, $$, normDigits, JM, fa, jToday, monthStart, monthLen } from './util.js';
-import { iconMarkup } from './icons.js?v=2';
+import { html, esc, raw, $, $$, normDigits, JM, fa, jToday, monthStart, monthLen } from './util.js?v=3';
+import { iconMarkup } from './icons.js?v=4';
 
 // ---------- اعلان و پنجره ----------
 let toastTimer;
