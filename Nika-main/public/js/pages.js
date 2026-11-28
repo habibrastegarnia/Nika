@@ -364,26 +364,37 @@ export async function loadWeeklyCalendar() {
       .filter(event => event.event_date >= todayKey && (event.event_date > todayKey || !event.event_time || String(event.event_time) >= nowTime))
       .sort((a, b) => a.event_date.localeCompare(b.event_date) || String(a.event_time || '').localeCompare(String(b.event_time || '')))[0];
     const nextWeeklyEventDate = nextWeeklyEvent?.event_date;
-    host.innerHTML = join(dates.map((day, i) => {
+    const dayLabels = dates.map((day, i) => html`<span class="dow">${weekdays[i]}</span>`);
+    const dayCells = dates.map((day, i) => {
       const dayEvents = byDate.get(day.key) || [];
       const pulse = day.key === nextWeeklyEventDate;
       const holiday = holidayDates.has(day.key) || i === 6;
-      return html`<span class="dow">${weekdays[i]}</span><span class="day-cell ${dayEvents.length ? 'event' : ''} ${holiday ? 'holiday' : ''} ${day.key === todayKey ? 'today' : ''} ${pulse ? 'next-event' : ''}"><b class="day-number">${faN(day.d)}</b></span>`;
-    }));
+      return html`<span class="day-cell ${dayEvents.length ? 'event' : ''} ${holiday ? 'holiday' : ''} ${day.key === todayKey ? 'today' : ''} ${pulse ? 'next-event' : ''}" ${dayEvents.length ? raw(`role="button" tabindex="0" data-weekly-day="${day.key}" aria-label="${weekdays[i]} ${faN(day.d)}، مشاهده رویدادها"`) : ''}><b class="day-number">${faN(day.d)}</b></span>`;
+    });
+    host.innerHTML = join([...dayLabels, ...dayCells]);
     const first = dates[0], last = dates[6];
     rangeHost.textContent = first.m === last.m
       ? `${faN(first.d)} تا ${faN(last.d)} ${JM[first.m - 1]} ${faN(first.y)}`
       : `${faN(first.d)} ${JM[first.m - 1]} تا ${faN(last.d)} ${JM[last.m - 1]}`;
-    const weeklyItems = buildingItems
-      .filter(event => event.event_date >= dates[0].key && event.event_date <= dates[6].key)
-      .sort((a, b) => a.event_date.localeCompare(b.event_date) || String(a.event_time || '').localeCompare(String(b.event_time || '')));
-    eventsHost.innerHTML = weeklyItems.length
-      ? join(weeklyItems.slice(0, 2).map(event => {
-          const day = dates.find(d => d.key === event.event_date);
-          return html`<div class="weekly-event"><span class="weekly-event-dot"></span><div><strong>${event.title}</strong><small>${day ? weekdays[dates.indexOf(day)] + ' ' + faN(day.d) + ' ' + JM[day.m - 1] : ''}${event.event_time ? ' · ' + normFa(event.event_time) : ''}</small></div></div>`;
-        }))
-      : '<div class="weekly-empty">برای این هفته رویدادی ثبت نشده است.</div>';
-    if (weeklyItems.length > 2) eventsHost.insertAdjacentHTML('beforeend', `<div class="weekly-more">و ${faN(weeklyItems.length - 2)} رویداد دیگر در تقویم</div>`);
+    eventsHost.innerHTML = '';
+    const showDayEvents = key => {
+      const dayEvents = byDate.get(key) || [];
+      if (!dayEvents.length) return;
+      const day = dates.find(d => d.key === key);
+      eventsHost.innerHTML = join(dayEvents.map(event => html`<div class="weekly-event"><div><strong>${event.title}</strong><small>${day ? weekdays[dates.indexOf(day)] + ' ' + faN(day.d) + ' ' + JM[day.m - 1] : ''}${event.event_time ? ' · ' + normFa(event.event_time) : ''}</small></div>${event.body ? html`<p>${event.body}</p>` : ''}</div>`));
+      host.querySelectorAll('[data-weekly-day]').forEach(cell => cell.classList.toggle('selected', cell.dataset.weeklyDay === key));
+    };
+    host.onclick = event => {
+      const cell = event.target.closest('[data-weekly-day]');
+      if (cell) showDayEvents(cell.dataset.weeklyDay);
+    };
+    host.onkeydown = event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const cell = event.target.closest('[data-weekly-day]');
+      if (!cell) return;
+      event.preventDefault();
+      showDayEvents(cell.dataset.weeklyDay);
+    };
   } catch (error) {
     rangeHost.textContent = 'هفته جاری';
     host.innerHTML = '';
