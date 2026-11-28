@@ -30,6 +30,7 @@ const ICONS = Object.freeze({
   'circle-dot': `<circle cx="12" cy="12" r="1"/><circle cx="12" cy="12" r="10"/>`,
   mail: `<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/>`,
   'lock-keyhole': `<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/><path d="M12 17v2"/>`,
+  'user-round-check': `<circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 16 0M16 11l2 2 4-4"/>`,
   'user-round-plus': `<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M19 8v6m3-3h-6"/>`,
   'user-round-x': `<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="m17 8 5 5m0-5-5 5"/>`,
   'user-round-pen': `<path d="M2 21a8 8 0 0 1 10.821-7.487M21.378 16.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><circle cx="10" cy="8" r="5"/>`,
