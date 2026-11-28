@@ -53,7 +53,7 @@ export const REQ_STATUS = { new: ['جدید', 'blue'], in_progress: ['در حا�
 export const REQ_KIND = { request: 'درخواست', idea: 'پیشنهاد', issue: 'گزارش خرابی' };
 export const REQ_CATEGORIES = ['عمومی', 'تأسیسات و تعمیرات', 'نظافت', 'امنیت', 'مالی', 'سایر'];
 export const ROLE_FA = { owner: 'مالک', resident: 'ساکن', chair: 'رئیس هیأت‌مدیره', finance: 'مدیر مالی', board: 'عضو هیأت‌مدیره', executive: 'مدیر اجرایی', system_admin: 'مدیر سامانه', caretaker: 'سرایدار' };
-export const ACCOUNT_FA = { owner: 'مالک', resident: 'ساکن', staff: 'مدیر / کارکنان', both: 'مالک و ساکن' };
+export const ACCOUNT_FA = { owner: 'مالک', resident: 'ساکن', staff: 'مدیر / کارکنان', both: 'مالک/ساکن' };
 export const baseRoleKey = user => {
   const roles = Array.isArray(user?.roles) ? user.roles : [];
   if (roles.includes('owner') && roles.includes('resident')) return 'both';
