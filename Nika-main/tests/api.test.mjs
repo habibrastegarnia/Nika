@@ -537,7 +537,7 @@ test('پیام عمومی بدون تأیید، نقش فعال دیدگاه و 
   assert.equal(audit.actor_role, 'chair');
   assert.match(audit.details, /اطلاعات نادرست/);
 
-  const second = await res1.post('/api/public-messages', { title: 'پیام دوم', body: 'پیام آزمایشی دوم' });
+  const second = await author.post('/api/public-messages', { title: 'پیام دوم', body: 'پیام آزمایشی دوم' });
   assert.equal(second.status, 201);
   assert.equal((await exec.call('DELETE', `/api/public-messages/${second.data.id}`, { reason: 'مدیر اجرایی نباید بتواند حذف کند' }, { 'X-Nika-Workspace': 'manager' })).status, 403);
 });
