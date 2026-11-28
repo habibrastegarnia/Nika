@@ -191,12 +191,17 @@ R('GET', '/api/messages', { perm: 'messages.use' }, async c => {
   const groupRoles = Object.keys(MESSAGE_RECIPIENT_ROLES).filter(role => canReceiveMessageRole(c.user, role));
   let query, args;
   if (box === 'sent') {
-    query = `SELECT ${cols} ${from} WHERE COALESCE(m.thread_id,m.id)=m.id AND m.sender_id=? ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`;
+    query = `SELECT ${cols} ${from} WHERE COALESCE(m.thread_id,m.id)=m.id
+      AND EXISTS (SELECT 1 FROM messages x WHERE COALESCE(x.thread_id,x.id)=m.id AND x.sender_id=?)
+      ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`;
     args = [c.user.id];
   } else {
-    const groupClause = groupRoles.length ? ` OR m.recipient_role IN (${groupRoles.map(() => '?').join(',')})` : '';
-    query = `SELECT ${cols} ${from} WHERE COALESCE(m.thread_id,m.id)=m.id AND (m.recipient_id=? OR (m.recipient_id IS NULL AND m.recipient_role IS NULL AND ?=1)${groupClause}) ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`;
-    args = [c.user.id, mgr, ...groupRoles];
+    const groupClause = groupRoles.length ? ` OR x.recipient_role IN (${groupRoles.map(() => '?').join(',')})` : '';
+    query = `SELECT ${cols} ${from} WHERE COALESCE(m.thread_id,m.id)=m.id
+      AND EXISTS (SELECT 1 FROM messages x WHERE COALESCE(x.thread_id,x.id)=m.id AND x.sender_id<>?
+        AND (x.recipient_id=? OR (x.recipient_id IS NULL AND x.recipient_role IS NULL AND ?=1)${groupClause}))
+      ORDER BY m.created_at DESC,m.rowid DESC LIMIT 200`;
+    args = [c.user.id,c.user.id,mgr,...groupRoles];
   }
   const r = await c.db.prepare(query).bind(...args).all();
   return reply({ box, messages: r.results });
@@ -245,9 +250,17 @@ R('POST', '/api/messages/:id/replies', { perm: 'messages.use' }, async c => {
   return reply({ok:true,id,threadId:root.id},201);
 });
 R('POST', '/api/messages/:id/read', { perm: 'messages.use' }, async c => {
-  const root = await c.db.prepare('SELECT * FROM messages WHERE id=?').bind(c.params.id).first();
-  if (!root || !canAccessMessageRoot(c.user,root) || root.sender_id === c.user.id) throw err(404,'NOT_FOUND','پیام پیدا نشد');
-  await c.db.prepare('UPDATE messages SET read_at=COALESCE(read_at,CURRENT_TIMESTAMP) WHERE id=?').bind(root.id).run();
+  let root = await c.db.prepare('SELECT * FROM messages WHERE id=?').bind(c.params.id).first();
+  if (!root) throw err(404,'NOT_FOUND','پیام پیدا نشد');
+  if (root.thread_id && root.thread_id !== root.id) root = await c.db.prepare('SELECT * FROM messages WHERE id=?').bind(root.thread_id).first() || root;
+  if (!canAccessMessageRoot(c.user,root)) throw err(404,'NOT_FOUND','پیام پیدا نشد');
+  const groupRoles = Object.keys(MESSAGE_RECIPIENT_ROLES).filter(role => canReceiveMessageRole(c.user,role));
+  const groupClause = groupRoles.length ? ` OR recipient_role IN (${groupRoles.map(() => '?').join(',')})` : '';
+  const result = await c.db.prepare(`UPDATE messages SET read_at=COALESCE(read_at,CURRENT_TIMESTAMP)
+    WHERE COALESCE(thread_id,id)=? AND sender_id<>?
+      AND (recipient_id=? OR (recipient_id IS NULL AND recipient_role IS NULL AND ?=1)${groupClause})`)
+    .bind(root.id,c.user.id,c.user.id,can(c.user,'messages.manage')?1:0,...groupRoles).run();
+  if (!result.meta.changes) throw err(404,'NOT_FOUND','پیام خواندنی پیدا نشد');
   return reply({ ok: true });
 });
 // ---------- محتوای ساختمان: CRUD عمومی ----------
