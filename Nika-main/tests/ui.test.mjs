@@ -2,21 +2,35 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-test('هر workspace از همان نسخه ماژول pages و icons استفاده می‌کند', async () => {
-  const [main, admin, ui] = await Promise.all([
+test('ماژول‌های مشترک در تمام workspaceها از URL یکسان استفاده می‌کنند', async () => {
+  const [main, admin, pages, ui] = await Promise.all([
     readFile(new URL('../public/js/main.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/js/admin.js', import.meta.url), 'utf8'),
+    readFile(new URL('../public/js/pages.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/js/ui.js', import.meta.url), 'utf8')
   ]);
-  const getVersion = source => {
-    const marker = 'pages.js?v=';
-    const at = source.indexOf(marker);
-    return at < 0 ? null : source.slice(at + marker.length).split("'")[0];
+  const modules = { main, admin, pages, ui };
+  const importUrl = (source, name) => {
+    const match = source.match(new RegExp("from ['\\"]\\./" + name + "\\?([^'\\"]*)['\\"]"));
+    return match ? name + '?' + match[1] : null;
   };
-  const mainVersion = getVersion(main), adminVersion = getVersion(admin);
-  assert.ok(mainVersion, 'نسخه ماژول pages در main مشخص باشد');
-  assert.equal(adminVersion, mainVersion, 'admin و main باید یک نسخه از pages را وارد کنند');
-  assert.ok(ui.includes("from './icons.js?v=2'"), 'ماژول آیکون در ui باید با بقیه یکسان باشد');
+  for (const name of ['util.js', 'ui.js', 'icons.js']) {
+    const users = Object.entries(modules).filter(([key]) =>
+      name !== 'ui.js' || key !== 'ui'
+    );
+    const urls = users.map(([key, source]) => [key, importUrl(source, name)]).filter(([, url]) => url);
+    assert.ok(urls.length >= 2, name + ' باید در چند ماژول استفاده شود');
+    assert.equal(new Set(urls.map(([, url]) => url)).size, 1,
+      name + ' باید در همه مصرف‌کننده‌ها URL یکسان داشته باشد: ' + JSON.stringify(urls));
+  }
+  const pageUrls = [importUrl(main, 'pages.js'), importUrl(admin, 'pages.js')];
+  assert.equal(pageUrls[0], pageUrls[1], 'admin و main باید یک نسخه از pages را وارد کنند');
+});
+
+test('تشخیص HTML امن بین نسخه‌های تکراری util نیز پایدار می‌ماند', async () => {
+  const source = await readFile(new URL('../public/js/util.js', import.meta.url), 'utf8');
+  assert.match(source, /Symbol\.for\(['"]nika\.safe-html['"]\)/);
+  assert.match(source, /v\[SAFE_HTML\]\s*===\s*true/);
 });
 
 test('onSubmit مجموعه ورودی‌های مبلغ را با querySelectorAll می‌گیرد', async () => {
