@@ -13,10 +13,14 @@ const ROLE_LABELS = {
   executive: 'مدیر اجرایی', system_admin: 'مدیر سامانه', caretaker: 'سرایدار'
 };
 function roleSnapshot(user) {
-  const role = user.activeRole || (['owner','resident'].includes(user.account_type) ? user.account_type : null)
-    || ['chair','finance','board','executive','system_admin','caretaker'].find(r => user.roles?.includes(r)) || 'user';
+  const roles = Array.isArray(user.roles) ? user.roles : [];
+  const bothBaseRoles = roles.includes('owner') && roles.includes('resident');
+  const baseRole = bothBaseRoles ? 'owner_resident' : roles.includes('owner') ? 'owner' : roles.includes('resident') ? 'resident' : null;
+  const active = user.activeRole || baseRole || ['chair','finance','board','executive','system_admin','caretaker'].find(r => roles.includes(r)) || 'user';
+  const role = ['owner','resident'].includes(active) && bothBaseRoles ? 'owner_resident' : active;
   const unit = user.unit_number ? ` واحد ${user.unit_number}` : '';
-  const label = role === 'owner' ? `مالک${unit}`
+  const label = role === 'owner_resident' ? `مالک/ساکن${unit}`
+    : role === 'owner' ? `مالک${unit}`
     : role === 'resident' ? `ساکن${unit}`
     : (ROLE_LABELS[role] || 'کاربر ساختمان');
   return { role, label, name: user.name || 'کاربر ساختمان' };
