@@ -22,7 +22,7 @@ function roleSnapshot(user) {
   return { role, label, name: user.name || 'کاربر ساختمان' };
 }
 async function publicNotice(db, id) {
-  return db.prepare("SELECT id,title,body,created_at,author_name,author_label,author_role FROM notices WHERE id=? AND audience='all' AND source_request_id IS NOT NULL AND deleted_at IS NULL").bind(id).first();
+  return db.prepare("SELECT id,title,body,created_at,author_name,author_label,author_role FROM notices WHERE id=? AND audience='all' AND author_user_id IS NOT NULL AND deleted_at IS NULL").bind(id).first();
 }
 R('GET', '/api/public-messages', async c => {
   const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 5, 1), 500);
@@ -33,7 +33,7 @@ R('GET', '/api/public-messages', async c => {
       (SELECT COUNT(*) FROM notice_comments cm WHERE cm.notice_id=n.id) comment_count,
       (SELECT COUNT(*) FROM notice_reactions nr WHERE nr.notice_id=n.id) reaction_count
      FROM notices n
-     WHERE n.audience='all' AND n.source_request_id IS NOT NULL AND n.deleted_at IS NULL
+     WHERE n.audience='all' AND n.author_user_id IS NOT NULL AND n.deleted_at IS NULL
      ORDER BY n.created_at DESC,n.rowid DESC LIMIT ?`).bind(limit).all();
   return reply({ messages: r.results });
 });
