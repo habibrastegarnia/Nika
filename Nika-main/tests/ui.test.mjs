@@ -67,3 +67,16 @@ test('میانبرهای مالی فرم مربوط را در پنجره شنا�
   const reload = source.match(/const reload = \(\) => \{ closeModal\(\); return loadTab\(\); \};/);
   assert.ok(reload, 'پس از عملیات موفق، پنجره فرم بسته و داشبورد تازه‌سازی شود');
 });
+
+test('تمام آیکون‌های پنجره پیام و انتخاب مخاطب در رجیستری موجودند', async () => {
+  const [icons, pages] = await Promise.all([
+    readFile(new URL('../public/js/icons.js', import.meta.url), 'utf8'),
+    readFile(new URL('../public/js/pages.js', import.meta.url), 'utf8')
+  ]);
+  const required = ['inbox', 'send', 'pencil', 'megaphone', 'nika-board', 'user-round-check'];
+  for (const name of required) {
+    assert.match(icons, new RegExp("['"]" + name + "['"]\\s*:"), 'آیکون ' + name + ' باید ثبت شده باشد');
+  }
+  assert.match(pages, /function openMessageRecipientPicker\(/);
+  assert.match(pages, /iconMarkup\('user-round-check'\)/);
+});
