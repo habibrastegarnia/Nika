@@ -130,6 +130,9 @@ export async function loadLatestNotice() {
 let publicMessageTimer = null;
 let publicMessageIndex = 0;
 const PUBLIC_MESSAGE_HEIGHT = 96;
+const PUBLIC_MESSAGE_INTERVAL = 8000;
+let publicMessagePaused = false;
+const canDeletePublicMessage = () => S.workspace === 'manager' && !!S.user?.roles?.includes('chair');
 const PUBLIC_REACTIONS = [
   { key: 'like', emoji: '👍', label: 'پسندیدم' },
   { key: 'heart', emoji: '❤️', label: 'دوست داشتم' },
@@ -137,15 +140,26 @@ const PUBLIC_REACTIONS = [
   { key: 'celebrate', emoji: '🎉', label: 'تبریک' }
 ];
 export async function loadPublicMessages() {
-  const track = $('#publicMessageTrack'), status = $('#publicMessageStatus');
+  const track = $('#publicMessageTrack'), status = $('#publicMessageStatus'), pauseButton = $('#publicMessagePause');
   if (!track || !status) return;
+  const composeButton = $('#publicMessageCompose');
+  if (composeButton) composeButton.onclick = () => openPublicMessageComposer(false);
+  if (pauseButton) {
+    pauseButton.textContent = publicMessagePaused ? 'ادامه پخش' : 'توقف پخش';
+    pauseButton.setAttribute('aria-pressed', String(publicMessagePaused));
+    pauseButton.onclick = () => {
+      publicMessagePaused = !publicMessagePaused;
+      pauseButton.textContent = publicMessagePaused ? 'ادامه پخش' : 'توقف پخش';
+      pauseButton.setAttribute('aria-pressed', String(publicMessagePaused));
+    };
+  }
   if (publicMessageTimer) clearInterval(publicMessageTimer);
   publicMessageTimer = null;
   publicMessageIndex = 0;
   try {
     const { messages = [] } = await api('/public-messages?limit=5');
     if (!messages.length) {
-      track.innerHTML = '<div class="public-message-empty">هنوز پیام عمومیِ تأییدشده‌ای ثبت نشده است.</div>';
+      track.innerHTML = '<div class="public-message-empty">هنوز پیام عمومی ثبت نشده است.</div>';
       status.textContent = 'پیام‌های منتشرشده کاربران';
       return;
     }
@@ -154,14 +168,14 @@ export async function loadPublicMessages() {
       <strong>${m.title}</strong><span class="public-message-excerpt">${String(m.body || '').slice(0, 132)}${String(m.body || '').length > 132 ? '…' : ''}</span>
     </button>`));
     if (messages.length > 1) track.appendChild(track.firstElementChild.cloneNode(true));
-    status.textContent = `${fa(messages.length)} پیام اخیر · هر ۴ ثانیه`;
+    status.textContent = `${fa(messages.length)} پیام اخیر · هر ۸ ثانیه`;
     track.style.transform = 'translateY(0)';
     track.onclick = event => {
       const item = event.target.closest('[data-public-message]');
       if (item) openPublicMessageModal(item.dataset.publicMessage);
     };
     if (messages.length > 1) publicMessageTimer = setInterval(() => {
-      if (document.hidden || !$('#noticeCard')?.getClientRects().length) return;
+      if (document.hidden || publicMessagePaused || $('#modalBackdrop')?.classList.contains('open') || !$('#noticeCard')?.getClientRects().length) return;
       publicMessageIndex += 1;
       track.style.transform = `translateY(-${publicMessageIndex * PUBLIC_MESSAGE_HEIGHT}px)`;
       if (publicMessageIndex === messages.length) {
@@ -173,17 +187,53 @@ export async function loadPublicMessages() {
           requestAnimationFrame(() => { track.style.transition = ''; });
         }, 600);
       }
-    }, 4000);
+    }, PUBLIC_MESSAGE_INTERVAL);
   } catch (error) {
     track.innerHTML = '<div class="public-message-empty">دریافت پیام‌ها در حال حاضر ممکن نیست.</div>';
     status.textContent = 'پیام کاربران';
     console.warn('Nika public messages:', error);
   }
 }
+function openPublicMessageComposer(refreshPage = false) {
+  const modal = openModal('ثبت پیام عمومی', html`<form id="publicMessageComposeForm" class="page-form">
+    <label>عنوان پیام</label><input class="page-input" name="title" maxlength="120" required placeholder="موضوع پیام را بنویسید">
+    <label>متن پیام</label><textarea class="page-textarea" name="body" maxlength="2000" required placeholder="پیام خود را برای همه کاربران ساختمان بنویسید…"></textarea>
+    <p class="page-kicker">پیام پس از ثبت، بدون نیاز به تأیید مدیر در تابلو نمایش داده می‌شود.</p>
+    <button class="page-btn full" type="submit">ثبت و انتشار پیام</button>
+  </form>`);
+  modal.onsubmit = async event => {
+    if (event.target.id !== 'publicMessageComposeForm') return;
+    event.preventDefault();
+    const form = event.target, title = form.elements.title.value.trim(), body = form.elements.body.value.trim();
+    if (!title || !body) return;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await api('/public-messages', { method: 'POST', body: { title, body } });
+      closeModal();
+      toast('پیام شما در تابلو منتشر شد');
+      if (refreshPage) await publicMessagesPage();
+      else await loadPublicMessages();
+    } catch (error) { toast(error.message); button.disabled = false; }
+  };
+}
+async function deletePublicMessage(id, refreshPage = false) {
+  if (!canDeletePublicMessage()) return;
+  const reason = await promptText('حذف پیام عمومی', 'لطفاً دلیل حذف این پیام را بنویسید (ثبت دلیل الزامی است)');
+  if (!reason) return;
+  try {
+    await api(`/public-messages/${encodeURIComponent(id)}`, { method: 'DELETE', body: { reason } });
+    closeModal();
+    toast('پیام از تابلو حذف شد و دلیل آن ثبت گردید');
+    if (refreshPage) await publicMessagesPage();
+    else await loadPublicMessages();
+  } catch (error) { toast(error.message); }
+}
 function renderPublicMessageDiscussion(data) {
   const counts = Object.fromEntries((data.reactions || []).map(x => [x.reaction, Number(x.count || 0)]));
   return html`<article class="public-message-detail">
     <div class="public-message-detail-meta"><span>${data.message.author_label} · ${data.message.author_name}</span><span>${fdt(data.message.created_at)}</span></div>
+    ${canDeletePublicMessage() ? html`<button type="button" class="public-message-delete" data-delete-message="${data.message.id}">${iconMarkup('trash-2')} حذف پیام</button>` : ''}
     <h3>${data.message.title}</h3><p class="public-message-fulltext">${data.message.body}</p>
     <div class="public-message-reactions">${PUBLIC_REACTIONS.map(r => html`<button type="button" class="public-reaction ${data.myReaction === r.key ? 'selected' : ''}" data-reaction="${r.key}" aria-pressed="${data.myReaction === r.key}"><span>${r.emoji}</span><small>${r.label}</small><b>${fa(counts[r.key] || 0)}</b></button>`)}</div>
     <div class="page-divider"></div><h4 class="public-comments-title">دیدگاه‌ها · ${fa((data.comments || []).length)}</h4>
@@ -201,6 +251,8 @@ export async function openPublicMessageModal(id) {
     modal.innerHTML = renderPublicMessageDiscussion(data);
   };
   modal.onclick = async event => {
+    const deleteButton = event.target.closest('[data-delete-message]');
+    if (deleteButton) { await deletePublicMessage(deleteButton.dataset.deleteMessage, !!document.querySelector('#pageView .public-messages-page')); return; }
     const button = event.target.closest('[data-reaction]');
     if (!button) return;
     button.disabled = true;
@@ -225,12 +277,20 @@ export async function openPublicMessageModal(id) {
 }
 export async function publicMessagesPage() {
   const { messages = [] } = await api('/public-messages?limit=500');
-  const v = route('خانه', 'پیام کاربران', 'پیام‌های عمومی منتشرشده پس از تأیید مدیریت', html`<div class="page-list public-messages-page">${messages.length ? messages.map(m => html`<button type="button" class="page-card public-message-row" data-public-message="${m.id}">
-    <div class="public-message-detail-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></div>
-    <h3>${m.title}</h3><p>${String(m.body || '').slice(0, 190)}${String(m.body || '').length > 190 ? '…' : ''}</p>
-    <small>${fa(m.comment_count || 0)} دیدگاه · ${fa(m.reaction_count || 0)} واکنش · مشاهده و گفتگو ←</small>
-  </button>`) : html`<div class="page-card"><div class="page-empty">هنوز پیام عمومیِ تأییدشده‌ای منتشر نشده است.</div></div>`}</div>`);
+  const v = route('خانه', 'پیام کاربران', 'پیام‌های عمومی کاربران ساختمان', html`<div class="public-messages-toolbar"><button type="button" class="page-btn" id="publicMessageComposePage">ثبت پیام جدید</button></div>
+  <div class="page-list public-messages-page">${messages.length ? messages.map(m => html`<article class="page-card public-message-row">
+    <button type="button" class="public-message-row-open" data-public-message="${m.id}">
+      <div class="public-message-detail-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></div>
+      <h3>${m.title}</h3><p>${String(m.body || '').slice(0, 190)}${String(m.body || '').length > 190 ? '…' : ''}</p>
+      <small>${fa(m.comment_count || 0)} دیدگاه · ${fa(m.reaction_count || 0)} واکنش · مشاهده و گفتگو ←</small>
+    </button>
+    ${canDeletePublicMessage() ? html`<button type="button" class="public-message-delete" data-delete-message="${m.id}">${iconMarkup('trash-2')} حذف پیام</button>` : ''}
+  </article>`) : html`<div class="page-card"><div class="page-empty">هنوز پیام عمومی ثبت نشده است.</div></div>`}</div>`);
+  const compose = v.querySelector('#publicMessageComposePage');
+  if (compose) compose.onclick = () => openPublicMessageComposer(true);
   v.onclick = event => {
+    const remove = event.target.closest('[data-delete-message]');
+    if (remove) { deletePublicMessage(remove.dataset.deleteMessage, true); return; }
     const item = event.target.closest('[data-public-message]');
     if (item) openPublicMessageModal(item.dataset.publicMessage);
   };
