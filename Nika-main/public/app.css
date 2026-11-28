@@ -882,3 +882,5 @@ html[data-theme="light"] .public-comment-form textarea{background:#fff;color:#29
 .public-message-open:focus-visible{outline:2px solid #91a5f1;outline-offset:-2px;border-radius:8px}
 .public-message-item>.public-message-delete{flex:0 0 28px;width:28px;height:30px;padding:5px;margin:0}
 .public-message-item>.public-message-delete svg{width:16px;height:16px}
+
+.phone.is-manager-chair-home #noticeHead,.phone.is-manager-chair-home #noticeCard{display:block!important}
