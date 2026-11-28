@@ -3,7 +3,7 @@ import { api } from './api.js?v=2';
 import { S, can, canAny } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, JM, monthStart, monthLen, jToday, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js';
-import { refreshSummary, loadLatestNotice } from './pages.js?v=19';
+import { refreshSummary, loadLatestNotice, loadPublicMessages } from './pages.js?v=23';
 import { applyIcons, iconMarkup } from './icons.js?v=3';
 
 const card = (title, body) => html`<div class="nika-admincard"><h3>${title}</h3>${body}</div>`;
@@ -80,7 +80,7 @@ export function hideAdmin() {
   $('.phone > .page-view').classList.add('nika-dashboard-hidden');
   showManagerShortcuts(managerHome);
   updateWorkspaceToggle(managerHome);
-  if (!managerHome) { refreshSummary(); loadLatestNotice().catch(() => {}); }
+  if (!managerHome) { refreshSummary(); loadLatestNotice().catch(() => {}); loadPublicMessages().catch(() => {}); }
 }
 export function showResidentMode() {
   managerHome = false;
