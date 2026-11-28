@@ -811,3 +811,52 @@ html[data-theme="light"] .summary-button{background:transparent;color:inherit}
 html[data-theme="light"] .weekly .weekly-calendar span.day-cell,html[data-theme="light"] .weekly-event{background:#edf1f7;color:#53627a}
 html[data-theme="light"] .weekly .weekly-calendar span.day-cell.today .day-number{border-color:#16865a;color:#176b4b}
 @media(max-width:360px){.weekly .weekly-calendar{gap:2px}.weekly .weekly-calendar span.dow{font-size:8px}.weekly .weekly-calendar span.day-cell{height:40px}.weekly-event small{font-size:8px}}
+
+
+/* Public user messages: fixed-height vertical carousel and discussion modal */
+.notice{height:148px;min-height:148px;max-height:148px;box-sizing:border-box;overflow:hidden;cursor:default}
+.notice-head h2{display:flex;align-items:center;gap:8px}
+.notice-speaker{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:9px;color:#fff;background:linear-gradient(135deg,#e7a64e,#e56d82);box-shadow:0 4px 12px #d9796938}
+.notice-speaker svg{width:18px;height:18px;stroke:currentColor;stroke-width:2}
+.public-message-viewport{height:96px;overflow:hidden;position:relative}
+.public-message-track{display:flex;flex-direction:column;will-change:transform;transition:transform .55s cubic-bezier(.22,.75,.25,1)}
+.public-message-item{appearance:none;-webkit-appearance:none;display:flex;flex-direction:column;justify-content:center;gap:4px;width:100%;height:96px;min-height:96px;flex:0 0 96px;padding:2px 1px;border:0;background:transparent;color:inherit;text-align:right;font:inherit;cursor:pointer;overflow:hidden}
+.public-message-item:focus-visible{outline:2px solid #91a5f1;outline-offset:-2px;border-radius:8px}
+.public-message-meta,.public-message-detail-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#9eacc4;font-size:9px;min-width:0}
+.public-message-meta span:first-child,.public-message-detail-meta span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.public-message-item strong{display:block;color:#61dba1;font-size:13px;line-height:1.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.public-message-excerpt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#d5dceb;font-size:10px;line-height:1.8}
+.public-message-empty{height:96px;display:grid;place-items:center;text-align:center;color:#9eacc4;font-size:10px;line-height:1.8;padding:8px}
+.notice .notice-foot{margin-top:3px;font-size:9px}
+.public-message-detail h3{font-size:15px;color:#65d9a1;margin:10px 0 6px}
+.public-message-fulltext{white-space:pre-wrap;overflow-wrap:anywhere;line-height:2.1;margin:0 0 12px;color:#e0e7f3}
+.public-message-reactions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0}
+.public-reaction{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:8px 3px;border:1px solid #ffffff14;border-radius:12px;background:#27364d;color:#dce5f4;cursor:pointer}
+.public-reaction>span{font-size:17px;line-height:1.3}
+.public-reaction small{font-size:8px;color:#b9c6dc}
+.public-reaction b{font-size:10px}
+.public-reaction.selected{border-color:#6bc99e;background:#174a3a;color:#fff}
+.public-comments-title{font-size:12px;margin:0 0 8px;color:#e2e9f5}
+.public-comments-list{display:grid;gap:8px}
+.public-comment{padding:9px 10px;border:1px solid #ffffff10;border-radius:12px;background:#273449}
+.public-comment>div{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.public-comment strong{font-size:10px;color:#f0f4fb}
+.public-comment span{font-size:9px;color:#77cda6}
+.public-comment small{font-size:8px;color:#91a2bc;margin-right:auto}
+.public-comment p{font-size:10px;line-height:1.9;white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0 0;color:#d2dced}
+.public-comment-form{margin-top:12px}
+.public-comment-form textarea{width:100%;min-height:75px;resize:vertical;border:1px solid #ffffff18;border-radius:12px;background:#1e2a3d;color:#f0f4fb;padding:10px;font:11px IRANYekanWeb,Tahoma,sans-serif;line-height:1.9}
+.public-message-row{width:100%;text-align:right;color:inherit;cursor:pointer;font:inherit}
+.public-message-row h3{margin:9px 0 4px;color:#65d9a1}
+.public-message-row p{line-height:1.9}
+.public-message-row>small{display:block;margin-top:8px;color:#9fb0ca;font-size:9px}
+html[data-theme="light"] .public-message-meta,html[data-theme="light"] .public-message-detail-meta{color:#687790}
+html[data-theme="light"] .public-message-excerpt{color:#52627e}
+html[data-theme="light"] .public-message-item strong,html[data-theme="light"] .public-message-detail h3,html[data-theme="light"] .public-message-row h3{color:#258b69}
+html[data-theme="light"] .public-reaction{background:#f0f3f8;color:#34435c;border-color:#dfe6f0}
+html[data-theme="light"] .public-reaction.selected{background:#e1f4eb;border-color:#62b98e;color:#176b4b}
+html[data-theme="light"] .public-comment{background:#f3f6fb;border-color:#e1e7f0}
+html[data-theme="light"] .public-comment strong{color:#293850}
+html[data-theme="light"] .public-comment p{color:#52627e}
+html[data-theme="light"] .public-comment-form textarea{background:#fff;color:#293850;border-color:#dfe6f0}
+@media(max-width:380px){.notice{height:148px;min-height:148px;max-height:148px}.public-message-meta{font-size:8px}.public-message-item strong{font-size:12px}}
