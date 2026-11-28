@@ -4,8 +4,8 @@ import { S, can, canAny, isManager } from './state.js';
 import { $, $$, normDigits, fa } from './util.js?v=3';
 import { iconMarkup, applyIcons } from './icons.js?v=3';
 import { toast, initModal, initRouter, open, back, showHome, resetRouter, setNav } from './ui.js?v=3';
-import * as P from './pages.js?v=29';
-import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=33';
+import * as P from './pages.js?v=30';
+import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=34';
 
 let managerMode = false;
 const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList.toggle('nika-hide', s !== id); $('.phone').classList.toggle('nika-hide', id !== '#app'); $('#nikaAdmin').classList.add('nika-hide'); };
