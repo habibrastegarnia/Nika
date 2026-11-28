@@ -99,13 +99,26 @@ test('تمام صفحات داخلی از همان پنجره شناور مشت�
 });
 
 
-test('نقطه رویداد بعدی در تقویم هفتگی با انیمیشن pulse نمایش داده می‌شود', async () => {
+test('تقویم ماهانه و هفتگی تعطیلات قرمز و رویداد بعدی را با حلقه سبز نشان می‌دهند', async () => {
   const source = await readFile(new URL('../public/js/pages.js', import.meta.url), 'utf8');
-  const start = source.indexOf('export async function loadWeeklyCalendar()');
-  const end = source.indexOf('export async function loadHome()', start);
-  assert.ok(start >= 0 && end > start, 'تابع تقویم هفتگی باید وجود داشته باشد');
-  const body = source.slice(start, end);
-  assert.match(body, /const nextWeeklyEvent = buildingItems/);
-  assert.match(body, /pulse \? 'pulse' : ''/);
-  assert.ok(body.includes("event-dot ${pulse ? 'pulse' : ''}"), 'نقطه رویداد بعدی باید کلاس pulse داشته باشد');
+  const weeklyStart = source.indexOf('export async function loadWeeklyCalendar()');
+  const homeEnd = source.indexOf('export async function loadHome()', weeklyStart);
+  const monthStart = source.indexOf('export async function calendarPage(');
+  const monthEnd = source.indexOf('// ======================', monthStart + 40);
+  assert.ok(weeklyStart >= 0 && homeEnd > weeklyStart, 'تابع تقویم هفتگی باید وجود داشته باشد');
+  assert.ok(monthStart >= 0 && monthEnd > monthStart, 'تابع تقویم ماهانه باید وجود داشته باشد');
+  const weekly = source.slice(weeklyStart, homeEnd);
+  const monthly = source.slice(monthStart, monthEnd);
+  assert.match(weekly, /const holidayDates = new Set\(allItems\.filter\(event => event\.isHoliday\)/);
+  assert.match(weekly, /\$\{holiday \? 'holiday' : ''\}/);
+  assert.match(weekly, /\$\{pulse \? 'next-event' : ''\}/);
+  assert.match(monthly, /const holidayDays = new Set\(items\.filter\(event => event\.isHoliday\)/);
+  assert.match(monthly, /\$\{isHoliday \? 'holiday' : ''\}/);
+  assert.match(monthly, /\$\{isNextEvent \? 'next-event' : ''\}/);
+  assert.match(monthly, /for \(let d = 1; d <= len; d\+\+\)/, 'نمای ماهانه فقط روزهای همان ماه را تولید کند');
+  assert.doesNotMatch(weekly + monthly, /event-dot/, 'نقطه رویداد باید با حلقه دور شماره روز جایگزین شده باشد');
+  const css = await readFile(new URL('../public/app.css', import.meta.url), 'utf8');
+  assert.match(css, /\.page-calendar span\.day-cell\.holiday \.day-number/);
+  assert.match(css, /\.page-calendar span\.day-cell\.next-event \.day-number/);
+  assert.match(css, /@keyframes calendarEventRing/);
 });
