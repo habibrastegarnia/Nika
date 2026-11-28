@@ -358,9 +358,15 @@ export async function loadWeeklyCalendar() {
     });
     const weekdays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
     const todayKey = dates.find(d => d.date.toDateString() === today.toDateString())?.key;
+    const nowTime = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+    const nextWeeklyEvent = buildingItems
+      .filter(event => event.event_date >= todayKey && (event.event_date > todayKey || !event.event_time || String(event.event_time) >= nowTime))
+      .sort((a, b) => a.event_date.localeCompare(b.event_date) || String(a.event_time || '').localeCompare(String(b.event_time || '')))[0];
+    const nextWeeklyEventDate = nextWeeklyEvent?.event_date;
     host.innerHTML = join(dates.map((day, i) => {
       const dayEvents = byDate.get(day.key) || [];
-      return html`<span class="dow">${weekdays[i]}</span><span class="day-cell ${dayEvents.length ? 'event' : ''} ${day.key === todayKey ? 'today' : ''}"><b class="day-number">${faN(day.d)}</b>${dayEvents.length ? raw('<i class="event-dot" aria-hidden="true"></i>') : ''}</span>`;
+      const pulse = day.key === nextWeeklyEventDate;
+      return html`<span class="dow">${weekdays[i]}</span><span class="day-cell ${dayEvents.length ? 'event' : ''} ${day.key === todayKey ? 'today' : ''}"><b class="day-number">${faN(day.d)}</b>${dayEvents.length ? raw(`<i class="event-dot ${pulse ? 'pulse' : ''}" aria-hidden="true"></i>`) : ''}</span>`;
     }));
     const first = dates[0], last = dates[6];
     rangeHost.textContent = first.m === last.m
