@@ -54,4 +54,17 @@ export const REQ_KIND = { request: 'درخواست', idea: 'پیشنهاد', iss
 export const REQ_CATEGORIES = ['عمومی', 'تأسیسات و تعمیرات', 'نظافت', 'امنیت', 'مالی', 'سایر'];
 export const ROLE_FA = { owner: 'مالک', resident: 'ساکن', chair: 'رئیس هیأت‌مدیره', finance: 'مدیر مالی', board: 'عضو هیأت‌مدیره', executive: 'مدیر اجرایی', system_admin: 'مدیر سامانه', caretaker: 'سرایدار' };
 export const ACCOUNT_FA = { owner: 'مالک', resident: 'ساکن', staff: 'مدیر / کارکنان', both: 'مالک و ساکن' };
+export const baseRoleKey = user => {
+  const roles = Array.isArray(user?.roles) ? user.roles : [];
+  if (roles.includes('owner') && roles.includes('resident')) return 'both';
+  if (roles.includes('owner')) return 'owner';
+  if (roles.includes('resident')) return 'resident';
+  return null;
+};
+export const baseRoleLabel = (user, includeUnit = true) => {
+  const key = baseRoleKey(user);
+  if (!key) return '';
+  const label = key === 'both' ? 'مالک/ساکن' : key === 'owner' ? 'مالک' : 'ساکن';
+  return includeUnit && user?.unit_number ? `${label} واحد ${user.unit_number}` : label;
+};
 export const chip = ([label, color]) => html`<span class="page-chip ${color}">${label}</span>`;
