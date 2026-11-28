@@ -884,3 +884,16 @@ html[data-theme="light"] .public-comment-form textarea{background:#fff;color:#29
 .public-message-item>.public-message-delete svg{width:16px;height:16px}
 
 .phone.is-manager-chair-home #noticeHead{display:flex!important}.phone.is-manager-chair-home #noticeCard{display:block!important}
+
+/* Private message conversations and recipient identity */
+.private-message-icon{color:#65d9a1;background:rgba(53,177,127,.12)}
+.private-message-icon svg{width:22px;height:22px;stroke:currentColor}
+.private-thread{display:grid;gap:12px;direction:rtl}
+.private-thread-list{display:grid;gap:9px;max-height:52vh;overflow-y:auto;padding:2px}
+.private-thread-message{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);min-width:0}
+.private-thread-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:10px}
+.private-thread-meta strong{color:var(--text);font-size:11px}
+.private-thread-meta small{margin-inline-start:auto}
+.private-thread-message p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:2;font-size:12px;color:var(--text)}
+.private-thread-reply{display:grid;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
+.private-thread-reply textarea{width:100%;min-height:88px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface);color:var(--text);font:inherit;font-size:12px;direction:rtl}
