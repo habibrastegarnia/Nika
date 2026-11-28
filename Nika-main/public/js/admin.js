@@ -4,7 +4,7 @@ import { S, can, canAny } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, JM, monthStart, monthLen, jToday, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, baseRoleLabel, userRoleLabels, chip } from './util.js?v=4';
 import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js?v=4';
 import { refreshSummary, loadLatestNotice, loadPublicMessages, fillHeader } from './pages.js?v=33';
-import { applyIcons, iconMarkup } from './icons.js?v=4';
+import { applyIcons, iconMarkup } from './icons.js?v=5';
 
 const card = (title, body) => html`<div class="nika-admincard"><h3>${title}</h3>${body}</div>`;
 const empty = t => html`<p>${t}</p>`;
