@@ -34,6 +34,7 @@ function updateWorkspaceToggle(manager) {
 }
 function showManagerShortcuts(show) {
   $('.phone').classList.toggle('is-manager-home', show);
+  $('.phone').classList.toggle('is-manager-chair-home', show && !!S.user?.roles?.includes('chair'));
   $('.categories').classList.toggle('is-manager', show);
   const roles = [...(S.user?.roles || []), ...(S.user?.delegatedRoles || [])];
   const technicalOnly = roles.includes('system_admin') && !roles.some(r => ['chair', 'finance', 'board', 'executive'].includes(r));
@@ -42,8 +43,9 @@ function showManagerShortcuts(show) {
     const isManagerCalendar = el.dataset.menu === 'calendar' && can('events.manage');
     el.classList.toggle('nika-hide', show ? !isManagerCalendar : false);
   });
-  $('#noticeHead')?.classList.toggle('nika-hide', show);
-  $('#noticeCard')?.classList.toggle('nika-hide', show);
+  const hideBoard = show && !S.user?.roles?.includes('chair');
+  $('#noticeHead')?.classList.toggle('nika-hide', hideBoard);
+  $('#noticeCard')?.classList.toggle('nika-hide', hideBoard);
 }
 export function showAdmin(want) {
   managerHome = true;
