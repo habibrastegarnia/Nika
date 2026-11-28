@@ -11,7 +11,8 @@ test('ماژول‌های مشترک در تمام workspaceها از URL یکس
   ]);
   const modules = { main, admin, pages, ui };
   const importUrl = (source, name) => {
-    const match = source.match(new RegExp("from ['\\"]\\./" + name + "\\?([^'\\"]*)['\\"]"));
+    const escapedName = name.replace('.', '\\.');
+    const match = source.match(new RegExp("from '\\./" + escapedName + "\\?([^']+)'"));
     return match ? name + '?' + match[1] : null;
   };
   for (const name of ['util.js', 'ui.js', 'icons.js']) {
