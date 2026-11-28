@@ -2,7 +2,7 @@
 import { api } from './api.js?v=2';
 import { S, can, canManageCalendarEvents, readableFunds, dashFunds, isManager } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
-  FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
+  FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, baseRoleLabel, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, route, open, fields, onSubmit } from './ui.js';
 import { iconMarkup } from './icons.js?v=2';
 
@@ -20,7 +20,11 @@ function avatarMarkup(user, extraClass = '') {
 export function fillHeader() {
   const u = S.user;
   $('#hdrName').textContent = u.name;
-  const baseRoleText = u.unit_number ? `واحد ${u.unit_number} · ${u.account_type === 'owner' ? 'مالک' : 'ساکن'}` : u.roles.map(r => ROLE_FA[r]).join('، ');
+  const managerRole = ['chair','finance','board','executive','caretaker','system_admin'].find(r => u.roles?.includes(r))
+    || ['chair','finance','board','executive','caretaker'].find(r => u.delegatedRoles?.includes(r));
+  const baseRoleText = S.workspace === 'manager'
+    ? (ROLE_FA[managerRole] || u.roles.map(r => ROLE_FA[r]).filter(Boolean).join('، '))
+    : (baseRoleLabel(u) || (u.account_type === 'staff' ? 'مدیر / کارکنان' : 'کاربر ساختمان'));
   const delegatedText = (u.delegatedRoles || []).map(r => `جانشین ${ROLE_FA[r]}`).join('، ');
   $('#hdrSub').textContent = [baseRoleText, delegatedText].filter(Boolean).join(' · ');
   $('#hdrAvatar').innerHTML = avatarMarkup(u);
@@ -559,7 +563,7 @@ export function profilePage() {
   const details = [
     ['شماره موبایل', normFa(u.phone)],
     ['ایمیل', u.email || '—'],
-    ['نوع حساب', u.account_type === 'staff' ? 'مدیر / کارکنان' : u.account_type === 'owner' ? 'مالک' : 'ساکن'],
+    ['نوع حساب', baseRoleLabel(u, false) || (u.account_type === 'staff' ? 'مدیر / کارکنان' : 'کاربر ساختمان')],
     ...(unit ? [['شماره واحد', unit.number]] : [])
   ];
   const v = route('حساب من', 'حساب من', '', html`<section class="profile-panel">
