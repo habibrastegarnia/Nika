@@ -8,6 +8,70 @@ import { occurrencesBetween } from './jcal.js';
 // ---------- اطلاعیه‌ها ----------
 const NOTICE_KINDS = ['اطلاعیه', 'جلسه', 'عمومی', 'فوری'];
 const AUDIENCES = ['all', 'owner', 'resident', 'staff'];
+const ROLE_LABELS = {
+  chair: 'رئیس هیأت‌مدیره', finance: 'مدیر مالی', board: 'عضو هیأت‌مدیره',
+  executive: 'مدیر اجرایی', system_admin: 'مدیر سامانه', caretaker: 'سرایدار'
+};
+function roleSnapshot(user) {
+  const role = user.activeRole || (['owner','resident'].includes(user.account_type) ? user.account_type : null)
+    || ['chair','finance','board','executive','system_admin','caretaker'].find(r => user.roles?.includes(r)) || 'user';
+  const unit = user.unit_number ? ` واحد ${user.unit_number}` : '';
+  const label = role === 'owner' ? `مالک${unit}`
+    : role === 'resident' ? `ساکن${unit}`
+    : (ROLE_LABELS[role] || 'کاربر ساختمان');
+  return { role, label, name: user.name || 'کاربر ساختمان' };
+}
+async function publicNotice(db, id) {
+  return db.prepare("SELECT id,title,body,created_at,author_name,author_label,author_role FROM notices WHERE id=? AND audience='all' AND source_request_id IS NOT NULL").bind(id).first();
+}
+R('GET', '/api/public-messages', async c => {
+  const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 5, 1), 100);
+  const r = await c.db.prepare(
+    `SELECT n.id,n.title,n.body,n.created_at,
+      COALESCE(n.author_name,'کاربر ساختمان') author_name,
+      COALESCE(n.author_label,'کاربر ساختمان') author_label,
+      (SELECT COUNT(*) FROM notice_comments cm WHERE cm.notice_id=n.id) comment_count,
+      (SELECT COUNT(*) FROM notice_reactions nr WHERE nr.notice_id=n.id) reaction_count
+     FROM notices n
+     WHERE n.audience='all' AND n.source_request_id IS NOT NULL
+     ORDER BY n.created_at DESC,n.rowid DESC LIMIT ?`).bind(limit).all();
+  return reply({ messages: r.results });
+});
+R('GET', '/api/public-messages/:id/discussion', async c => {
+  const message = await publicNotice(c.db, c.params.id);
+  if (!message) throw err(404, 'NOT_FOUND', 'پیام عمومی پیدا نشد');
+  const [comments, reactions, mine] = await Promise.all([
+    c.db.prepare('SELECT id,author_name,author_label,actor_role,body,created_at FROM notice_comments WHERE notice_id=? ORDER BY created_at ASC,rowid ASC LIMIT 300').bind(message.id).all(),
+    c.db.prepare('SELECT reaction,COUNT(*) count FROM notice_reactions WHERE notice_id=? GROUP BY reaction').bind(message.id).all(),
+    c.db.prepare('SELECT reaction FROM notice_reactions WHERE notice_id=? AND user_id=?').bind(message.id,c.user.id).first()
+  ]);
+  return reply({ message, comments: comments.results, reactions: reactions.results, myReaction: mine?.reaction || null });
+});
+R('POST', '/api/public-messages/:id/comments', { perm: 'messages.use' }, async c => {
+  const message = await publicNotice(c.db, c.params.id);
+  if (!message) throw err(404, 'NOT_FOUND', 'پیام عمومی پیدا نشد');
+  const x = await readJson(c.request), body = str(x.body, { max: 1000, multiline: true, field: 'دیدگاه' });
+  const snap = roleSnapshot(c.user), id = crypto.randomUUID();
+  await c.db.prepare('INSERT INTO notice_comments(id,notice_id,user_id,author_name,author_label,actor_role,body) VALUES(?,?,?,?,?,?,?)')
+    .bind(id,message.id,c.user.id,snap.name,snap.label,snap.role,body).run();
+  await audit(c.db,c.user.id,'public_message.comment.create','notice',message.id,{}, { actorRole: snap.role });
+  return reply({ ok: true, id }, 201);
+});
+R('POST', '/api/public-messages/:id/reactions', { perm: 'messages.use' }, async c => {
+  const message = await publicNotice(c.db, c.params.id);
+  if (!message) throw err(404, 'NOT_FOUND', 'پیام عمومی پیدا نشد');
+  const x = await readJson(c.request), allowed = ['like','heart','support','celebrate'];
+  if (!allowed.includes(x.reaction)) throw err(400, 'INVALID_REACTION', 'واکنش انتخاب‌شده معتبر نیست');
+  const old = await c.db.prepare('SELECT reaction FROM notice_reactions WHERE notice_id=? AND user_id=?').bind(message.id,c.user.id).first();
+  if (old?.reaction === x.reaction) {
+    await c.db.prepare('DELETE FROM notice_reactions WHERE notice_id=? AND user_id=?').bind(message.id,c.user.id).run();
+    return reply({ ok: true, myReaction: null });
+  }
+  await c.db.prepare(`INSERT INTO notice_reactions(id,notice_id,user_id,reaction) VALUES(?,?,?,?)
+    ON CONFLICT(notice_id,user_id) DO UPDATE SET reaction=excluded.reaction,updated_at=CURRENT_TIMESTAMP`)
+    .bind(crypto.randomUUID(),message.id,c.user.id,x.reaction).run();
+  return reply({ ok: true, myReaction: x.reaction });
+});
 
 R('GET', '/api/notices', async c => {
   const limit = Math.min(Math.max(Number(c.url.searchParams.get('limit')) || 100, 1), 100);
@@ -60,8 +124,9 @@ R('POST', '/api/requests', { perm: 'requests.create' }, async c => {
   const x = await readJson(c.request), id = crypto.randomUUID();
   const kind = x.kind ?? 'request', category = x.category ?? 'عمومی';
   if (!REQ_KINDS.includes(kind) || !REQ_CATEGORIES.includes(category)) throw err(400, 'INVALID_INPUT', 'نوع یا دسته‌بندی نامعتبر است');
-  await c.db.prepare('INSERT INTO requests(id,user_id,title,body,category,kind,board_requested) VALUES(?,?,?,?,?,?,?)')
-    .bind(id, c.user.id, str(x.title, { max: 120, field: 'موضوع' }), str(x.body, { max: 2000, multiline: true, field: 'شرح' }), category, kind, x.boardRequested === true ? 1 : 0).run();
+  const snap = roleSnapshot(c.user);
+  await c.db.prepare('INSERT INTO requests(id,user_id,title,body,category,kind,board_requested,author_name,author_role,author_label) VALUES(?,?,?,?,?,?,?,?,?,?)')
+    .bind(id, c.user.id, str(x.title, { max: 120, field: 'موضوع' }), str(x.body, { max: 2000, multiline: true, field: 'شرح' }), category, kind, x.boardRequested === true ? 1 : 0, snap.name, snap.role, snap.label).run();
   await audit(c.db, c.user.id, 'request.create', 'request', id, { kind, category }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
   return reply({ ok: true, id }, 201);
 });
@@ -81,12 +146,18 @@ R('PATCH', '/api/requests/:id', { perm: 'requests.manage' }, async c => {
   return reply({ ok: true });
 });
 R('POST', '/api/requests/:id/publish', { perm: 'notices.manage' }, async c => {
-  const r = await c.db.prepare('SELECT id,title,body,board_requested FROM requests WHERE id=?').bind(c.params.id).first();
+  const r = await c.db.prepare(`SELECT r.id,r.user_id,r.title,r.body,r.board_requested,r.author_name,r.author_role,r.author_label,
+    u.name current_author_name,u.account_type,n.unit_number
+    FROM requests r JOIN users u ON u.id=r.user_id LEFT JOIN units n ON n.id=u.unit_id WHERE r.id=?`).bind(c.params.id).first();
   if (!r) throw err(404, 'NOT_FOUND', 'درخواست پیدا نشد');
   if (r.board_requested !== 1) throw err(409, 'NOT_REQUESTED', 'این مورد برای نمایش در تابلو درخواست نشده یا قبلاً منتشر شده است');
   const nid = crypto.randomUUID();
+  const authorName = r.author_name || r.current_author_name;
+  const authorRole = r.author_role || r.account_type;
+  const authorLabel = r.author_label || (r.unit_number ? `${r.account_type === 'owner' ? 'مالک' : 'ساکن'} واحد ${r.unit_number}` : (ROLE_LABELS[authorRole] || 'کاربر ساختمان'));
   await c.db.batch([
-    c.db.prepare("INSERT INTO notices(id,title,body,audience,kind,created_by) VALUES(?,?,?,'all','عمومی',?)").bind(nid, r.title, r.body, c.user.id),
+    c.db.prepare("INSERT INTO notices(id,title,body,audience,kind,created_by,source_request_id,author_user_id,author_name,author_role,author_label) VALUES(?,?,?,'all','عمومی',?,?,?,?,?,?)")
+      .bind(nid, r.title, r.body, c.user.id, r.id, r.user_id, authorName, authorRole, authorLabel),
     c.db.prepare('UPDATE requests SET board_requested=2 WHERE id=?').bind(r.id)
   ]);
   await audit(c.db, c.user.id, 'request.publish', 'request', r.id, { notice: nid }, { ...(c.user.activeRole ? { actorRole: c.user.activeRole } : {}) });
