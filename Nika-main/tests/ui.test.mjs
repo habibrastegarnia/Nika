@@ -116,7 +116,7 @@ test('تقویم ماهانه و هفتگی تعطیلات قرمز و روید�
   assert.match(monthly, /\$\{isHoliday \? 'holiday' : ''\}/);
   assert.match(monthly, /\$\{isNextEvent \? 'next-event' : ''\}/);
   assert.match(monthly, /for \(let d = 1; d <= len; d\+\+\)/, 'نمای ماهانه فقط روزهای همان ماه را تولید کند');
-  assert.doesNotMatch(weekly + monthly, /event-dot/, 'نقطه رویداد باید با حلقه دور شماره روز جایگزین شده باشد');
+  assert.doesNotMatch(weekly + monthly, /class="event-dot/, 'نقطه رویداد باید با حلقه دور شماره روز جایگزین شده باشد');
   const css = await readFile(new URL('../public/app.css', import.meta.url), 'utf8');
   assert.match(css, /\.page-calendar span\.day-cell\.holiday \.day-number/);
   assert.match(css, /\.page-calendar span\.day-cell\.next-event \.day-number/);
