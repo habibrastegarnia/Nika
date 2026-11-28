@@ -185,8 +185,8 @@ const canAccessMessageRoot = (user, root) => root.sender_id === user.id || root.
   (!root.recipient_id && !root.recipient_role && can(user, 'messages.manage'));
 R('GET', '/api/messages', { perm: 'messages.use' }, async c => {
   const box = c.url.searchParams.get('box') === 'sent' ? 'sent' : 'inbox', mgr = can(c.user, 'messages.manage') ? 1 : 0;
-  const unreadGroupClause = groupRoles.length ? ` OR x.recipient_role IN (${groupRoles.map(() => '?').join(',')})` : '';
   const groupRoles = Object.keys(MESSAGE_RECIPIENT_ROLES).filter(role => canReceiveMessageRole(c.user, role));
+  const unreadGroupClause = groupRoles.length ? ` OR x.recipient_role IN (${groupRoles.map(() => '?').join(',')})` : '';
   const cols = `m.*,su.name sender_name,sn.unit_number sender_unit,ru.name recipient_name,
     CASE m.recipient_role WHEN 'executive' THEN 'مدیر اجرایی' WHEN 'chair' THEN 'رئیس هیأت‌مدیره' WHEN 'board' THEN 'هیأت‌مدیره' ELSE NULL END recipient_label,
     (SELECT COUNT(*) FROM messages x WHERE COALESCE(x.thread_id,x.id)=m.id AND x.read_at IS NULL AND x.sender_id<>?
