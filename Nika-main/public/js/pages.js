@@ -3,7 +3,7 @@ import { api } from './api.js?v=2';
 import { S, can, canManageCalendarEvents, readableFunds, dashFunds, isManager } from './state.js';
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
   FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, baseRoleLabel, userRoleLabels, chip } from './util.js?v=4';
-import { toast, openModal, closeModal, ask, promptText, route, open, fields, onSubmit } from './ui.js?v=5';
+import { toast, openModal, closeModal, ask, promptText, route, open, fields, onSubmit } from './ui.js?v=6';
 import { iconMarkup } from './icons.js?v=5';
 
 // ====================== خانه ======================
