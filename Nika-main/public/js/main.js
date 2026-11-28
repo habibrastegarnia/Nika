@@ -123,7 +123,6 @@ function initNav() {
 function initCarousel() {
   const track = $('#track'), carousel = $('#carousel');
   const next = $('#next'), prev = $('#prev');
-  const dots = Array.from(document.querySelectorAll('.slide-dot'));
   if (!track || !carousel || !next || !prev) {
     console.warn('Nika: عناصر اسلایدر در HTML پیدا نشدند؛ راه‌اندازی اسلایدر رد شد.');
     return;
