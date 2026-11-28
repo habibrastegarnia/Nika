@@ -25,7 +25,7 @@ class Client {
   async login(type, phone, password, unit) { return this.post('/api/login', { identifier: unit || phone, password }); }
 }
 
-const chair = new Client('chair'), admin = new Client('admin'), fin = new Client('finance'), res1 = new Client('res1'), res2 = new Client('res2'), own = new Client('owner'), exec = new Client('exec');
+const chair = new Client('chair'), admin = new Client('admin'), fin = new Client('finance'), res1 = new Client('res1'), res2 = new Client('res2'), own = new Client('owner'), exec = new Client('exec'), bothUser = new Client('bothUser');
 const CHAIR_PW = 'Chair-Long-Pass-91';
 let ids = {};
 
@@ -127,6 +127,21 @@ test('فعال‌سازی بقیه‌ی حساب‌ها', async () => {
   await activate(exec, 'staff', '09120000012', ids.execTemp, 'Exec-Pass-66666');
   await activate(own, 'owner', '09122222222', ids['12-owner'], 'Owner-Pass-7777', '12');
   await activate(res2, 'resident', '09123333333', ids['13-resident'], 'Resident2-Pass-8', '13');
+});
+
+test('عنوان مالک/ساکن از تیک‌های نقش پایه و نقش فعال مدیریتی یکپارچه می‌آید', async () => {
+  const created = await chair.post('/api/admin/users', { name: 'مالک و ساکن آزمایشی', accountType: 'both', unit: '14', phone: '09124444444', roles: ['chair'], reason: 'آزمون نقش پایه و مدیریتی' });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  assert.equal((await bothUser.login('resident', '09124444444', '09124444444', '14')).status, 200);
+  assert.equal((await bothUser.post('/api/password', { newPassword: 'Both-Long-Pass-44' })).status, 200);
+  const residentPost = await bothUser.post('/api/public-messages', { title: 'پیام با نقش پایه', body: 'آزمایش مالک و ساکن' });
+  assert.equal(residentPost.status, 201);
+  let discussion = await bothUser.get(`/api/public-messages/${residentPost.data.id}/discussion`);
+  assert.equal(discussion.data.message.author_label, 'مالک/ساکن واحد 14');
+  const managerPost = await bothUser.call('POST', '/api/public-messages', { title: 'پیام با نقش مدیریتی', body: 'آزمایش رئیس هیأت‌مدیره' }, { 'X-Nika-Workspace': 'manager' });
+  assert.equal(managerPost.status, 201);
+  discussion = await bothUser.get(`/api/public-messages/${managerPost.data.id}/discussion`);
+  assert.equal(discussion.data.message.author_label, 'رئیس هیأت‌مدیره');
 });
 
 test('ارتقای دسترسی: مدیر ساختمان رئیس/مالی نمی‌سازد و همه‌کاره نیست', async () => {
