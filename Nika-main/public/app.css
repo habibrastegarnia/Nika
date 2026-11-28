@@ -737,3 +737,30 @@ html[data-theme="light"] .summary-button{background:transparent;color:inherit}
 .nika-building-fund-switch button{min-height:38px;padding:7px 9px;border:1px solid transparent;border-radius:10px;background:transparent;color:#cbd6e8;font:700 11px IRANYekanWeb,Tahoma,sans-serif;cursor:pointer;transition:background .15s ease,color .15s ease,box-shadow .15s ease}
 .nika-building-fund-switch button.is-active{background:linear-gradient(135deg,#16845b,#20a875);color:#fff;box-shadow:0 3px 10px #071b163d}
 .nika-building-fund-switch button:focus-visible{outline:2px solid #a8dfc5;outline-offset:2px}
+
+/* خوانایی بهتر: بزرگ‌نمایی متعادل آیکون‌ها و نوشته‌ها */
+.nika-icon{width:25px;height:25px}
+.cat-icon .nika-icon{width:29px;height:29px}
+.nav-item .nika-icon{width:25px;height:25px}
+.page-row-icon .nika-icon,.profile-action-icon .nika-icon,.summary-icon .nika-icon{width:23px;height:23px}
+.page-back .nika-icon,.close .nika-icon,.slide-arrow .nika-icon{width:20px;height:20px}
+.page-row-icon svg,.profile-action-icon svg,.summary-icon svg{width:23px;height:23px}
+.nika-building-unit{font-size:12px;min-height:45px}
+.nika-building-heading strong{font-size:15px}
+.nika-building-heading span{font-size:11px}
+.nika-building-legend{font-size:10px;gap:14px}
+.nika-building-fund-switch button{font-size:12px;min-height:40px}
+.nika-building-counts strong{font-size:15px}
+.nika-building-counts small{font-size:10px}
+.bottom-nav{height:82px;padding-top:8px}
+.nav-item{font-size:11px;gap:4px}
+.nav-item svg{width:25px;height:25px}
+.notice-title{font-size:15px}
+.notice-text{font-size:12px}
+@media(max-width:380px){
+ .nika-building-floor{gap:3px}
+ .nika-building-unit{font-size:11px}
+ .nika-building-fund-switch button{font-size:11px}
+ .bottom-nav{height:80px}
+ .nav-item{font-size:10px}
+}
