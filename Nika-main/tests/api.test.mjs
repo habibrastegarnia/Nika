@@ -539,5 +539,7 @@ test('پیام عمومی بدون تأیید، نقش فعال دیدگاه و 
 
   const second = await author.post('/api/public-messages', { title: 'پیام دوم', body: 'پیام آزمایشی دوم' });
   assert.equal(second.status, 201);
-  assert.equal((await exec.call('DELETE', `/api/public-messages/${second.data.id}`, { reason: 'مدیر اجرایی نباید بتواند حذف کند' }, { 'X-Nika-Workspace': 'manager' })).status, 403);
+  const execForPublic = new Client('executive-public-delete-check');
+  assert.equal((await execForPublic.login('staff', '09120000012', 'Exec-Pass-66666')).status, 200);
+  assert.equal((await execForPublic.call('DELETE', `/api/public-messages/${second.data.id}`, { reason: 'مدیر اجرایی نباید بتواند حذف کند' }, { 'X-Nika-Workspace': 'manager' })).status, 403);
 });
