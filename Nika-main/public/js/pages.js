@@ -4,7 +4,7 @@ import { S, can, canManageCalendarEvents, readableFunds, dashFunds, isManager } 
 import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
   FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, baseRoleLabel, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, route, open, fields, onSubmit } from './ui.js';
-import { iconMarkup } from './icons.js?v=2';
+import { iconMarkup } from './icons.js?v=3';
 
 // ====================== خانه ======================
 const COLORS = ['#7886d8', '#58c9a5', '#e8a65d', '#d77d9b', '#78baff', '#b79cf0', '#9ac96b'];
@@ -529,27 +529,61 @@ function payPage(fund, balance) {
   });
 }
 
-// ====================== پیام‌ها ======================
+// ====================== پیام‌های خصوصی ======================
+const PRIVATE_RECIPIENT_LABELS = { executive: 'مدیر اجرایی', chair: 'رئیس هیأت‌مدیره', board: 'هیأت‌مدیره' };
+function renderPrivateThread(data) {
+  const messages = Array.isArray(data.messages) ? data.messages : [];
+  return html`<div class="private-thread">
+    <div class="private-thread-list">${messages.map(m => html`<article class="private-thread-message">
+      <div class="private-thread-meta"><strong>${m.sender_name || 'کاربر ساختمان'}</strong><span>${m.sender_label || (m.sender_unit ? `واحد ${m.sender_unit}` : 'کاربر ساختمان')}</span><small>${fdt(m.created_at)}</small></div>
+      <p>${m.body}</p>
+    </article>`)}</div>
+    <form id="privateMessageReplyForm" class="private-thread-reply"><label>پاسخ شما</label><textarea name="body" maxlength="2000" required placeholder="متن پاسخ را بنویسید…"></textarea><button class="page-btn full" type="submit">ارسال پاسخ</button></form>
+  </div>`;
+}
+async function openPrivateMessageThread(id, markRead = false) {
+  try {
+    if (markRead) { await api(`/messages/${encodeURIComponent(id)}/read`, { method: 'POST' }).catch(() => {}); refreshSummary(); }
+    let data = await api(`/messages/${encodeURIComponent(id)}/thread`);
+    const modal = openModal('گفت‌وگوی خصوصی', renderPrivateThread(data));
+    modal.onsubmit = async event => {
+      if (event.target.id !== 'privateMessageReplyForm') return;
+      event.preventDefault();
+      const form = event.target, body = form.elements.body.value.trim();
+      if (!body) return;
+      const button = form.querySelector('button[type="submit"]'); button.disabled = true;
+      try {
+        await api(`/messages/${encodeURIComponent(id)}/replies`, { method: 'POST', body: { body } });
+        data = await api(`/messages/${encodeURIComponent(id)}/thread`);
+        modal.innerHTML = renderPrivateThread(data);
+        toast('پاسخ ارسال شد');
+      } catch (error) { toast(error.message); button.disabled = false; }
+    };
+  } catch (error) { toast(error.message); }
+}
 export async function messagesPage(box = 'inbox') {
-  const { messages } = await api(`/messages?box=${box}`);
+  const { messages = [] } = await api(`/messages?box=${box}`);
   const mgr = can('messages.manage');
-  const v = route('پیام‌ها', 'پیام‌ها', mgr ? 'پیام‌های مدیریت و گفتگو با ساکنان' : 'گفتگو با مدیریت ساختمان', html`<div class="seg"><button class="${box === 'inbox' ? 'on' : ''}" data-box="inbox">دریافتی</button><button class="${box === 'sent' ? 'on' : ''}" data-box="sent">ارسالی</button></div>
-    <button class="page-btn full" id="msgNew" style="margin:0 0 12px">+ پیام جدید به مدیریت</button>
-    <div class="page-list">${messages.length ? messages.map((m, i) => html`<div dir="rtl" class="page-row clickable nika-message-row tone-${m.tone || 'info'} ${box === 'inbox' && !m.read_at ? 'unread' : ''}" data-i="${i}"><div class="page-row-icon">${lineIcon('mail')}</div><div class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? 'به: ' + (m.recipient_name || 'مدیریت') : 'از: ' + m.sender_name + (m.sender_unit ? ' (واحد ' + m.sender_unit + ')' : '')} · ${fdt(m.created_at)}</small></div></div>`) : html`<div class="page-card"><div class="page-empty">پیامی وجود ندارد.</div></div>`}</div>`);
+  const v = route('پیام‌ها', 'پیام‌های خصوصی', mgr ? 'گفت‌وگوهای خصوصی با کاربران و مدیریت' : 'ارتباط خصوصی با مدیریت ساختمان', html`
+    <div class="seg"><button class="${box === 'inbox' ? 'on' : ''}" data-box="inbox">دریافتی</button><button class="${box === 'sent' ? 'on' : ''}" data-box="sent">ارسالی</button></div>
+    <button class="page-btn full" id="msgNew" style="margin:0 0 12px">+ پیام خصوصی جدید</button>
+    <div class="page-list">${messages.length ? messages.map((m, i) => html`<button type="button" dir="rtl" class="page-row clickable nika-message-row private-message-row tone-${m.tone || 'info'} ${box === 'inbox' && !m.read_at ? 'unread' : ''}" data-i="${i}">
+      <span class="page-row-icon private-message-icon">${lineIcon('lock-keyhole')}</span><span class="page-row-main"><strong>${m.title}</strong><small>${box === 'sent' ? 'به: ' + (m.recipient_label || m.recipient_name || 'مدیریت ساختمان') : 'از: ' + (m.sender_label || 'کاربر ساختمان') + ' · ' + m.sender_name}${m.sender_unit && box === 'inbox' ? ' · واحد ' + m.sender_unit : ''} · ${fdt(m.created_at)}</small></span>
+    </button>`) : html`<div class="page-card"><div class="page-empty">پیام خصوصی‌ای وجود ندارد.</div></div>`}</div>`);
   $$('[data-box]', v).forEach(b => b.onclick = () => open(() => messagesPage(b.dataset.box), { replace: true }));
   $('#msgNew', v).onclick = () => open(() => messageComposePage());
-  $$('[data-i]', v).forEach(r => r.onclick = async () => {
-    const m = messages[r.dataset.i];
-    const el = openModal(m.title, html`<p class="page-kicker">${box === 'sent' ? 'به: ' + (m.recipient_name || 'مدیریت') : 'از: ' + m.sender_name} · ${fdt(m.created_at)}</p><p dir="rtl" class="nika-message-body tone-${m.tone}" style="white-space:pre-wrap;text-align:right;direction:rtl">${m.body}</p>${box === 'inbox' && m.sender_id !== S.user.id && !can('messages.manage') ? html`<div class="row-actions"><button class="page-btn sm" data-reply>پاسخ</button></div>` : ''}`);
-    const rp = $('[data-reply]', el); if (rp) rp.onclick = () => { closeModal(); open(() => messageComposePage('Re: ' + m.title)); };
-    if (box === 'inbox' && !m.read_at) { api(`/messages/${m.id}/read`, { method: 'POST' }).then(refreshSummary).catch(() => {}); r.classList.remove('unread'); m.read_at = 1; }
-  });
+  $$('[data-i]', v).forEach(row => row.onclick = () => { const m = messages[Number(row.dataset.i)]; openPrivateMessageThread(m.id, box === 'inbox' && m.sender_id !== S.user.id); });
 }
 export function messageComposePage(title = '') {
-  const v = route('پیام‌ها', 'پیام جدید', 'ارسال به مدیریت ساختمان', html`<form class="page-card page-form" novalidate>${fields([{ name: 'title', label: 'عنوان', value: title, required: true }, { name: 'body', label: 'متن پیام', type: 'textarea', required: true }])}<button class="page-btn full" type="submit">ارسال</button></form>`);
-  onSubmit($('form', v), async d => { await api('/messages', { method: 'POST', body: d }); toast('پیام ارسال شد'); open(() => messagesPage('sent'), { replace: true }); });
+  const v = route('پیام‌ها', 'پیام خصوصی جدید', 'انتخاب مخاطب و ارسال گفت‌وگوی محرمانه', html`<form class="page-card page-form" id="privateMessageComposeForm" novalidate>
+    ${fields([{ name: 'recipientRole', label: 'ارسال به', type: 'select', value: 'executive', required: true, options: [['executive','مدیر اجرایی'],['chair','رئیس هیأت‌مدیره'],['board','هیأت‌مدیره']] }, { name: 'title', label: 'عنوان پیام', value: title, required: true }, { name: 'body', label: 'متن پیام', type: 'textarea', required: true }])}
+    <p class="page-kicker">این پیام فقط برای شما و مخاطب انتخاب‌شده قابل مشاهده است.</p><button class="page-btn full" type="submit">ارسال پیام خصوصی</button>
+  </form>`);
+  onSubmit($('form', v), async d => {
+    await api('/messages', { method: 'POST', body: d });
+    toast('پیام خصوصی ارسال شد'); open(() => messagesPage('sent'), { replace: true });
+  });
 }
-
 // ====================== حساب من ======================
 export async function refreshSummary() {
   try {
