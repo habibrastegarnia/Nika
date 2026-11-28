@@ -350,7 +350,7 @@ export async function loadWeeklyCalendar() {
     const months = [...new Set(dates.map(d => `${d.y}-${String(d.m).padStart(2, '0')}`))];
     const responses = await Promise.all(months.map(month => api(`/events?month=${month}`)));
     const allItems = responses.flatMap(response => Array.isArray(response?.items) ? response.items : []);
-    const buildingItems = allItems.filter(event => !event.isHoliday && !event.isOccasion);
+    const buildingItems = allItems.filter(event => !String(event.id).startsWith('holiday:'));
     const holidayDates = new Set(allItems.filter(event => event.isOfficialHoliday).map(event => event.event_date));
     const byDate = new Map();
     buildingItems.forEach(event => {
@@ -415,7 +415,7 @@ export async function calendarPage(y, m) {
   // پاسخ خالی/ناقص API نباید مانع بازشدن تقویم شود.
   const items = Array.isArray(response?.items) ? response.items : [];
   const canEdit = canManageCalendarEvents();
-  const buildingItems = items.filter(event => !event.isHoliday && !event.isOccasion);
+  const buildingItems = items.filter(event => !String(event.id).startsWith('holiday:'));
   // رویدادهای ساختمان و تعطیلات جداگانه برای نشانه‌گذاری روزها نگهداری می‌شوند.
   const byDay = {}; buildingItems.forEach(e => (byDay[+e.event_date.slice(8, 10)] ||= []).push(e));
   const holidayDays = new Set(items.filter(event => event.isOfficialHoliday).map(event => +event.event_date.slice(8, 10)));
