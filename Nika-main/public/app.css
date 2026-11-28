@@ -951,3 +951,28 @@ html[data-theme="light"] #noticeCard .public-message-item.is-next{
 html[data-theme="light"] #noticeCard .public-message-item strong{color:#83e0b6}
 html[data-theme="light"] #noticeCard .public-message-meta{color:#c4cede}
 html[data-theme="light"] #noticeCard .public-message-excerpt{color:#f1f4f8}
+
+
+/* Calendar day states: holidays in red and a pulsing green ring for the next building event */
+.page-calendar span.day-cell.holiday .day-number{
+  color:#ef5350!important;
+  font-weight:700;
+}
+.page-calendar span.day-cell.next-event .day-number{
+  position:relative;
+  border:1.5px solid #16a36a;
+  color:inherit;
+  animation:calendarEventRing 1.35s ease-in-out infinite;
+  transform-origin:center;
+}
+.page-calendar span.day-cell.today.next-event .day-number{
+  border-color:#16a36a;
+  color:inherit;
+}
+@keyframes calendarEventRing{
+  0%,100%{transform:scale(.94);box-shadow:0 0 0 0 rgba(22,163,106,.12)}
+  50%{transform:scale(1.06);box-shadow:0 0 0 4px rgba(22,163,106,.16)}
+}
+@media(prefers-reduced-motion:reduce){
+  .page-calendar span.day-cell.next-event .day-number{animation:none;box-shadow:0 0 0 2px rgba(22,163,106,.18)}
+}
