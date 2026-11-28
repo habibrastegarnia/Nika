@@ -1,7 +1,7 @@
 // پنل مدیریت: کاربران، واحدها، مالی، درخواست‌ها، پیام‌ها، اطلاعیه‌ها، محتوا و ممیزی
 import { api } from './api.js?v=2';
 import { S, can, canAny } from './state.js';
-import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, JM, monthStart, monthLen, jToday, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, baseRoleLabel, chip } from './util.js';
+import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, normDigits, JM, monthStart, monthLen, jToday, FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_KIND, ROLE_FA, ACCOUNT_FA, baseRoleLabel, userRoleLabels, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, showSecret, fields, onSubmit } from './ui.js';
 import { refreshSummary, loadLatestNotice, loadPublicMessages, fillHeader } from './pages.js?v=28';
 import { applyIcons, iconMarkup } from './icons.js?v=3';
@@ -155,7 +155,7 @@ async function usersTab() {
 const userCard = u => html`<button type="button" class="nika-usercard" data-open-user="${u.id}" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}" style="width:100%;text-align:right;color:inherit;cursor:pointer;border:1px solid #ffffff10">
   <strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong>
   <small>${baseRoleLabel(u, false) || ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}</small>
-  <span class="nika-rolechips">${u.roles.map(r => html`<span>${ROLE_FA[r] || r}</span>`)}</span>
+  <span class="nika-rolechips">${userRoleLabels(u).map(label => html`<span>${label}</span>`)}</span>
 </button>`;
 function showUserDetails(u, opts) {
   if (!u) return;
@@ -164,7 +164,7 @@ function showUserDetails(u, opts) {
   const canReset = canManageTarget && u.id !== S.user.id && u.account_type !== 'staff' && !u.roles.includes('system_admin');
   const canDelete = can('users.delete') && can('roles.assign') && u.id !== S.user.id && !u.roles.includes('system_admin');
   const modal = openModal('اطلاعات کاربر', html`<div class="profile-panel">
-    <div class="profile-cover"><div><strong>${u.name}</strong><small>${baseRoleLabel(u, false) || u.roles.filter(r => !['owner','resident'].includes(r)).map(r => ROLE_FA[r] || r).join('، ') || ACCOUNT_FA[u.account_type]}</small></div></div>
+    <div class="profile-cover"><div><strong>${u.name}</strong><small>${userRoleLabels(u).join('، ') || ACCOUNT_FA[u.account_type]}</small></div></div>
     <div class="profile-details">
       <div class="profile-detail"><small>شماره واحد</small><strong>${u.unit || '—'}</strong></div>
       <div class="profile-detail"><small>نوع حساب</small><strong>${baseRoleLabel(u, false) || ACCOUNT_FA[u.account_type]}</strong></div>
