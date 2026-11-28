@@ -22,7 +22,7 @@ const TABS = () => [
 
 let managerHome = false;
 export function adminAvailable() { return TABS().length > 0; }
-export function canSwitchWorkspace() { return !!S.user && (['owner', 'resident', 'both'].includes(S.user.account_type) || (Array.isArray(S.user.roles) && S.user.roles.some(r => ['owner', 'resident'].includes(r)))) && adminAvailable(); }
+export function canSwitchWorkspace() { return !!S.user && Array.isArray(S.user.roles) && S.user.roles.some(r => ['owner', 'resident'].includes(r)) && adminAvailable(); }
 
 function updateWorkspaceToggle(manager) {
   const toggle = $('#workspaceToggle');
@@ -154,7 +154,7 @@ async function usersTab() {
 }
 const userCard = u => html`<button type="button" class="nika-usercard" data-open-user="${u.id}" data-q="${normDigits(`${u.name} ${u.phone} ${u.unit || ''}`).toLowerCase()}" style="width:100%;text-align:right;color:inherit;cursor:pointer;border:1px solid #ffffff10">
   <strong>${u.name} ${u.active ? '' : html`<span class="page-chip red">غیرفعال</span>`} ${u.must_change_password ? html`<span class="page-chip amber">تغییر رمز الزامی</span>` : ''}</strong>
-  <small>${baseRoleLabel(u, false) || ACCOUNT_FA[u.account_type]}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}</small>
+  <small>${baseRoleLabel(u, false) || (u.account_type === 'staff' ? ACCOUNT_FA.staff : 'کاربر ساختمان')}${u.unit ? ' · واحد ' + u.unit : ''} · ${u.phone}</small>
   <span class="nika-rolechips">${userRoleLabels(u).map(label => html`<span>${label}</span>`)}</span>
 </button>`;
 function showUserDetails(u, opts) {
@@ -164,10 +164,10 @@ function showUserDetails(u, opts) {
   const canReset = canManageTarget && u.id !== S.user.id && u.account_type !== 'staff' && !u.roles.includes('system_admin');
   const canDelete = can('users.delete') && can('roles.assign') && u.id !== S.user.id && !u.roles.includes('system_admin');
   const modal = openModal('اطلاعات کاربر', html`<div class="profile-panel">
-    <div class="profile-cover"><div><strong>${u.name}</strong><small>${userRoleLabels(u).join('، ') || ACCOUNT_FA[u.account_type]}</small></div></div>
+    <div class="profile-cover"><div><strong>${u.name}</strong><small>${userRoleLabels(u).join('، ') || (u.account_type === 'staff' ? ACCOUNT_FA.staff : 'کاربر ساختمان')}</small></div></div>
     <div class="profile-details">
       <div class="profile-detail"><small>شماره واحد</small><strong>${u.unit || '—'}</strong></div>
-      <div class="profile-detail"><small>نوع حساب</small><strong>${baseRoleLabel(u, false) || ACCOUNT_FA[u.account_type]}</strong></div>
+      <div class="profile-detail"><small>نوع حساب</small><strong>${baseRoleLabel(u, false) || (u.account_type === 'staff' ? ACCOUNT_FA.staff : 'کاربر ساختمان')}</strong></div>
       <div class="profile-detail"><small>شماره موبایل</small><strong>${u.phone || '—'}</strong></div>
       <div class="profile-detail"><small>شماره تماس پشتیبان</small><strong>${u.secondary_phone || '—'}</strong></div>
       <div class="profile-detail"><small>جنسیت</small><strong>${({female:'خانم',male:'آقا',unspecified:'اعلام نشده'})[u.gender] || '—'}</strong></div>
