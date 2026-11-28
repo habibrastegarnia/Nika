@@ -19,7 +19,8 @@ test('ماژول‌های مشترک در تمام workspaceها از URL یکس
     const users = Object.entries(modules).filter(([key]) =>
       name !== 'ui.js' || key !== 'ui'
     );
-    const urls = users.map(([key, source]) => [key, importUrl(source, name)]).filter(([, url]) => url);
+    const urls = users.map(([key, source]) => [key, importUrl(source, name)]);
+    assert.equal(urls.length, users.length, name + ' باید در همه مصرف‌کننده‌ها با نسخه مشخص وارد شود');
     assert.ok(urls.length >= 2, name + ' باید در چند ماژول استفاده شود');
     assert.equal(new Set(urls.map(([, url]) => url)).size, 1,
       name + ' باید در همه مصرف‌کننده‌ها URL یکسان داشته باشد: ' + JSON.stringify(urls));
