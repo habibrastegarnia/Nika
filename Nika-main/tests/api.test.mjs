@@ -492,32 +492,24 @@ test('مسیرهای ناموجود/متد نامعتبر', async () => {
 });
 
 
-test('پیام عمومی، تأیید انتشار، واکنش و ثبت نقش فعال در دیدگاه', async () => {
+test('پیام عمومی بدون تأیید، نقش فعال دیدگاه و حذف محدود به رئیس', async () => {
   const chairForPublic = new Client('chair-public-messages');
   assert.equal((await chairForPublic.login('staff', 'Admin', CHAIR_PW)).status, 200);
   const created = await chairForPublic.post('/api/admin/users', {
     name: 'کاربر آزمایشی واحد ۱۴', accountType: 'resident', unit: '14',
-    phone: '09124444414', roles: ['chair'], reason: 'آزمون ثبت نقش فعال در دیدگاه'
+    phone: '09124444414', roles: ['chair'], reason: 'آزمون نقش فعال و حذف پیام عمومی'
   });
   assert.equal(created.status, 201, JSON.stringify(created.data));
   const author = new Client('public-message-author');
   await activate(author, 'resident', '09124444414', '09124444414', 'Unit14-Strong-Pass-1', '14');
 
-  const submission = await author.post('/api/requests', {
-    title: 'پیام عمومی آزمایشی', body: 'متن پیام عمومی برای آزمون',
-    category: 'عمومی', kind: 'request', boardRequested: true
+  const posted = await author.post('/api/public-messages', {
+    title: 'پیام فوری بدون تأیید', body: 'این پیام باید بلافاصله در تابلو دیده شود'
   });
-  assert.equal(submission.status, 201, JSON.stringify(submission.data));
-
-  const beforeApproval = await author.get('/api/public-messages?limit=5');
-  assert.equal(beforeApproval.data.messages.some(m => m.title === 'پیام عمومی آزمایشی'), false,
-    'پیام تا پیش از تأیید نباید عمومی شود');
-
-  const published = await chairForPublic.call('POST', `/api/requests/${submission.data.id}/publish`, {}, { 'X-Nika-Workspace': 'manager' });
-  assert.equal(published.status, 201, JSON.stringify(published.data));
+  assert.equal(posted.status, 201, JSON.stringify(posted.data));
   const visible = await author.get('/api/public-messages?limit=5');
-  const message = visible.data.messages.find(m => m.id === published.data.id);
-  assert.ok(message);
+  const message = visible.data.messages.find(m => m.id === posted.data.id);
+  assert.ok(message, 'پیام بلافاصله و بدون تأیید باید در تابلو باشد');
   assert.equal(message.author_label, 'ساکن واحد 14');
 
   const managerComment = await author.call('POST', `/api/public-messages/${message.id}/comments`,
@@ -534,4 +526,18 @@ test('پیام عمومی، تأیید انتشار، واکنش و ثبت نق�
   assert.equal(discussion.data.comments[1].author_label, 'ساکن واحد 14');
   assert.equal(discussion.data.comments[0].actor_role, 'chair');
   assert.equal(discussion.data.myReaction, 'heart');
+
+  assert.equal((await author.call('DELETE', `/api/public-messages/${message.id}`, { reason: 'حذف از فضای کاربر نباید مجاز باشد' })).status, 403);
+  assert.equal((await author.call('DELETE', `/api/public-messages/${message.id}`, {}, { 'X-Nika-Workspace': 'manager' })).status, 400,
+    'دلیل حذف الزامی است');
+  const removed = await author.call('DELETE', `/api/public-messages/${message.id}`, { reason: 'پیام حاوی اطلاعات نادرست بود' }, { 'X-Nika-Workspace': 'manager' });
+  assert.equal(removed.status, 200, JSON.stringify(removed.data));
+  assert.equal((await author.get(`/api/public-messages/${message.id}/discussion`)).status, 404);
+  const audit = await env.DB.prepare("SELECT details,actor_role FROM audit_logs WHERE action='public_message.delete' AND entity_id=?").bind(message.id).first();
+  assert.equal(audit.actor_role, 'chair');
+  assert.match(audit.details, /اطلاعات نادرست/);
+
+  const second = await res1.post('/api/public-messages', { title: 'پیام دوم', body: 'پیام آزمایشی دوم' });
+  assert.equal(second.status, 201);
+  assert.equal((await exec.call('DELETE', `/api/public-messages/${second.data.id}`, { reason: 'مدیر اجرایی نباید بتواند حذف کند' }, { 'X-Nika-Workspace': 'manager' })).status, 403);
 });
