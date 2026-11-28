@@ -1,7 +1,7 @@
 // صفحه‌های کاربری: خانه، مقررات، مصوبات، تقویم، تابلو، درخواست‌ها، مالی، پیام‌ها، پروفایل، تنظیمات
 import { api } from './api.js?v=2';
 import { S, can, canManageCalendarEvents, readableFunds, dashFunds, isManager } from './state.js';
-import { html, raw, join, $, $$, fa, toman, fdate, fdt, isRecent, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
+import { html, raw, join, $, $$, fa, toman, fdate, fdt, parseAmount, periodLabel, curPeriod, JM, jOf, jToday, monthStart, monthLen, faN, normDigits,
   FUND_FA, KIND_FA, TX_STATUS, REQ_STATUS, REQ_CATEGORIES, ROLE_FA, chip } from './util.js';
 import { toast, openModal, closeModal, ask, promptText, route, open, fields, onSubmit } from './ui.js';
 import { iconMarkup } from './icons.js?v=2';
@@ -125,7 +125,6 @@ export async function loadLatestNotice() {
   $('#boardDate').textContent = n ? fdt(n.created_at) : '';
   $('#boardTitle').textContent = n ? n.title : 'اطلاعیه‌ای ثبت نشده است';
   $('#boardText').textContent = n ? n.body.slice(0, 140) : '';
-  $('#ntNew').style.display = n && isRecent(n.created_at) ? '' : 'none';
 }
 
 let publicMessageTimer = null;
@@ -150,10 +149,11 @@ export async function loadPublicMessages() {
       status.textContent = 'پیام‌های منتشرشده کاربران';
       return;
     }
-    track.innerHTML = join(messages.map((m, i) => html`<button type="button" class="public-message-item" data-public-message="${m.id}" aria-label="مشاهده پیام ${m.title}">
+    track.innerHTML = join(messages.map(m => html`<button type="button" class="public-message-item" data-public-message="${m.id}" aria-label="مشاهده پیام ${m.title}">
       <span class="public-message-meta"><span>${m.author_label} · ${m.author_name}</span><span>${fdt(m.created_at)}</span></span>
       <strong>${m.title}</strong><span class="public-message-excerpt">${String(m.body || '').slice(0, 132)}${String(m.body || '').length > 132 ? '…' : ''}</span>
     </button>`));
+    if (messages.length > 1) track.appendChild(track.firstElementChild.cloneNode(true));
     status.textContent = `${fa(messages.length)} پیام اخیر · هر ۴ ثانیه`;
     track.style.transform = 'translateY(0)';
     track.onclick = event => {
@@ -161,9 +161,18 @@ export async function loadPublicMessages() {
       if (item) openPublicMessageModal(item.dataset.publicMessage);
     };
     if (messages.length > 1) publicMessageTimer = setInterval(() => {
-      if (document.hidden) return;
-      publicMessageIndex = (publicMessageIndex + 1) % messages.length;
+      if (document.hidden || !$('#noticeCard')?.getClientRects().length) return;
+      publicMessageIndex += 1;
       track.style.transform = `translateY(-${publicMessageIndex * PUBLIC_MESSAGE_HEIGHT}px)`;
+      if (publicMessageIndex === messages.length) {
+        setTimeout(() => {
+          if (!track.isConnected) return;
+          track.style.transition = 'none';
+          publicMessageIndex = 0;
+          track.style.transform = 'translateY(0)';
+          requestAnimationFrame(() => { track.style.transition = ''; });
+        }, 600);
+      }
     }, 4000);
   } catch (error) {
     track.innerHTML = '<div class="public-message-empty">دریافت پیام‌ها در حال حاضر ممکن نیست.</div>';
