@@ -16,6 +16,9 @@ jobs:
       - name: Install dependencies
         working-directory: Nika-main
         run: npm install --no-audit --no-fund
+      - name: Check changed feature JavaScript syntax
+        working-directory: Nika-main
+        run: node --check src/content.js && node --check public/js/pages.js && node --check public/js/main.js && node --check public/js/admin.js
       - name: Check browser JavaScript syntax
         working-directory: Nika-main
         run: find public/js -type f -name '*.js' -print0 | xargs -0 -n1 node --check
