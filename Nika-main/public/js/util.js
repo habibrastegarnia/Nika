@@ -1,8 +1,12 @@
 // ابزارهای عمومی: escape امن، قالب HTML، ارقام فارسی، تاریخ شمسی
-export class Safe { constructor(s) { this.s = s; } toString() { return this.s; } }
+const SAFE_HTML = Symbol.for('nika.safe-html');
+export class Safe {
+  constructor(s) { this.s = s; this[SAFE_HTML] = true; }
+  toString() { return this.s; }
+}
 export const raw = s => new Safe(String(s ?? ''));
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const val = v => v == null || v === false ? '' : v instanceof Safe ? v.s : Array.isArray(v) ? v.map(val).join('') : esc(v);
+const val = v => v == null || v === false ? '' : v[SAFE_HTML] === true ? v.s : Array.isArray(v) ? v.map(val).join('') : esc(v);
 // هر مقدار داخل html`...` به‌طور خودکار escape می‌شود، مگر خودش خروجی html`` یا raw() باشد
 export const html = (s, ...v) => new Safe(s.reduce((a, x, i) => a + x + (i < v.length ? val(v[i]) : ''), ''));
 // تبدیل آرایه‌ای از html`` به یک رشته‌ی HTML (بدون ویرگول بین عضوها)
