@@ -1,11 +1,11 @@
 // راه‌اندازی برنامه: ورود، تغییر رمز اجباری، ناوبری اصلی، اسلایدر خانه
 import { api, setHooks } from './api.js?v=2';
 import { S, can, canAny, isManager } from './state.js';
-import { $, $$, normDigits, fa } from './util.js?v=3';
+import { $, $$, normDigits, fa } from './util.js?v=4';
 import { iconMarkup, applyIcons } from './icons.js?v=4';
-import { toast, initModal, initRouter, open, back, showHome, resetRouter, setNav } from './ui.js?v=3';
-import * as P from './pages.js?v=32';
-import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=34';
+import { toast, initModal, initRouter, open, back, showHome, resetRouter, setNav } from './ui.js?v=4';
+import * as P from './pages.js?v=33';
+import { showAdmin, hideAdmin, showResidentMode, adminAvailable } from './admin.js?v=35';
 
 let managerMode = false;
 const show = id => { for (const s of ['#nikaGate', '#nikaForce']) $(s).classList.toggle('nika-hide', s !== id); $('.phone').classList.toggle('nika-hide', id !== '#app'); $('#nikaAdmin').classList.add('nika-hide'); };
