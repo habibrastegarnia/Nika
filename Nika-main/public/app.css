@@ -976,3 +976,11 @@ html[data-theme="light"] #noticeCard .public-message-excerpt{color:#f1f4f8}
 @media(prefers-reduced-motion:reduce){
   .page-calendar span.day-cell.next-event .day-number{animation:none;box-shadow:0 0 0 2px rgba(22,163,106,.18)}
 }
+
+.weekly .weekly-calendar span.day-cell.event{cursor:pointer}
+.weekly .weekly-calendar span.day-cell.selected{outline:1px solid #79baff;outline-offset:1px}
+.weekly-events:empty{display:none}
+.weekly-event{display:block}
+.weekly-event>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.weekly-event p{margin:5px 0 0;font-size:10px;line-height:1.7;color:#aab8cf;white-space:normal}
+html[data-theme="light"] .weekly-event p{color:#687991}
