@@ -97,3 +97,15 @@ test('تمام صفحات داخلی از همان پنجره شناور مشت�
   assert.match(source, /host\[name\] = previous\.handlers\[name\]/);
   assert.match(source, /page-modal-sub/);
 });
+
+
+test('نقطه رویداد بعدی در تقویم هفتگی با انیمیشن pulse نمایش داده می‌شود', async () => {
+  const source = await readFile(new URL('../public/js/pages.js', import.meta.url), 'utf8');
+  const start = source.indexOf('export async function loadWeeklyCalendar()');
+  const end = source.indexOf('export async function loadHome()', start);
+  assert.ok(start >= 0 && end > start, 'تابع تقویم هفتگی باید وجود داشته باشد');
+  const body = source.slice(start, end);
+  assert.match(body, /const nextWeeklyEvent = buildingItems/);
+  assert.match(body, /pulse \? 'pulse' : ''/);
+  assert.match(body, /event-dot \\$\{pulse \? 'pulse' : ''\}/);
+});
